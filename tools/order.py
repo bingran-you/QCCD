@@ -42,7 +42,7 @@ def build(head, tail, seq, noisy):
     c = stim.Circuit()
     for ins in head:
         c.append(ins)
-        if noisy and ins.name in ("R", "H"):
+        if noisy and ins.name in ("R", "RX", "H"):
             c.append("DEPOLARIZE1", [t.value for t in ins.targets_copy()], 1e-3)
     for a, b in seq:
         c.append("CX", [a, b])
@@ -51,6 +51,8 @@ def build(head, tail, seq, noisy):
     for ins in tail:
         if noisy and ins.name in ("M", "MR"):
             c.append("X_ERROR", [t.value for t in ins.targets_copy()], 1e-3)
+        elif noisy and ins.name in ("MX", "MRX"):
+            c.append("Z_ERROR", [t.value for t in ins.targets_copy()], 1e-3)
         c.append(ins)
         if noisy and ins.name == "H":
             c.append("DEPOLARIZE1", [t.value for t in ins.targets_copy()], 1e-3)
