@@ -26,15 +26,21 @@ by X and Z checks aligns one check type's hook errors with its logical.
 Here Z-check hooks shorten the memory-X logical. No repair was attempted;
 memory-Z alone was insufficient.
 
-| d | Jones standard, paper last start (µs) | John standard last start (µs) | WISE split last start (µs) |
-|---|---:|---:|---:|
-| 2 | 4055 | 2295 | **4070** |
-| 3 | 4085 | 2335 | **4070** |
-| 6 | 4080 | 2340* | **4070** |
-| 12 | 4085 | 2340 | **4070** |
+| Schedule, last start (µs) | d=2 | d=3 | d=6 | d=12 |
+|---|---:|---:|---:|---:|
+| Jones standard, paper | 4055 | 4085 | 4080 | 4085 |
+| John standard | 2295 | 2335 | 2340* | 2340 |
+| WISE split | **4070** | **4070** | **4070** | **4070** |
+| Direct wiring, Stim order | **3830** | **3830** | **3830** | **3830** |
 
 *John's d=6 executed memory-Z distance is **4 of 6**, so this timing comparison
 does not preserve distance. Paper/John times are the requested baselines.
+
+Direct wiring, Stim order uses JONES (no broadcast), strict durations and
+an additional exact per-qubit CX-order check. All four grids pass memory-Z
+and memory-X at their source distances 2, 3, 6, 12; makespan is 3880 µs.
+Independent routes/gates overlap inside each Stim step, with a barrier
+between steps. Raw results: [direct-wiring validation](jones_ordered_validation.json).
 
 Distances are from the **bounded search in tools/order.py**, not proofs:
 **“no logical error shorter than d found”** for passing rows. Detection-event
@@ -52,4 +58,4 @@ codes. Generated X sources were checked for identical Z-source CX layers.
 Commands and all 16 results: [basis validation](wise_both_bases_validation.json).
 Z regressions: [before/after output](order_noise_z_regression.json).
 Earlier reports, schedules, Z sources, catalog, profiles, and timed.py remain
-unchanged. **37 tests pass.** Nothing was pushed.
+unchanged. Nothing was pushed.
