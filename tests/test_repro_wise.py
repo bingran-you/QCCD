@@ -128,3 +128,23 @@ def test_wise_d3_output_unchanged(mode, suffix):
     sched = build(dev, chains, qubits, stim, middle_steps=mode)
     with gzip.open(stim.parents[1] / f"ours/grid_rot_d3_c2_wise{suffix}.schedule.json.gz", "rt") as f:
         assert sched.to_json() == json.load(f)
+
+
+@pytest.mark.parametrize("distance", [2, 6, 12])
+@pytest.mark.parametrize("mode,suffix", [("split", ""), ("shared_shape", "_shared_shape")])
+def test_wise_other_grid_artifacts(distance, mode, suffix):
+    dev, chains, qubits, stim = _source(distance)
+    sched = build(dev, chains, qubits, stim, middle_steps=mode)
+    cx, _, _ = stim_program(stim)
+    report = check(sched, JONES_WISE, duration=jones_duration, circuit=cx, strict=True)
+    assert report.ok, report.summary()
+    assert report.checks["broadcast"] == "passed"
+    assert not report.violations
+    assert sched.device.to_json() == dev.to_json()
+    assert sched.qubits == {q: str(i) for q, i in qubits.items()}
+    assert {t: ch for t, ch in sched.chains.items() if ch} == chains
+    assert len([e for e in sched.events if e.kind == "gate"]) == len(cx)
+    assert report.metrics["last_start_us"] == (4070 if mode == "split" else 2870)
+    assert sched.claims["broadcast_cycles"] == (72 if mode == "split" else 48)
+    with gzip.open(stim.parents[1] / f"ours/grid_rot_d{distance}_c2_wise{suffix}.schedule.json.gz", "rt") as f:
+        assert sched.to_json() == json.load(f)
