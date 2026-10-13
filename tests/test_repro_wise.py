@@ -3,6 +3,8 @@ from dataclasses import replace
 import gzip
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -66,3 +68,55 @@ def test_wise_first_step_and_planted_faults():
     assert check(dropped, JONES_WISE, duration=jones_duration, circuit=cx[:6], strict=True).failed("circuit")
     with pytest.raises(ValueError, match="occupied zones would sit out"):
         build(dev, chains, qubits, stim, steps=1, zone_opt_out=False)
+
+
+@pytest.mark.parametrize("mode,cycles,transport,makespan", [
+    ("split", 72, [540, 1080, 1080, 540], 4120),
+    ("shared_shape", 48, [540, 540, 540, 540], 2920),
+])
+def test_wise_round_and_order(mode, cycles, transport, makespan, tmp_path):
+    dev, chains, qubits, stim = _source()
+    sched = build(dev, chains, qubits, stim, middle_steps=mode)
+    cx, _, _ = stim_program(stim)
+    report = check(sched, JONES_WISE, duration=jones_duration, circuit=cx, strict=True)
+    assert report.ok, report.summary()
+    assert report.checks["broadcast"] == "passed"
+    assert sched.claims["broadcast_cycles"] == cycles
+    assert sched.claims["transport_us_per_step"] == transport
+    assert report.metrics["makespan_us"] == makespan
+    assert report.metrics["last_start_us"] == makespan - 50
+    assert sched.qubits == {q: str(i) for q, i in qubits.items()}
+    assert {t: ch for t, ch in sched.chains.items() if ch} == chains
+    assert all(e.meta.get("locks") for e in sched.events)
+    assert all(e.meta["class"].startswith(e.kind + ":") for e in sched.events
+               if e.kind in JONES_WISE.broadcast)
+    assert report.metrics["counts"] == {
+        "reset": 25, "gate1": 112, "gate": 24, "measure": 17, "split": 48,
+        "merge": 48, "transit": 96, "j_enter": 48, "j_exit": 48,
+    }
+    # Every last return goes home, so the next pass starts from the source layout.
+    where = {i: t for t, ch in chains.items() for i in ch}
+    for e in sched.events:
+        if e.kind == "merge":
+            where[e.ions[0]] = e.at
+    assert where == {i: t for t, ch in chains.items() for i in ch}
+    path = tmp_path / "wise.schedule.json.gz"
+    with gzip.open(path, "wt") as f:
+        json.dump(sched.to_json(), f)
+    result = subprocess.run([sys.executable, str(stim.parents[3] / "tools/order.py"),
+                             str(path), str(stim)], text=True, capture_output=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "executed: detectors deterministic; circuit distance = 3" in result.stdout
+    assert "RESULT: PASS" in result.stdout
+    if mode == "split":
+        assert "executed order matches the source on every qubit" in result.stdout
+    else:
+        assert "qubit 9" in result.stdout and "qubit 18" in result.stdout
+
+
+def test_wise_combined_junction_class_choice():
+    dev, chains, qubits, stim = _source()
+    sched = build(dev, chains, qubits, stim, steps=1, separate_junction_classes=False)
+    assert {e.meta["class"].split(":")[0] for e in sched.events
+            if e.kind in ("j_enter", "j_exit")} == {"junction"}
+    assert sched.claims["broadcast_cycles"] == 12

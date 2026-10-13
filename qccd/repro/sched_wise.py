@@ -223,7 +223,8 @@ def main():
                   middle_steps=args.middle_steps, steps=args.steps,
                   zone_opt_out=args.zone_opt_out,
                   separate_junction_classes=args.separate_junction_classes)
-    out = args.out or base / "ours" / (f"grid_rot_d3_c2_wise_{args.middle_steps}"
+    suffix = f"_{args.middle_steps}" if args.middle_steps != "split" or args.steps == 1 else ""
+    out = args.out or base / "ours" / (f"grid_rot_d3_c2_wise{suffix}"
                                        + ("_step1" if args.steps == 1 else "") + ".schedule.json.gz")
     with gzip.open(out, "wt") as f:
         json.dump(sched.to_json(), f, separators=(",", ":"))
