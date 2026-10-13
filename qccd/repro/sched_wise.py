@@ -208,6 +208,8 @@ def build(dev: PortGraph, chains: Mapping[str, list[str]], qubits: Mapping[str, 
 def main():
     root = Path(__file__).resolve().parents[2]
     ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--distance", type=int, choices=(2, 3, 6, 12), default=3,
+                    help="Jones capacity-2 grid artifact and source circuit (default: 3)")
     ap.add_argument("--middle-steps", choices=("split", "shared_shape"), default="split")
     ap.add_argument("--steps", type=int, choices=(1, 4), default=4)
     ap.add_argument("--zone-opt-out", action=argparse.BooleanOptionalAction, default=True)
@@ -215,20 +217,21 @@ def main():
     ap.add_argument("--out", type=Path)
     args = ap.parse_args()
     base = root / "Reproduce/jones2025"
-    with gzip.open(base / "artifact/grid_rot_d3_c2.schedule.json.gz", "rt") as f:
+    with gzip.open(base / f"artifact/grid_rot_d{args.distance}_c2.schedule.json.gz", "rt") as f:
         raw = json.load(f)
     dev = jones_device(raw["device"])
     chains = {f"T{t}": [str(i) for i in ch] for t, ch in raw["initial_layout"].items()}
-    sched = build(dev, chains, raw["qubit_to_ion"], base / "circuits/rotated_memory_z_d3_r1.stim",
+    circuit = base / f"circuits/rotated_memory_z_d{args.distance}_r1.stim"
+    sched = build(dev, chains, raw["qubit_to_ion"], circuit,
                   middle_steps=args.middle_steps, steps=args.steps,
                   zone_opt_out=args.zone_opt_out,
                   separate_junction_classes=args.separate_junction_classes)
     suffix = f"_{args.middle_steps}" if args.middle_steps != "split" or args.steps == 1 else ""
-    out = args.out or base / "ours" / (f"grid_rot_d3_c2_wise{suffix}"
+    out = args.out or base / "ours" / (f"grid_rot_d{args.distance}_c2_wise{suffix}"
                                        + ("_step1" if args.steps == 1 else "") + ".schedule.json.gz")
     with gzip.open(out, "wt") as f:
         json.dump(sched.to_json(), f, separators=(",", ":"))
-    cx, _, _ = stim_program(base / "circuits/rotated_memory_z_d3_r1.stim")
+    cx, _, _ = stim_program(circuit)
     if args.steps == 1:
         cx = [cx[k] for p in sched.source["passes"] for k in p["cx_indices"]]
     rep = check(sched, JONES_WISE, duration=jones_duration, circuit=cx, strict=True)

@@ -42,12 +42,12 @@ def test_wise_profile_and_broadcast_faults():
         assert check(broken, JONES_WISE, duration=jones_duration, strict=True).failed("broadcast")
 
 
-def _source():
+def _source(distance=3):
     root = Path(__file__).resolve().parents[1] / "Reproduce/jones2025"
-    with gzip.open(root / "artifact/grid_rot_d3_c2.schedule.json.gz", "rt") as f:
+    with gzip.open(root / f"artifact/grid_rot_d{distance}_c2.schedule.json.gz", "rt") as f:
         raw = json.load(f)
     chains = {f"T{t}": [str(i) for i in ch] for t, ch in raw["initial_layout"].items()}
-    return jones_device(raw["device"]), chains, raw["qubit_to_ion"], root / "circuits/rotated_memory_z_d3_r1.stim"
+    return jones_device(raw["device"]), chains, raw["qubit_to_ion"], root / f"circuits/rotated_memory_z_d{distance}_r1.stim"
 
 
 def test_wise_first_step_and_planted_faults():
@@ -120,3 +120,11 @@ def test_wise_combined_junction_class_choice():
     assert {e.meta["class"].split(":")[0] for e in sched.events
             if e.kind in ("j_enter", "j_exit")} == {"junction"}
     assert sched.claims["broadcast_cycles"] == 12
+
+
+@pytest.mark.parametrize("mode,suffix", [("split", ""), ("shared_shape", "_shared_shape")])
+def test_wise_d3_output_unchanged(mode, suffix):
+    dev, chains, qubits, stim = _source()
+    sched = build(dev, chains, qubits, stim, middle_steps=mode)
+    with gzip.open(stim.parents[1] / f"ours/grid_rot_d3_c2_wise{suffix}.schedule.json.gz", "rt") as f:
+        assert sched.to_json() == json.load(f)
