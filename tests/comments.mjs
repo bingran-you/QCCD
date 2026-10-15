@@ -265,6 +265,34 @@ try {
   step('the box is coloured', /^rgb\(/.test(colour) && colour !== 'rgba(0, 0, 0, 0)' && colour !== 'rgb(255, 255, 255)', { colour });
   await shot('02_posted');
 
+  // ANOTHER `.qc-box` ON THE PAGE.  The studio's QEC-cycle panel styles a class of that name
+  // (fixed, its own scroller); with it on the page every note became a scroller and its
+  // sticky header slid 44 px down, over the first lines of the note (thread 34).  Plant that
+  // panel's rules and the header must still be the top of the box.
+  const headOff = await evaluate(`(function(){
+    var s = document.createElement('style'); s.id = 'foreign-qc-box';
+    s.textContent = '.qc-box{position:fixed;z-index:60;width:452px;max-height:76vh;overflow:auto;padding:10px 12px 12px}' +
+                    '.qc-box .qc-head{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 6px}';
+    document.body.appendChild(s); window.QCCOMMENTS.place();
+    var b = document.querySelector('.qc-box[data-id]'), h = b.querySelector('.qc-head');
+    var off = h.getBoundingClientRect().top - b.getBoundingClientRect().top, ov = getComputedStyle(b).overflowY;
+    s.remove(); window.QCCOMMENTS.place(); return { off: off, overflow: ov }; })()`);
+  step("another stylesheet's .qc-box leaves the note's header at its top", headOff.off <= 2 && headOff.overflow !== 'auto', headOff);
+
+  // HIDE COMMENTS, in the bar: one press takes every note off, and it stays off
+  step('the bar has a Hide comments button, in the window', await evaluate(`(function(){ var b = document.getElementById('qc-hide'); if(!b) return false;
+    var r = b.getBoundingClientRect(); return r.width > 0 && r.right <= innerWidth && b.getAttribute('aria-label') === 'Hide comments'; })()`));
+  await evaluate("document.getElementById('qc-hide').click()");
+  await until("document.getElementById('qc-layer').hidden === true", 'the layer hidden');
+  step('hidden: no pin is drawn, and the button offers them back', await evaluate(`[].every.call(document.querySelectorAll('.qc-pin'), function(p){ return p.getBoundingClientRect().width === 0; })
+    && document.getElementById('qc-hide').getAttribute('aria-label') === 'Show comments'`));
+  await open(url);
+  await until("!!document.getElementById('qc-hide')", 'the button after a reload');
+  step('hidden after a reload too', await evaluate("document.getElementById('qc-layer').hidden === true && document.getElementById('qc-hide').getAttribute('aria-label') === 'Show comments'"));
+  await evaluate("document.getElementById('qc-hide').click()");
+  await until("document.getElementById('qc-layer').hidden === false && document.querySelectorAll('.qc-pin[data-id]').length === 1", 'the layer shown again');
+  step('shown again with one press', (await rectOf('.qc-pin[data-id]')).w > 0);
+
   // scrolling: the pin moves with the page (it is in the document, not fixed to the viewport)
   const canScroll = await evaluate('document.documentElement.scrollHeight > window.innerHeight + 100');
   if (canScroll) {
@@ -445,10 +473,12 @@ try {
   await evaluate("document.querySelector('.qc-box[data-id] .qc-resolve').click()");
   await until("document.querySelectorAll('.qc-pin.qc-done').length === 1", 'the pin marked addressed');
   const doneNote = await evaluate("(document.querySelector('.qc-done-note') || {}).textContent || ''");
-  const doneCount = await evaluate("(document.getElementById('qc-count') || {}).textContent || ''");
+  // the count shortens itself when the bar is full, so read both of its labels
+  const doneCount = await evaluate("(function(){ var c = document.getElementById('qc-count'); return c ? [c.textContent, c.getAttribute('data-long')] : []; })()");
   const doneState = await state();
   step('admin: marked the note addressed; it is still there, attributed, and counted',
-       doneNote.includes('Addressed by ' + ADMIN.name) && doneCount === '0 open · 1 addressed'
+       doneNote.includes('Addressed by ' + ADMIN.name) && doneCount[1] === '0 open · 1 addressed'
+       && (doneCount[0] === doneCount[1] || doneCount[0] === '0 open')
        && doneState.threads.length === 1 && !!doneState.threads[0].resolved,
        { note: doneNote, count: doneCount });
   await shot('05b_addressed');

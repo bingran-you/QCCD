@@ -15,6 +15,22 @@
 #qc-me{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:0;background:none;padding:2px 4px;border-radius:99px;font:inherit;color:#0b0b0b;max-width:180px}
 #qc-me:hover{background:#eef3fb} #qc-me b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #qc-count{font-size:11px;color:#52514e;background:#f3f2ee;border-radius:99px;padding:3px 7px;white-space:nowrap}
+/* Hide / Show comments: one press takes every note off every page, and the choice is kept */
+#qc-hide{display:inline-flex;align-items:center;gap:5px;padding:0 9px}
+#qc-hide svg{width:16px;height:16px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#qc-hide[data-hidden="1"]{background:#f3f2ee;border-color:#b9b8b3;color:#0b0b0b}
+#qc-hide[data-hidden="1"]:hover{border-color:#2a78d6;color:#2a78d6}
+/* The bar has fourteen places in it, and the controls here came after all of them, so at
+   1280 px they were drawn past the window's edge -- Sign in, + Comment and the menu with
+   it.  fitNav() steps down only as far as it has to: the name goes (the avatar stays),
+   then the buttons keep their icons, then the places in the bar close up a little. */
+#qcnav[data-fit="1"] #qc-me b{display:none}
+#qcnav[data-fit="2"] #qc-me b,#qcnav[data-fit="2"] .qc-lbl,#qcnav[data-fit="3"] #qc-me b,#qcnav[data-fit="3"] .qc-lbl{display:none}
+#qcnav[data-fit="2"] #qc-hide,#qcnav[data-fit="3"] #qc-hide{padding:0 6px}
+#qcnav[data-fit="3"]{gap:5px;margin-left:4px}
+#sitenav.qc-tight{gap:1px;padding:0 10px}
+#sitenav.qc-tight a{padding:0 4px;font-size:12.5px}
+#sitenav.qc-tight a.sn-brand{padding-left:0;margin-right:4px}
 .qc-menu{position:absolute;right:0;top:36px;background:#fff;border:1px solid #cfceca;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);
  padding:4px 0;min-width:190px;z-index:1300;font-size:13px;line-height:1.3}
 .qc-menu button{display:block;width:100%;text-align:left;border:0;background:none;font:inherit;padding:7px 12px;cursor:pointer;color:#0b0b0b}
@@ -24,51 +40,58 @@ qccd-comments{position:absolute;left:0;top:0;width:0;height:0;overflow:visible;z
  font:13px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#0b0b0b;text-align:left}
 #sitenav{z-index:100}
 qccd-comments[hidden]{display:none}
-.qc-pin{position:absolute;width:30px;height:30px;margin:-30px 0 0 0;border-radius:50% 50% 50% 3px;border:2px solid #fff;
+/* Every rule for a note starts at this layer.  The studio's QEC-cycle panel has a `.qc-box`
+   of its own (fixed, 452 px wide, its own scroller) and a `.qc-box .qc-head`, and while
+   these rules were bare each page carrying both restyled the other: every note became a
+   scroller, so its sticky header sat 44 px down inside it, over the first lines of the
+   text (Yuewen, 2026-10-05), and the panel's header took this one's white text and grab
+   cursor.  Scoped here, a note outranks that panel's rules, and so says every property
+   they set (padding, max-height, font, gap, margin, wrap). */
+qccd-comments .qc-pin{position:absolute;width:30px;height:30px;margin:-30px 0 0 0;border-radius:50% 50% 50% 3px;border:2px solid #fff;
  box-shadow:0 1px 6px rgba(0,0,0,.28);cursor:pointer;pointer-events:auto;z-index:1;display:flex;align-items:center;justify-content:center;
  color:#fff;font-weight:600;font-size:11px;background:var(--qc);user-select:none}
-.qc-pin:hover{transform:scale(1.08)} .qc-pin.qc-approx{border-style:dashed}
+qccd-comments .qc-pin:hover{transform:scale(1.08)} qccd-comments .qc-pin.qc-approx{border-style:dashed}
 /* ADDRESSED: the note is done with, so it stops shouting -- grey pin with a tick, and the
    box keeps its text for anyone who opens it.  Deleting was the only way to say this
-   before, and deleting takes the words with it. */
-.qc-pin.qc-done{background:#9a9a94;box-shadow:0 1px 4px rgba(0,0,0,.18)}
-.qc-pin.qc-done::after{content:"¹3";position:absolute;font-size:13px}
-.qc-pin.qc-done span{display:none}
-.qc-box.qc-done .qc-head{background:#9a9a94}
-.qc-done-note{background:#f3f6f1;color:#3f6b3a;border-bottom:1px solid #e2e8df;padding:5px 9px;font-size:12px}
-.qc-x.qc-on{background:rgba(255,255,255,.35)}
-.qc-pin{touch-action:none} .qc-pin.qc-dragging{cursor:grabbing;transform:none}
-.qc-box{position:absolute;width:290px;background:#fff;border:1px solid var(--qc);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.16);
- pointer-events:auto;overflow:hidden;overflow:clip;z-index:2}
-.qc-box:hover,.qc-box:focus-within{z-index:3}
+   before, and deleting takes the words with it.  The tick is the character itself: its
+   escape went through a shell once and came out as the two characters "¹3". */
+qccd-comments .qc-pin.qc-done{background:#9a9a94;box-shadow:0 1px 4px rgba(0,0,0,.18);font-size:0}
+qccd-comments .qc-pin.qc-done::after{content:"✓";font-size:15px;line-height:1}
+qccd-comments .qc-box.qc-done .qc-head{background:#9a9a94}
+qccd-comments .qc-done-note{background:#f3f6f1;color:#3f6b3a;border-bottom:1px solid #e2e8df;padding:5px 9px;font-size:12px}
+qccd-comments .qc-x.qc-on{background:rgba(255,255,255,.35)}
+qccd-comments .qc-pin{touch-action:none} qccd-comments .qc-pin.qc-dragging{cursor:grabbing;transform:none}
+qccd-comments .qc-box{position:absolute;width:290px;max-height:none;padding:0;background:#fff;border:1px solid var(--qc);border-radius:10px;
+ box-shadow:0 6px 24px rgba(0,0,0,.16);font:inherit;color:inherit;pointer-events:auto;overflow:hidden;overflow:clip;z-index:2}
+qccd-comments .qc-box:hover,qccd-comments .qc-box:focus-within{z-index:3}
 /* folded: the note collapses into its pin, and the pin is all that is left over the words */
-.qc-box.qc-fold{display:none}
+qccd-comments .qc-box.qc-fold{display:none}
 /* the header is the handle: drag a note off the text it covers, double-click to put it back */
 /* It is sticky under the site bar (40px), so a note whose top has scrolled out of the window
    keeps its controls in reach for as long as any of it is on the screen, and then goes with
    its paragraph.  That needs the box to clip without becoming a scroller: overflow:clip
    (where a browser has only `hidden`, the header simply scrolls with the box). */
-.qc-head{background:var(--qc);color:#fff;padding:6px 8px;display:flex;align-items:center;gap:7px;min-height:34px;
+qccd-comments .qc-box .qc-head{background:var(--qc);color:#fff;padding:6px 8px;margin:0;display:flex;flex-wrap:nowrap;align-items:center;gap:7px;min-height:34px;
  cursor:grab;touch-action:none;user-select:none;position:sticky;top:44px;z-index:1}
-.qc-head.qc-dragging{cursor:grabbing}
-.qc-head button{cursor:pointer}
-.qc-head .qc-av{background:rgba(255,255,255,.28)}
-.qc-head b{font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;min-width:0}
-.qc-head small{font-size:11px;opacity:.85;white-space:nowrap}
-.qc-x{border:0;background:rgba(255,255,255,.18);color:#fff;width:22px;height:22px;border-radius:5px;cursor:pointer;font:inherit;font-size:14px;line-height:1;padding:0;flex:0 0 auto}
-.qc-x:hover{background:rgba(255,255,255,.34)}
-.qc-msgs{max-height:280px;overflow:auto;padding:8px 8px 2px}
-.qc-msg{display:flex;gap:7px;margin:0 0 7px;align-items:flex-start}
-.qc-bub{background:color-mix(in srgb,var(--qc) 9%,#fff);border-radius:8px;padding:5px 8px 6px;flex:1 1 auto;min-width:0;position:relative}
-.qc-bub .qc-n{font-size:11px;color:#52514e;display:flex;gap:6px;align-items:baseline;margin-bottom:2px}
-.qc-bub .qc-n b{font-weight:600;color:#0b0b0b} .qc-bub .qc-n span{margin-left:auto;color:#8a8985;white-space:nowrap}
-.qc-bub p{margin:0;white-space:pre-wrap;word-wrap:break-word;font-size:13px;line-height:1.4;color:#0b0b0b}
-.qc-bub .qc-del{position:absolute;right:4px;bottom:3px;border:0;background:none;color:#8a8985;cursor:pointer;font-size:11px;padding:1px 4px;opacity:0;font-family:inherit}
-.qc-bub:hover .qc-del{opacity:1} .qc-bub .qc-del:hover{color:#d64545}
-.qc-reply{display:flex;gap:6px;padding:6px 8px 8px;border-top:1px solid #eee;align-items:flex-end}
-.qc-ta{flex:1 1 auto;min-width:0;font:inherit;font-size:13px;resize:none;min-height:32px;max-height:140px;border:1px solid #cfceca;border-radius:6px;padding:6px 8px;background:#fff;color:#0b0b0b}
-.qc-ta:focus{outline:2px solid #bcd4f2;border-color:#2a78d6}
-.qc-box.qc-draft .qc-ta{min-height:64px}
+qccd-comments .qc-head.qc-dragging{cursor:grabbing}
+qccd-comments .qc-head button{cursor:pointer}
+qccd-comments .qc-head .qc-av{background:rgba(255,255,255,.28)}
+qccd-comments .qc-head b{font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;min-width:0}
+qccd-comments .qc-head small{font-size:11px;opacity:.85;white-space:nowrap}
+qccd-comments .qc-x{border:0;background:rgba(255,255,255,.18);color:#fff;width:22px;height:22px;border-radius:5px;cursor:pointer;font:inherit;font-size:14px;line-height:1;padding:0;flex:0 0 auto}
+qccd-comments .qc-x:hover{background:rgba(255,255,255,.34)}
+qccd-comments .qc-msgs{max-height:280px;overflow:auto;padding:8px 8px 2px}
+qccd-comments .qc-msg{display:flex;gap:7px;margin:0 0 7px;align-items:flex-start}
+qccd-comments .qc-bub{background:color-mix(in srgb,var(--qc) 9%,#fff);border-radius:8px;padding:5px 8px 6px;flex:1 1 auto;min-width:0;position:relative}
+qccd-comments .qc-bub .qc-n{font-size:11px;color:#52514e;display:flex;gap:6px;align-items:baseline;margin-bottom:2px}
+qccd-comments .qc-bub .qc-n b{font-weight:600;color:#0b0b0b} qccd-comments .qc-bub .qc-n span{margin-left:auto;color:#8a8985;white-space:nowrap}
+qccd-comments .qc-bub p{margin:0;white-space:pre-wrap;word-wrap:break-word;font-size:13px;line-height:1.4;color:#0b0b0b}
+qccd-comments .qc-bub .qc-del{position:absolute;right:4px;bottom:3px;border:0;background:none;color:#8a8985;cursor:pointer;font-size:11px;padding:1px 4px;opacity:0;font-family:inherit}
+qccd-comments .qc-bub:hover .qc-del{opacity:1} qccd-comments .qc-bub .qc-del:hover{color:#d64545}
+qccd-comments .qc-reply{display:flex;gap:6px;padding:6px 8px 8px;border-top:1px solid #eee;align-items:flex-end}
+qccd-comments .qc-ta{flex:1 1 auto;min-width:0;font:inherit;font-size:13px;resize:none;min-height:32px;max-height:140px;border:1px solid #cfceca;border-radius:6px;padding:6px 8px;background:#fff;color:#0b0b0b}
+qccd-comments .qc-ta:focus{outline:2px solid #bcd4f2;border-color:#2a78d6}
+qccd-comments .qc-box.qc-draft .qc-ta{min-height:64px}
 .qc-err{color:#d64545;font-size:12px;margin:6px 0 0}
 .qc-hint{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:1300;background:#0b0b0b;color:#fff;padding:9px 16px;border-radius:99px;
  font:13px/1 ui-sans-serif,system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25);pointer-events:none;white-space:nowrap}
@@ -153,6 +176,9 @@ body.qc-placing,body.qc-placing *{cursor:crosshair!important}
   function canDelete(owner){ return !!ME && (ME.admin || (owner && owner.id === ME.id)); }
   function saveFold(){ try { localStorage.setItem('qc-fold:' + PAGE, JSON.stringify(FOLDED)); } catch(e){} }
   function saveMoved(){ try { localStorage.setItem('qc-move:' + PAGE, JSON.stringify(MOVED)); } catch(e){} }
+  // an eye, and the same eye struck through: drawn, so they need no icon font
+  var EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var EYE_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></svg>';
 
   // ---- the bar widget ------------------------------------------------------------------
   function mountNav(){
@@ -169,26 +195,58 @@ body.qc-placing,body.qc-placing *{cursor:crosshair!important}
     if(!ME){
       var s = el('button', 'qc-btn', 'Sign in'); s.id = 'qc-signin'; s.type = 'button';
       s.title = 'Sign in to read and leave comments'; s.addEventListener('click', function(){ openAuth('login'); });
-      NAV.appendChild(s); return;
+      NAV.appendChild(s); fitNav(); return;
     }
-    var add = el('button', 'qc-btn' + (PLACING ? ' qc-on' : ' qc-primary'), PLACING ? 'Click a spot…' : '+ Comment'); add.id = 'qc-add'; add.type = 'button';
+    var add = el('button', 'qc-btn' + (PLACING ? ' qc-on' : ' qc-primary')); add.id = 'qc-add'; add.type = 'button';
+    if(PLACING) add.textContent = 'Click a spot…';
+    else { add.appendChild(document.createTextNode('+')); add.appendChild(el('span', 'qc-lbl', ' Comment')); }
     add.title = PLACING ? 'Press Escape to stop' : 'Pin a comment to any spot on this page';
     add.addEventListener('click', function(){ setPlacing(!PLACING); });
     NAV.appendChild(add);
+    // in the bar, not in the menu: notes cover the page they are about, and the way to get
+    // them off it should be one press away, on every page, whatever the window's width
+    var hide = el('button', 'qc-btn'); hide.id = 'qc-hide'; hide.type = 'button';
+    hide.innerHTML = HIDDEN ? EYE : EYE_OFF;
+    hide.appendChild(el('span', 'qc-lbl', HIDDEN ? 'Show comments' : 'Hide comments'));
+    hide.setAttribute('data-hidden', HIDDEN ? '1' : '0');
+    hide.setAttribute('aria-label', HIDDEN ? 'Show comments' : 'Hide comments');
+    hide.title = HIDDEN ? 'Comments are hidden on every page. Click to show them again.'
+                        : 'Hide every comment, on this page and every other, until you click again';
+    hide.addEventListener('click', function(){ setHidden(!HIDDEN); });
+    NAV.appendChild(hide);
     var n = THREADS.length, ndone = THREADS.filter(function(t){ return !!t.resolved; }).length;
-    if(n || HIDDEN){
+    if(n && !HIDDEN){
       var open = n - ndone;
-      var label = HIDDEN ? 'hidden'
-        : (ndone ? open + ' open · ' + ndone + ' addressed' : n + (n === 1 ? ' comment' : ' comments'));
-      var c = el('span', null, label); c.id = 'qc-count';
-      c.title = HIDDEN ? 'Comments on this page are hidden; show them from your menu'
-        : (ndone ? ndone + ' of the ' + n + ' notes here are marked addressed' : 'Comments pinned on this page');
+      var c = el('span'); c.id = 'qc-count';
+      c.setAttribute('data-long', ndone ? open + ' open · ' + ndone + ' addressed' : n + (n === 1 ? ' comment' : ' comments'));
+      c.setAttribute('data-short', ndone ? open + ' open' : String(n));
+      c.title = ndone ? open + ' open and ' + ndone + ' marked addressed, of the ' + n + ' notes on this page' : 'Comments pinned on this page';
       NAV.appendChild(c);
     }
     var me = el('button'); me.id = 'qc-me'; me.type = 'button'; me.title = ME.name + ' · ' + ME.email;
     me.appendChild(avatar(ME)); me.appendChild(el('b', null, ME.name));
     me.addEventListener('click', function(ev){ ev.stopPropagation(); MENU ? closeMenu() : openMenu(); });
     NAV.appendChild(me);
+    fitNav();
+  }
+  function setHidden(on){
+    HIDDEN = !!on; try { localStorage.setItem('qc-hidden', HIDDEN ? '1' : '0'); } catch(e){}
+    if(HIDDEN) setPlacing(false);
+    applyHidden(); renderNav(); schedule();
+  }
+  // Step the bar down until it fits the window: 0 everything, 1 no name, 2 icons only and a
+  // short count, 3 the places in the bar closer together.  Measured, not guessed from a
+  // width, because the bar's contents differ from page to page.
+  function fitNav(){
+    var bar = document.getElementById('sitenav');
+    if(!NAV || !bar || NAV.parentNode !== bar) return;
+    var c = document.getElementById('qc-count');
+    for(var k = 0; k <= 3; k++){
+      NAV.setAttribute('data-fit', String(k));
+      bar.classList.toggle('qc-tight', k >= 3);
+      if(c) c.textContent = c.getAttribute(k >= 2 ? 'data-short' : 'data-long');
+      if(bar.scrollWidth <= bar.clientWidth + 1) break;
+    }
   }
   function closeMenu(){ if(MENU && MENU.parentNode) MENU.parentNode.removeChild(MENU); MENU = null; }
   function openMenu(){
@@ -196,7 +254,6 @@ body.qc-placing,body.qc-placing *{cursor:crosshair!important}
     MENU = el('div', 'qc-menu'); MENU.id = 'qc-menu';
     MENU.appendChild(el('div', 'qc-who', ME.name + '\n' + ME.email + (ME.admin ? ' · admin' : '')));
     function item(label, fn, id){ var b = el('button', null, label); b.type = 'button'; if(id) b.id = id; b.addEventListener('click', function(){ closeMenu(); fn(); }); MENU.appendChild(b); }
-    item(HIDDEN ? 'Show comments on this page' : 'Hide comments on this page', function(){ HIDDEN = !HIDDEN; try { localStorage.setItem('qc-hidden', HIDDEN ? '1' : '0'); } catch(e){} applyHidden(); renderNav(); }, 'qc-toggle');
     item(HIDEDONE ? 'Show addressed notes' : 'Hide addressed notes', function(){
       HIDEDONE = !HIDEDONE; try { localStorage.setItem('qc-hidedone', HIDEDONE ? '1' : '0'); } catch(e){}
       renderAll();
@@ -760,7 +817,7 @@ body.qc-placing,body.qc-placing *{cursor:crosshair!important}
     ta.addEventListener('keydown', function(ev){ if(ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)){ ev.preventDefault(); post(); } });
     DRAFT.box.appendChild(reply);
     LAYER.appendChild(DRAFT.pin); LAYER.appendChild(DRAFT.box);
-    if(HIDDEN){ HIDDEN = false; try { localStorage.setItem('qc-hidden', '0'); } catch(e){} applyHidden(); renderNav(); }
+    if(HIDDEN) setHidden(false);
     layout(DRAFT);
     ta.focus();
   }
@@ -778,6 +835,12 @@ body.qc-placing,body.qc-placing *{cursor:crosshair!important}
   function start(){
     mountNav(); mountLayer();
     window.addEventListener('resize', schedule);
+    window.addEventListener('resize', fitNav);
+    window.addEventListener('load', fitNav);
+    if(document.fonts && document.fonts.ready) document.fonts.ready.then(fitNav);
+    // other layers put their own controls in the bar after this one (the Agent button)
+    var bar = document.getElementById('sitenav');
+    if(bar && window.MutationObserver){ try { new MutationObserver(fitNav).observe(bar, { childList: true }); } catch(e){} }
     document.addEventListener('scroll', schedule, true);
     window.addEventListener('load', schedule);
     document.addEventListener('load', schedule, true);
@@ -790,7 +853,8 @@ body.qc-placing,body.qc-placing *{cursor:crosshair!important}
     var invited = inviteToken();
     if(invited) dropInviteFromUrl();
     api('GET', '/me').then(function(d){ ME = d && d.user; renderNav(); load(); if(invited) openInvite(invited); })
-      .catch(function(){ /* no accounts service behind this copy of the page: nothing to show */ if(NAV && NAV.parentNode) NAV.parentNode.removeChild(NAV); NAV = null; });
+      .catch(function(){ /* no accounts service behind this copy of the page: nothing to show */ if(NAV && NAV.parentNode) NAV.parentNode.removeChild(NAV); NAV = null;
+                         var b = document.getElementById('sitenav'); if(b) b.classList.remove('qc-tight'); });
   }
   window.QCCOMMENTS = {
     state: function(){ return { me: ME, placing: PLACING, hidden: HIDDEN, page: PAGE,
