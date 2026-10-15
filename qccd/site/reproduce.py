@@ -826,12 +826,17 @@ def _circuit_source(p: dict, spec: dict, sched, prog, relabel=None):
     return None
 
 
-def _source(prog, circ) -> dict | None:
-    from ..repro.studio import source_payload
+def _source(prog, circ, sched=None, spec=None) -> dict | None:
+    """The circuit pane's payload.  Jones's schedules run each H and CNOT as pulses (the
+    artifact's `JONES_NATIVE`), so their pulses are joined through `pulse_join`."""
+    from ..repro.importers import JONES_NATIVE
+    from ..repro.studio import pulse_join, source_payload
     if not circ:
         return None
     name, lines, ops, j1 = circ
-    return source_payload(prog, name, lines, ops, join_1q=j1)
+    pulses = pulse_join(sched, ops, JONES_NATIVE) \
+        if sched is not None and (spec or {}).get("importer") == "jones" else None
+    return source_payload(prog, name, lines, ops, join_1q=j1, pulses=pulses)
 
 
 def studio_pages(tmp: Path, only: set[str] | None = None):
@@ -841,7 +846,7 @@ def studio_pages(tmp: Path, only: set[str] | None = None):
     from ..arch import Architecture
     from ..cost.models import corrected_model
     from ..repro.devices import layout
-    from ..repro.studio import studio_arch_doc, to_tsir
+    from ..repro.studio import named_after_qubits, studio_arch_doc, to_tsir
 
     model = corrected_model("local")
     tmp.mkdir(parents=True, exist_ok=True)
@@ -870,7 +875,7 @@ def studio_pages(tmp: Path, only: set[str] | None = None):
         for run in p.get("runs", []):
             if (only and run["id"] not in only) or run.get("no_studio"):
                 continue
-            s = _import(p, run)
+            s = named_after_qubits(_import(p, run))
             fam, kw = _layout_for(p, run)
             pos = layout(s.device, fam, **kw)
             price = dict(STUDIO_PRICING.get(p["key"], {}))
@@ -886,7 +891,7 @@ def studio_pages(tmp: Path, only: set[str] | None = None):
             out = tmp / f"{name}.html"
             m.render(prog, out, model=model, kicker=f"REPRODUCED · {p['short'].upper()}",
                      headline=run.get("label", run["id"]),
-                     source=_source(prog, _circuit_source(p, run, s, prog)))
+                     source=_source(prog, _circuit_source(p, run, s, prog), s, run))
             yield studio_rel(p, run), out.read_text(encoding="utf-8"), ""
 
 
@@ -944,10 +949,10 @@ def _ours_studio(p: dict, o: dict, spec: dict, row: dict, tmp: Path, model):
     from ..arch import Architecture
     from ..repro.__main__ import _open
     from ..repro.devices import layout
-    from ..repro.studio import studio_arch_doc, to_tsir
+    from ..repro.studio import named_after_qubits, studio_arch_doc, to_tsir
     from ..repro.timed import TimedSchedule
 
-    s = TimedSchedule.load(_open(ROOT / p["key"] / o["file"]))
+    s = named_after_qubits(TimedSchedule.load(_open(ROOT / p["key"] / o["file"])))
     fam, kw = _layout_for(p, spec)
     pos = layout(s.device, fam, **kw)
     price = dict(STUDIO_PRICING.get(p["key"], {}))
@@ -967,7 +972,7 @@ def _ours_studio(p: dict, o: dict, spec: dict, row: dict, tmp: Path, model):
         gates = [tuple(e.ions) for e in s.events if e.kind == "gate"]
         relabel = lambda pairs: checks_as_scheduled(pairs, gates)[0]
     m.render(prog, out, model=model, kicker=f"OURS · {p['short'].upper()}", headline=label,
-             source=_source(prog, _circuit_source(p, spec, s, prog, relabel)))
+             source=_source(prog, _circuit_source(p, spec, s, prog, relabel), s, spec))
     return f"reproduce/{p['key']}/{o['id']}.html", out.read_text(encoding="utf-8"), ""
 
 
