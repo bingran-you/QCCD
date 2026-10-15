@@ -839,6 +839,23 @@ def _source(prog, circ, sched=None, spec=None) -> dict | None:
     return source_payload(prog, name, lines, ops, join_1q=j1, pulses=pulses)
 
 
+_GATES: dict[tuple[str, str], str] = {}
+
+
+def _gate(p: dict, spec: dict, sched=None) -> str:
+    """The two-qubit gate's name on a run's page (`studio.gate_label`), decided from the
+    paper's run: CX where its tool runs each circuit CNOT as one whole gate (Cyclone, the
+    QCCDSim family), MS where it schedules the native pulses (Jones, TISCC).  An "ours" page
+    takes the name of the paper run it is judged against, so the pair reads alike."""
+    key = (p["key"], spec["id"])
+    if key not in _GATES:
+        from ..repro.studio import gate_label
+        s = sched if sched is not None else _import(p, spec)
+        circ = _circuit_source(p, spec, s, None)
+        _GATES[key] = gate_label(s, circ[2]) if circ else "MS"
+    return _GATES[key]
+
+
 def studio_pages(tmp: Path, only: set[str] | None = None):
     """Yield `(site path, page html, "")` for every replayed run in the catalog (the third
     element is what the site build injects into the page: nothing)."""
@@ -887,7 +904,7 @@ def studio_pages(tmp: Path, only: set[str] | None = None):
                                   hop_entails=() if run["importer"] == "tiscc" else ("split", "merge"),
                                   note=f"{p['short']} ({p['venue']}): {p['what']}", **price)
             m = Machine(Architecture.from_json(doc))
-            prog = to_tsir(s, name=run["id"], arch=name)
+            prog = to_tsir(s, name=run["id"], arch=name, gate=_gate(p, run, s))
             out = tmp / f"{name}.html"
             m.render(prog, out, model=model, kicker=f"REPRODUCED · {p['short'].upper()}",
                      headline=run.get("label", run["id"]),
@@ -963,7 +980,7 @@ def _ours_studio(p: dict, o: dict, spec: dict, row: dict, tmp: Path, model):
     doc = studio_arch_doc(s, pos, name=name, table=p["key"], hop_entails=("split", "merge"),
                           note=f"{p['short']} ({p['venue']}): our schedule", **price)
     m = Machine(Architecture.from_json(doc))
-    prog = to_tsir(s, name=o["id"], arch=name)
+    prog = to_tsir(s, name=o["id"], arch=name, gate=_gate(p, spec))
     out = tmp / f"{name}.html"
     label = f"{o['label']}: our schedule"
     relabel = None
@@ -1097,7 +1114,7 @@ def _model_studio(p: dict, run: dict, tmp: Path, model):
     from ..arch import Architecture
     from ..repro.__main__ import _open
     from ..repro.devices import layout
-    from ..repro.studio import studio_arch_doc, to_tsir
+    from ..repro.studio import gate_label, studio_arch_doc, to_tsir
     from ..repro.timed import TimedSchedule
 
     s = TimedSchedule.load(_open(ROOT / p["key"] / run["file"]))
@@ -1108,12 +1125,14 @@ def _model_studio(p: dict, run: dict, tmp: Path, model):
                           gate_us=float(run.get("tg_us", 141.0)), one_q_us=5.0, measure_us=120.0,
                           reset_us=0.0)
     m = Machine(Architecture.from_json(doc))
-    prog = to_tsir(s, name=run["id"], arch=name)
+    circ = _model_circuit(run, s)
+    # the model runs each circuit CX as one gate of latency tg: CX (`studio.gate_label`)
+    prog = to_tsir(s, name=run["id"], arch=name, gate=gate_label(s, circ[2]))
     out = tmp / f"{name}.html"
     ours = run.get("kind") != "example"
     label = run["label"]
     m.render(prog, out, model=model, kicker=f"{'OURS' if ours else 'REPRODUCED'} · {p['short'].upper()}",
-             headline=label, source=_source(prog, _model_circuit(run, s)))
+             headline=label, source=_source(prog, circ))
     return f"reproduce/{p['key']}/{run['id']}.html", out.read_text(encoding="utf-8"), ""
 
 
