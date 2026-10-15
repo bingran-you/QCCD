@@ -7,18 +7,26 @@ the Hadamards were never shown as run, because the artifact runs an H as two pul
 then an RX.  `studio.named_after_qubits` gives each ion its qubit's name; `studio.pulse_join`
 joins a pulse to the statement it is part of, and only where the schedule has the same gap,
 between the same two gates, holding the same pulses -- a reordered ion's pulses stay unjoined.
+
+A third (T37, the Cyclone page): "why all MS gates, shouldn't they be CNOT?"  Where the paper's
+tool runs each circuit CNOT as one whole gate, with no pulses dressing it (Cyclone, the QCCDSim
+family), the replay now names it CX, as the tool does; where the tool schedules native pulses
+(Jones, TISCC) it stays MS.  `studio.gate_label` decides from the schedule, and the name is all
+that changes: our language prices a CX as one `ms_gate`, so time, cost and verdicts are equal.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import json
 
 import pytest
 
-from qccd.repro import importers
-from qccd.repro.__main__ import ROOT, _open
+from qccd.repro import catalog, importers
+from qccd.repro.__main__ import ROOT, _circuit, _open
 from qccd.repro.importers import JONES_NATIVE
-from qccd.repro.studio import named_after_qubits, pulse_join, renamed, source_payload, to_tsir
+from qccd.repro.studio import (gate_label, named_after_qubits, pulse_join, renamed, source_payload,
+                               studio_arch_doc, to_tsir)
 from qccd.repro.timed import Event, PortGraph, TimedSchedule
 
 
@@ -171,3 +179,92 @@ def test_a_toy_cnot_and_its_rotations():
                         {"name": "s", "ions": ("b",), "line": 2},
                         {"name": "h", "ions": ("b",), "line": 3}], JONES_NATIVE)
     assert pj["b"]["gate1"] == [0, None, None]
+
+
+# ----------------------------------------------------------------- CX or MS (T37)
+
+
+def _run(key: str, run_id: str):
+    """A paper run's schedule and its circuit's statements, as the reproduce page reads them."""
+    p = catalog.paper(key)
+    run = next(r for r in p["runs"] if r["id"] == run_id)
+    path = _open(ROOT / key / "artifact" / run["file"])
+    s = (importers.import_tiscc(path, **run.get("importer_args", {})) if run["importer"] == "tiscc"
+         else getattr(importers, f"import_{run['importer']}")(path))
+    c = run["circuit"]
+    if c["kind"] == "stim":
+        ops = _stim_ops(ROOT / key / "circuits" / c["file"], s)
+    else:
+        g = "zz" if ".zz." in c["file"] else "cx"
+        ops = [{"name": g, "ions": tuple(pq), "line": k + 1}
+               for k, pq in enumerate(_circuit(ROOT / key, c))]
+    return p, run, s, ops
+
+
+@pytest.mark.parametrize("key, run_id, label", [
+    ("khan2026cyclone", "bb72_cyclone", "CX"),              # CX layers, each one gcost
+    ("khan2026cyclone", "hgp225_cyclone", "CX"),            # the published Z-check bug too
+    ("khan2026cyclone", "bb72_baseline_Gx9_c5", "CX"),      # QCCDSim, one gate time per cx
+    ("murali2020", "bv64_L6_c14_FM_GS_Greedy", "CX"),
+    ("saki2022", "mts-qaoa-seed0", "CX"),                   # MTS, through the same reader
+    ("khan2025moveless", "SC9_L8_Moveless_1m", "CX"),
+    ("bach2025", "qft20_G2x3_c5_FM_GS_Greedy", "CX"),
+    ("jones2025", "grid_rot_d2_c2", "MS"),                  # RY, RX around each MS
+    ("jones2025", "linear_rep_d3_c3", "MS"),
+    ("leblond2023", "idle_551", "MS"),                      # TISCC's native ZZ and rotations
+])
+def test_a_tool_that_runs_whole_cnots_is_shown_running_cx(key, run_id, label):
+    p, run, s, ops = _run(key, run_id)
+    assert gate_label(s, ops) == label
+
+
+def test_a_dressing_pulse_or_a_missing_gate_keeps_the_native_name():
+    _, _, s, ops = _run("khan2026cyclone", "bb72_cyclone")
+    g = next(e for e in s.events if e.kind == "gate")
+    pulse = Event(id=10**6, kind="gate1", t0=g.t0, t1=g.t0, ions=(g.ions[0],), at=g.at,
+                  meta={"op": "YRotation"})
+    assert gate_label(dataclasses.replace(s, events=s.events + [pulse]), ops) == "MS"
+    assert gate_label(dataclasses.replace(s, events=[e for e in s.events if e is not g]), ops) == "MS"
+    assert gate_label(s, [dict(o, name="zz") for o in ops]) == "MS"
+    assert gate_label(s, []) == "MS"                        # no CNOT, nothing to call CX
+
+
+def _page_inputs(key: str, run_id: str):
+    """The machine and the schedule a reproduce page is drawn from (its `studio_pages` path)."""
+    from qccd.api import Machine
+    from qccd.arch import Architecture
+    from qccd.repro.devices import layout
+
+    p, run, s, ops = _run(key, run_id)
+    s = named_after_qubits(s)
+    fam, kw = ("ring", {}) if run["importer"] == "cyclone" else ("qccdsim_linear", {})
+    cap = max(int(a["capacity"]) for a in s.device.sites.values())
+    doc = studio_arch_doc(s, layout(s.device, fam, **kw), name="t", table=key,
+                          gate_us=float(int(max(100.0, 13.33 * cap - 54))), note="test")
+    return Machine(Architecture.from_json(doc)), s, ops
+
+
+@pytest.mark.parametrize("key, run_id", [("khan2026cyclone", "bb72_cyclone"),
+                                         ("murali2020", "bv64_L6_c14_FM_GS_Greedy")])
+def test_calling_the_gate_cx_changes_nothing_but_its_name(key, run_id):
+    from qccd.cost.models import corrected_model
+
+    m, s, ops = _page_inputs(key, run_id)
+    model = corrected_model("local")
+    ms, cx = (to_tsir(s, name="t", arch="t", gate=g) for g in ("MS", "CX"))
+    names = lambda prog: [i.gate for i in prog.instructions if i.type == "gate" and i.pairs]
+    assert set(names(ms)) <= {"MS", "SWAP"} and "MS" in names(ms)   # a paid reorder stays a SWAP
+    assert names(cx) == [{"MS": "CX"}.get(g, g) for g in names(ms)]
+    # the same programme, instruction for instruction, but for the name
+    as_ms = lambda prog: [json.dumps(dataclasses.asdict(i), sort_keys=True, default=str)
+                          .replace('"gate": "CX"', '"gate": "MS"') for i in prog.instructions]
+    assert as_ms(cx) == as_ms(ms)
+    a, b = m.run(ms, model=model), m.run(cx, model=model)
+    assert (a.cost, a.steps, a.runtime_ms) == (b.cost, b.steps, b.runtime_ms)
+    assert a.runtime_ms > 0
+    assert (a.rules_passed, a.rules_failed, len(a.violations)) == \
+        (b.rules_passed, b.rules_failed, len(b.violations))
+    lines = [f"l{k}" for k in range(len(ops))]
+    ja, jb = (source_payload(prog, "c", lines, ops) for prog in (ms, cx))
+    assert ja["realises"] == jb["realises"] and ja["toward"] == jb["toward"]
+    assert len({i for v in jb["realises"].values() for i in v}) > 0

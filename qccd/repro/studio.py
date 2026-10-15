@@ -23,8 +23,8 @@ from ..ir.tsir import TSIR, Instruction, Participant
 from .devices import TABLES, to_arch_doc
 from .timed import Event, TimedSchedule
 
-__all__ = ["node_id", "studio_arch_doc", "renamed", "named_after_qubits", "to_tsir", "pulse_join",
-           "source_payload"]
+__all__ = ["node_id", "studio_arch_doc", "renamed", "named_after_qubits", "gate_label", "to_tsir",
+           "pulse_join", "source_payload"]
 
 
 def node_id(n: str) -> str:
@@ -144,8 +144,30 @@ def _shuttles(sched: TimedSchedule) -> tuple[list[dict], list[Event]]:
     return moves, rest
 
 
+def gate_label(sched: TimedSchedule, ops: list[dict]) -> str:
+    """What the replayed programme calls its two-qubit gates, decided from the schedule.
+
+    "CX" where the paper's tool runs each circuit CNOT as one whole gate: the circuit's
+    two-qubit statements are all CNOTs, the schedule has one two-qubit gate per statement,
+    and no one-ion pulse besides the circuit's own one-qubit gates -- nothing dresses an MS
+    into a CNOT, and the law prices the CNOT as one gate (Cyclone, the QCCDSim family,
+    TrapSIMD's model).  "MS", the trap's native entangling gate, where it schedules native
+    pulses (Jones's RY, RX around each MS; TISCC's ZZ and its rotations) or there is no CNOT.
+    Our language prices a CX as one `ms_gate`, so the name changes nothing but the name.
+    `ops` as `source_payload` takes them.
+    """
+    two = [o for o in ops if len(o["ions"]) == 2]
+    one = [o for o in ops if len(o["ions"]) == 1 and o.get("kind", "gate") == "gate"]
+    gates = sum(1 for e in sched.events if e.kind == "gate")
+    pulses = sum(1 for e in sched.events if e.kind in ("gate1", "prepare") and e.ions)
+    whole = (two and all(o["name"] in ("cx", "cnot") for o in two)
+             and gates == len(two) and pulses == len(one))
+    return "CX" if whole else "MS"
+
+
 def to_tsir(sched: TimedSchedule, *, name: str, arch: str, gate: str = "MS") -> TSIR:
-    """`sched` as a Studio program, operations batched by start time (see the module doc)."""
+    """`sched` as a Studio program, operations batched by start time (see the module doc);
+    `gate` names its two-qubit gates (`gate_label`)."""
     moves, rest = _shuttles(sched)
     ops: list[tuple[float, int, str, Any]] = []
     for k, m in enumerate(moves):
