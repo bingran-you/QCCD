@@ -7,6 +7,10 @@ The OCaml checker in `Compiler/ocaml/lib/cert.ml` exists only as a fast pre-flig
 compilation; this is the one whose verdict the transport-and-order half of R10 is allowed
 to rest on.
 
+What it decides is `QCCDC.Cert.Implements`: among the rest, that every gate witness names
+exactly the ions its op's qubits are mapped to, in any order, and that the replay has them
+together in a trap that can gate.
+
 It is not the whole of R10.  A witness names an op, a cycle, a trap and ions, never a gate,
 so a program whose certificate is ACCEPTED can still apply the wrong one: a two-qubit
 `barrier` or a docked `cz` compiled as a CX (compiler releases up to c7c535380bfb) was
@@ -33,9 +37,10 @@ def main (args : List String) : IO UInt32 := do
       IO.println s!"  {inp.ops.length} circuit ops, {inp.gates.length} gate witnesses, \
 {inp.moves.length} moves, {inp.rots.length} rotations, {inp.nQubits} qubits"
       if check inp then
-        IO.println "  ACCEPTED -- the program follows its certificate: mapping, transport, co-location, order"
-        IO.println "  (QCCDC.Cert.check_sound).  It names no gate: which gate fires is decided by comparing"
-        IO.println "  the emitted pulses with the circuit (bridge/check_cert.py), and R10 needs both."
+        IO.println "  ACCEPTED -- the program follows its certificate: mapping, transport, co-location of"
+        IO.println "  each op's own ions, order (QCCDC.Cert.check_sound).  It names no gate: which gate fires"
+        IO.println "  is decided by comparing the emitted pulses with the circuit (bridge/check_cert.py), and"
+        IO.println "  R10 needs both."
         pure 0
       else
         IO.println "  REJECTED"

@@ -11,9 +11,9 @@ cycle `t` in trap `site` -- must find its ions already together in that trap, an
 must be gate-capable; the proved Lean checker (`--qcheck`, `QCCDC.Cert.check_sound`)
 decides the same question of the same witnesses -- on an input that must equal the one
 rebuilt here from this certificate and this device (`qcheck_binding`), so its verdict is
-this certificate's and not some other's.  This half is about the witnesses; what ties
-them to the emitted program is `check_witnesses`: each names its op's own ions, and an
-instruction of its op's kind on them.  Positions the
+this certificate's and not some other's.  This half is about the witnesses, each of which
+the Lean checker also holds to its op's own ions (`OwnIons`); what ties them to the emitted
+program is `check_witnesses`: an instruction of its op's kind on those ions.  Positions the
 certificate also claims are cross-checked, never believed -- the discipline
 `qccd/ir/import_deck.py` applies to the shipped artifact, for the same reason.
 
@@ -203,12 +203,12 @@ def check_o1(cert: dict, arch: Architecture) -> list[str]:
 def check_witnesses(cert: dict, prog: TSIR) -> list[str]:
     """Does every witness describe the program it certifies?  The problems, empty if so.
 
-    The Lean checker relates a witness to the circuit op it names and the ions it names,
-    never to the op's own qubits and never to the program: a witness for `cx q0,q1` naming
-    two other ions that happen to stand together, or a witness for a measurement naming a
-    gate pulse, is accepted there.  So, against the program and the qubit->ion map:
+    The Lean checker relates a witness to the circuit op it names and to that op's own ions
+    (`OwnIons`), never to the program: a witness for a measurement naming a gate pulse is
+    accepted there.  So, against the program and the qubit->ion map:
 
-    * a witness names the ions its op's qubits are mapped to, no more and no fewer;
+    * a witness names the ions its op's qubits are mapped to, no more and no fewer -- which
+      the Lean checker proves too, and which this check holds without `--qcheck` as well;
     * the instruction it names exists, and is of its op's kind -- a gate pulse on at least
       one of those ions for a gate, a measurement or reset of the ion for a measurement or
       reset;

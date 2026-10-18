@@ -299,7 +299,8 @@ def _witness(kind, instr_type):
 
 def _other_ions(t, c, ex):
     """A one-qubit gate's witness naming the OTHER ion, at the trap that ion stands in then:
-    co-located, gate-capable, and so accepted by the Lean checker."""
+    co-located and gate-capable, which is all the Lean checker asked until `OwnIons`
+    (2026-10-18) held each witness to its op's own ions -- now both halves refuse it."""
     from qccd.arch import Architecture
     arch = Architecture.from_json(json.loads(ex["arch"].read_text(encoding="utf-8")))
     snaps, _ = ex["cc"].replay_positions(c, arch)
@@ -365,7 +366,10 @@ def test_a_misplaced_measurement_or_reset_fails_r10(cc, midcircuit, fault, tmp_p
     prefix, qcheck = _planted(dict(midcircuit, cc=cc), tmp_path, tsir_edit, cert_edit)
     rc, v = r10(cc, prefix, midcircuit["qasm"], midcircuit["arch"], qcheck if _qcheck_built(cc) else None)
     assert rc == 1 and v["R10"] == "FAILED", v
-    if _qcheck_built(cc):
+    if _qcheck_built(cc) and cert_edit is _other_ions:
+        assert v["lean"] == "REJECTED", v          # `OwnIons`: the proved checker sees this one
+        assert any("other ions than" in w for w in v.get("lean_why", [])), v
+    elif _qcheck_built(cc):
         assert v["lean"] == "accepted", v          # the proved checker does not see these
     if cert_edit:
         assert v["o1_transport"] != "ok", v        # the witness is not the program's

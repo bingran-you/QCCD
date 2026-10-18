@@ -7,11 +7,12 @@ acceptable outcome is a rejection naming the right conjunct.
 
 ## One mutation is expected NOT to be caught, and that is the point
 
-`swap_operands` exchanges the two ions of a gate.  The Lean checker verifies
-**co-location** -- both operands in one gate-capable trap -- and swapping them changes
-neither ion's position, so it passes, correctly, because O1 does not claim to see operand
-*order*.  A CX is not symmetric, so the swap is a real bug; it is caught by the
-**stabilizer tableau** in `check_cert.py`, which is the other half of R10.
+`swap_operands` exchanges the two ions of a gate.  The Lean checker verifies that a
+witness names its op's own ions, in any order (`OwnIons`), and that they are **co-located**
+in one gate-capable trap; swapping them changes neither, so it passes, correctly, because
+O1 does not claim to see operand *order*.  A CX is not symmetric, so the swap is a real
+bug; it is caught by the **stabilizer tableau** in `check_cert.py`, which is the other half
+of R10.
 
 Reporting that split honestly is more useful than tuning the suite until everything is
 caught by one layer.  The suite therefore records, per mutation, which layer is supposed
@@ -136,9 +137,11 @@ def swap_dependent_gates(d):
     This is the mutation that aims squarely at `RespectsOrder`, and it is the one worth
     having now that the rule admits commuting reorderings. Nothing about co-location is
     disturbed -- each witness keeps its ions, its trap and its cycle -- so `GatesLegal`
-    still passes and the ONLY thing wrong is that two ops which do not commute are
-    realised back to front. If the commutation exemption were too generous, this is what
-    would slip through.
+    still passes, and two ops which do not commute are realised back to front. If the
+    commutation exemption were too generous, this is what would slip through.
+
+    Each witness now also names the other op's ions, which `OwnIons` refuses as well, so a
+    rejection alone no longer shows the order check fired: the suite requires its reason.
     """
     ops = {o["i"]: o for o in d["circuit_ops"]}
 
@@ -160,6 +163,52 @@ def swap_dependent_gates(d):
     return None
 
 
+def _positions_at(d, t):
+    """Where every ion is at the start of cycle `t`, replayed as qcheck replays it: every
+    move and rotation of an earlier cycle, a cycle's moves before its rotations."""
+    pos = dict(d["init"])
+    rots = d.get("rotations", [])
+    events = sorted([(m["t"], 0, i) for i, m in enumerate(d["moves"])]
+                    + [(r["t"], 1, i) for i, r in enumerate(rots)])
+    for cyc, kind, i in events:
+        if cyc >= t:
+            break
+        if kind == 0:
+            pos[d["moves"][i]["ion"]] = d["moves"][i]["to"]
+            continue
+        nodes = d.get("loops", {}).get(rots[i]["loop"])
+        if not nodes:
+            continue
+        slot = {s: k for k, s in enumerate(nodes)}
+        for ion, site in list(pos.items()):
+            if site in slot:
+                pos[ion] = nodes[(slot[site] + rots[i]["delta"]) % len(nodes)]
+    return pos
+
+
+def foreign_ions(d):
+    """A witness names other ions than its op's: as many as it named, all of them standing
+    in one gate-capable trap at its cycle, none of them its op's.  Positions, trap, cycle
+    and order all still check, so only `OwnIons` can see it -- before it, qcheck accepted
+    this."""
+    ops = {o["i"]: o for o in d["circuit_ops"]}
+    gate_sites = set(d["gate_sites"])
+    for g in d["gates"]:
+        o = ops.get(g["dag"])
+        if o is None or not g["ions"]:
+            continue
+        own = {d["map"].get(str(q)) for q in o["qubits"]}
+        there: dict[str, list[str]] = {}
+        for ion, site in _positions_at(d, g["t"]).items():
+            if site in gate_sites and ion not in own:
+                there.setdefault(site, []).append(ion)
+        for site, ions in sorted(there.items()):
+            if len(ions) >= len(g["ions"]):
+                g["ions"], g["site"] = sorted(ions)[:len(g["ions"])], site
+                return d
+    return None
+
+
 def swap_operands(d):
     """Exchange a gate's two operands.  O1 cannot see this -- the tableau can."""
     for g in d["gates"]:
@@ -169,6 +218,7 @@ def swap_operands(d):
     return None
 
 
+#: (name, mutation, the layer that must catch it[, words its rejection must include])
 MUTATIONS = [
     ("drop_gate", drop_gate, "lean"),
     ("duplicate_gate", duplicate_gate, "lean"),
@@ -180,21 +230,18 @@ MUTATIONS = [
     ("mark_unrealised", mark_unrealised, "lean"),
     ("unsort_moves", unsort_moves, "lean"),
     ("reorder_gates", reorder_gates, "lean"),
-    ("swap_dependent_gates", swap_dependent_gates, "lean"),
+    ("swap_dependent_gates", swap_dependent_gates, "lean", "out of order"),
+    ("foreign_ions", foreign_ions, "lean", "other ions than"),
     ("swap_operands", swap_operands, "tableau"),
 ]
 
 
-def run_qcheck(doc: dict, tmp: Path) -> tuple[bool, str]:
+def run_qcheck(doc: dict, tmp: Path) -> tuple[bool, list[str]]:
+    """The verdict, and every reason a rejection prints."""
     tmp.write_text(json.dumps(doc) + "\n", encoding="utf-8")
     r = subprocess.run([str(QCHECK), str(tmp)], capture_output=True, text=True)
     accepted = "ACCEPTED" in r.stdout
-    why = ""
-    for line in r.stdout.splitlines():
-        if line.strip().startswith("- "):
-            why = line.strip()[2:]
-            break
-    return accepted, why
+    return accepted, [ln.strip()[2:] for ln in r.stdout.splitlines() if ln.strip().startswith("- ")]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -218,16 +265,22 @@ def main(argv: list[str] | None = None) -> int:
     print("-" * 74)
 
     caught = missed = skipped = 0
-    for name, fn, layer in MUTATIONS:
+    for name, fn, layer, *must in MUTATIONS:
         mutant = fn(copy.deepcopy(base))
         if mutant is None:
             print(f"{name:<18} {layer:<9} {'n/a':<9} nothing to mutate in this circuit")
             skipped += 1
             continue
-        accepted, why = run_qcheck(mutant, tmp)
+        accepted, reasons = run_qcheck(mutant, tmp)
+        named = [w for w in reasons if must and must[0] in w]
+        why = (named or reasons or [""])[0]
         if layer == "lean":
             if accepted:
                 print(f"{name:<18} {layer:<9} {'ACCEPTED':<9} <-- MISSED")
+                missed += 1
+            elif must and not named:
+                print(f"{name:<18} {layer:<9} {'rejected':<9} <-- MISSED: not for `{must[0]}` "
+                      f"but {reasons}")
                 missed += 1
             else:
                 print(f"{name:<18} {layer:<9} {'rejected':<9} {why}")

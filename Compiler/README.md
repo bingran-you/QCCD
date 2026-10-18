@@ -10,9 +10,9 @@ The one-sentence version: `qccd/verify` reported 22 of its 23 rules on any progr
 **R10 — "the compiled program implements the input circuit"** — because there was no QASM front end
 to check against. This directory is the front end, and **R10 now reports `passed`**, decided in
 two halves: a checker written in Lean and proved sound there (`QCCDC.Cert.check_sound`, axioms:
-`propext` only) that the program follows its certificate — mapping, transport, co-location,
-order — and a comparison of the emitted pulses with the source circuit, computed rather than
-proved, which is the half that sees which gate fires.
+`propext` only) that the program follows its certificate — mapping, transport, co-location of
+each op's own ions, order — and a comparison of the emitted pulses with the source circuit,
+computed rather than proved, which is the half that sees which gate fires.
 
 ## Status
 
@@ -123,17 +123,18 @@ It is now checked, in two halves.
 
 **Transport and ordering.** `QCCDC.Cert.check` is defined as `decide (Implements inp)`,
 where `Implements` is a *proposition* saying what it means for the program to follow its
-certificate: the ions each witness names co-located at a trap that can gate, every move a
-hop the **architecture** admits, every op witnessed exactly once, dependent ops in program
-order. Soundness is then `of_decide_eq_true`, so all the content sits in a statement a
-reader can judge rather than in a pile of `Bool`s with a meaning asserted elsewhere. Ten
-further theorems prove each named way of being wrong is one `check` *cannot* accept — a
-dropped gate, a teleport, an aliased qubit, a reordering — and
-[`bridge/mutate_cert.py`](bridge/mutate_cert.py) injects all ten into real compiled
-certificates to confirm the checker rejects them in practice too. None of them is a wrong
-gate: a witness names an op, a cycle, a trap and ions, never a gate, so a two-qubit
-`barrier` compiled as a CX passes this half — compilers up to `c7c535380bfb` did exactly
-that — and only the semantic half refuses it.
+certificate: each witness naming exactly the ions its op's qubits are mapped to, in any
+order, and the replay having them together at a trap that can gate; every move a hop the
+**architecture** admits; every op witnessed exactly once; dependent ops in program order.
+Soundness is then `of_decide_eq_true`, so all the content sits in a statement a reader can
+judge rather than in a pile of `Bool`s with a meaning asserted elsewhere. Eleven further
+theorems prove each named way of being wrong is one `check` *cannot* accept — a dropped
+gate, a teleport, an aliased qubit, a witness naming two other ions that happen to stand
+together, a reordering — and [`bridge/mutate_cert.py`](bridge/mutate_cert.py) seeds twelve
+such defects into real compiled certificates to confirm the checker rejects them in
+practice too. None of them is a wrong gate: a witness names an op, a cycle, a trap and
+ions, never a gate, so a two-qubit `barrier` compiled as a CX passes this half — compilers
+up to `c7c535380bfb` did exactly that — and only the semantic half refuses it.
 
 **Semantics.** The pulses are read out of the emitted program and composed back into a
 stabilizer tableau — or, for small non-Clifford circuits, an exact unitary — and compared
@@ -263,7 +264,7 @@ cloning Mathlib at all.
 | [`ocaml/lib/compile.ml`](ocaml/lib/compile.ml) | the pipeline, and TSIR emission |
 | [`ocaml/lib/cert.ml`](ocaml/lib/cert.ml) | the certificate: where and when each statement runs, which the proved checker holds the program to |
 | [`lean/QCCDC/Cert/`](lean/QCCDC/Cert/) | `Check.lean` (the specification), `Sound.lean` (proved), `qcheck` (compiled) |
-| [`bridge/mutate_cert.py`](bridge/mutate_cert.py) | 11 seeded defects the checker has to reject |
+| [`bridge/mutate_cert.py`](bridge/mutate_cert.py) | 12 seeded defects the checker has to reject |
 | [`bench/`](bench/) | the C1 corpus: 7 named circuits + 500 seeded random ones |
 | [`ocaml/bin/qccdc_cli.ml`](ocaml/bin/qccdc_cli.ml) | `qccdc` — the CLI |
 | [`bridge/`](bridge/) | Python side of the interface: export, replay, diff |

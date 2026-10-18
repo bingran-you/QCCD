@@ -2,11 +2,12 @@
 # The certificate, as the trusted checker reads it
 
 Obligation O1 of `Compiler/PLAN.md` §1, as the certificate carries it: every circuit op
-that needs one has exactly one gate witness, the ions that witness names are already in one
-trap at its cycle, and that trap must be able to gate.  A witness (`GateW`) names an op, a
-cycle, a trap and ions -- never a gate, and never the pulses the program emits -- so which
-gate the compiled program executes is not read here; `bridge/check_cert.py` decides it by
-composing the emitted pulses and comparing them with the source circuit.
+that needs one has exactly one gate witness, the ions that witness names are the ones the
+op's qubits are mapped to (`qmap`), they are already in one trap at its cycle, and that
+trap must be able to gate.  A witness (`GateW`) names an op, a cycle, a trap and ions --
+never a gate, and never the pulses the program emits -- so which gate the compiled program
+executes is not read here; `bridge/check_cert.py` decides it by composing the emitted
+pulses and comparing them with the source circuit.
 
 ## What is in here, and what is deliberately not
 
@@ -64,7 +65,9 @@ structure Rot where
   delta : Int
   deriving Repr, DecidableEq, Inhabited
 
-/-- The claim that one circuit op was realised, at a cycle and a trap. -/
+/-- The claim that one circuit op was realised, at a cycle and a trap, on `ions` -- which
+`OwnIons` (`Check.lean`) requires to be the ions the op's qubits are mapped to, in any
+order. -/
 structure GateW where
   dag : Nat
   t : Nat
