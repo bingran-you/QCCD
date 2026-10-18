@@ -9,7 +9,9 @@ recomputed by replaying the certificate's move and rotation witnesses from its i
 placement.  Every GATE WITNESS -- the certificate's claim that circuit op `dag` ran at
 cycle `t` in trap `site` -- must find its ions already together in that trap, and the trap
 must be gate-capable; the proved Lean checker (`--qcheck`, `QCCDC.Cert.check_sound`)
-decides the same question of the same witnesses.  This half is about the witnesses, not
+decides the same question of the same witnesses -- on an input that must equal the one
+rebuilt here from this certificate and this device (`qcheck_binding`), so its verdict is
+this certificate's and not some other's.  This half is about the witnesses, not
 the emitted program: it never reads the TSIR's gate instructions.  Positions the
 certificate also claims are cross-checked, never believed -- the discipline
 `qccd/ir/import_deck.py` applies to the shipped artifact, for the same reason.
@@ -65,19 +67,23 @@ NATIVE = ("R", "VZ", "MS")
 #: what both semantic routes skip: readout, re-preparation and fences are not unitaries
 NON_UNITARY = ("measure", "reset", "barrier")
 
-_UNITARY = None
+_BRIDGE_MODULES: dict = {}
+
+
+def _bridge(name: str):
+    """A script beside this file, loaded by path: this module is imported by path too
+    (`qccd/bench/check.py`, `qccd/workspace/evaluator.py`), when its directory need not be
+    on `sys.path`."""
+    if name not in _BRIDGE_MODULES:
+        spec = importlib.util.spec_from_file_location(f"qccd_check_cert_{name}", HERE / f"{name}.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _BRIDGE_MODULES[name] = mod
+    return _BRIDGE_MODULES[name]
 
 
 def _unitary():
-    """`unitary.py` beside this file, loaded by path: this module is imported by path too
-    (`qccd/bench/check.py`), when its directory need not be on `sys.path`."""
-    global _UNITARY
-    if _UNITARY is None:
-        spec = importlib.util.spec_from_file_location("qccd_check_cert_unitary", HERE / "unitary.py")
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        _UNITARY = mod
-    return _UNITARY
+    return _bridge("unitary")
 
 
 def find_qcheck(lean: Path) -> Path | None:
@@ -90,6 +96,30 @@ def find_qcheck(lean: Path) -> Path | None:
             if (d / name).is_file():
                 return d / name
     return None
+
+
+def qcheck_binding(qcheck_input: Path, cert: dict, arch: Architecture) -> list[str]:
+    """Was `qcheck_input` made from THIS certificate on THIS device?  The problems, empty
+    if so.
+
+    The Lean checker decides whatever input it is given, and its verdict is reported as
+    this certificate's.  So the input is rebuilt here -- `mk_qcheck_input.build` over the
+    certificate and `export_arch.expand` of the device this check was given -- and the file
+    must equal it.  An input made from another program, or from another device, is refused
+    rather than believed.
+    """
+    want = json.loads(json.dumps(_bridge("mk_qcheck_input").build(cert, _bridge("export_arch").expand(arch))))
+    try:
+        got = json.loads(Path(qcheck_input).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return [f"the qcheck input does not load: {exc}"]
+    if got == want:
+        return []
+    if not isinstance(got, dict):
+        return ["the qcheck input is not a qcheck input"]
+    fields = sorted(k for k in set(want) | set(got) if want.get(k) != got.get(k))
+    return [f"the qcheck input was not made from this certificate on this device: it differs in "
+            f"{', '.join(fields)}"]
 
 
 # ------------------------------------------------------------------ O1
@@ -560,9 +590,16 @@ def main(argv: list[str] | None = None) -> int:
     # The proved checker.  Until C6 this did not exist and R10 was capped at `partial`
     # by decision D3; now that it does, its verdict is what lifts the cap.
     lean_ok: bool | None = None
+    unbound: list[str] = []
     if args.qcheck:
         exe = find_qcheck(ROOT / "Compiler" / "lean")
-        if exe is None:
+        unbound = qcheck_binding(Path(args.qcheck), cert, arch)
+        if unbound:
+            # its verdict would be about some other certificate: not run, not believed
+            lean_ok = False
+            verdict["lean"] = "REFUSED: not this certificate's input"
+            verdict["lean_why"] = unbound
+        elif exe is None:
             verdict["lean"] = "qcheck not built"
         else:
             r = subprocess.run([str(exe), args.qcheck], capture_output=True, text=True)
@@ -620,7 +657,12 @@ def main(argv: list[str] | None = None) -> int:
                     verdict["o2_semantics"] = f"not checked: {n} qubits is too large"
 
     structural_ok = (not o1) and not unrealised
-    if lean_ok is False:
+    if unbound:
+        verdict["R10"] = "FAILED"
+        verdict["R10_reason"] = (
+            "the qcheck input was not made from this certificate on this device, so the "
+            "Lean checker's verdict on it is not this certificate's")
+    elif lean_ok is False:
         verdict["R10"] = "FAILED"
         verdict["R10_reason"] = "the proved Lean checker rejected the certificate"
     elif binding:

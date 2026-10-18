@@ -75,11 +75,14 @@ def _qasm(tmp: Path, body: str, n: int = 3, name: str = "c.qasm") -> Path:
     return p
 
 
-def r10(cc, prefix: Path, qasm: Path, arch: Path) -> tuple[int, dict]:
-    """`check_cert.py <prefix> --qasm <qasm> --arch <arch> --json`, in-process."""
+def r10(cc, prefix: Path, qasm: Path, arch: Path, qcheck: Path | None = None) -> tuple[int, dict]:
+    """`check_cert.py <prefix> --qasm <qasm> --arch <arch> [--qcheck <input>] --json`, in-process."""
     out = io.StringIO()
+    argv = [str(prefix), "--qasm", str(qasm), "--arch", str(arch), "--json"]
+    if qcheck is not None:
+        argv += ["--qcheck", str(qcheck)]
     with _bridge_on_path(), contextlib.redirect_stdout(out):
-        rc = cc.main([str(prefix), "--qasm", str(qasm), "--arch", str(arch), "--json"])
+        rc = cc.main(argv)
     return rc, json.loads(out.getvalue())
 
 
@@ -107,13 +110,25 @@ def _compile(tmp: Path, body: str, n: int, device) -> dict:
                         capture_output=True, text=True, timeout=600)
     assert cp.returncode == 0, cp.stdout[-800:] + cp.stderr[-800:]
     cert = json.loads((tmp / "prog.qcert.json").read_text(encoding="utf-8"))
-    return {"dir": tmp, "prefix": tmp / "prog", "qasm": qasm, "arch": arch, "cert": cert}
+    qcheck = tmp / "prog.qcheck.json"
+    subprocess.run([sys.executable, str(BRIDGE / "mk_qcheck_input.py"), str(tmp / "prog"), "--arch", str(exp),
+                    "-o", str(qcheck)], check=True, capture_output=True)
+    return {"dir": tmp, "prefix": tmp / "prog", "qasm": qasm, "arch": arch, "cert": cert, "qcheck": qcheck}
 
 
 @pytest.fixture(scope="module")
 def toffoli(tmp_path_factory):
     from qccd.api import Machine
     return _compile(tmp_path_factory.mktemp("toffoli"), "ccx q[0],q[1],q[2];", 3,
+                    Machine.grid(a=2, b=3, name="grid2x3"))
+
+
+@pytest.fixture(scope="module")
+def other_on_grid(tmp_path_factory):
+    """Another program on the Toffoli's device: a certificate the Lean checker accepts, for
+    a different circuit."""
+    from qccd.api import Machine
+    return _compile(tmp_path_factory.mktemp("other"), "cx q[0],q[1];\ncx q[1],q[2];", 3,
                     Machine.grid(a=2, b=3, name="grid2x3"))
 
 
@@ -206,6 +221,41 @@ def test_a_certificate_whose_circuit_ops_is_not_the_qasm_is_refused(cc, toffoli,
     assert v.get("binding", "ok") != "ok", v
     assert v["o1_transport"] != "ok", v           # where the workspace evaluator looks
     assert "does not describe the source circuit" in v["R10_reason"], v
+
+
+# ------------------------------------------------------------------ the qcheck input is this certificate's
+
+
+def _qcheck_built(cc):
+    return cc.find_qcheck(REPO / "Compiler" / "lean") is not None
+
+
+def test_the_honest_qcheck_input_lets_the_proved_checker_decide(cc, toffoli):
+    if not _qcheck_built(cc):
+        pytest.skip("the Lean checker is not built")
+    rc, v = r10(cc, toffoli["prefix"], toffoli["qasm"], toffoli["arch"], toffoli["qcheck"])
+    assert rc == 0 and v["R10"] == "passed" and v["lean"] == "accepted", v
+
+
+def test_a_qcheck_input_for_another_program_on_the_same_device_is_refused(cc, toffoli, other_on_grid):
+    """The Lean checker accepts the other program's input -- it is a good certificate, for
+    another circuit -- so the old checker reported R10 passed for the Toffoli on it."""
+    rc, v = r10(cc, toffoli["prefix"], toffoli["qasm"], toffoli["arch"], other_on_grid["qcheck"])
+    assert rc == 1 and v["R10"] == "FAILED", v
+    assert v["lean"].startswith("REFUSED"), v
+    assert "not made from this certificate" in v["R10_reason"], v
+
+
+def test_a_qcheck_input_with_a_widened_device_is_refused(cc, toffoli, tmp_path):
+    """The device facts are what the compiler must not get to assert: one more hop in the
+    input is a device the architecture does not describe."""
+    doc = json.loads(toffoli["qcheck"].read_text(encoding="utf-8"))
+    doc["hops"].append({"from": doc["gate_sites"][0], "to": doc["gate_sites"][-1]})
+    wide = tmp_path / "wide.qcheck.json"
+    wide.write_text(json.dumps(doc), encoding="utf-8")
+    rc, v = r10(cc, toffoli["prefix"], toffoli["qasm"], toffoli["arch"], wide)
+    assert rc == 1 and v["R10"] == "FAILED" and v["lean"].startswith("REFUSED"), v
+    assert "hops" in " ".join(v["lean_why"]), v
 
 
 # ------------------------------------------------------------------ the pieces, no compiler
