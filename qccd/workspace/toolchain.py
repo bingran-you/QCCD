@@ -50,6 +50,13 @@ RETIRED_QCCDC = {
     "014c83bc139136dbbcd3d9905b87da7400f2c25eacc4d6b93dd4244b692fd174": "f88a49f79af1",   # linux-x86_64
     # f88a49f79af1 for macos-arm64 is NOT listed yet: no newer Mac build exists, and a Mac with
     # no compiler at all is worse than one whose junction-resting programs R23 then refuses.
+    "65a30e83188e6f5d9663bc494c465ca2a36b529e741dfc658c4f2ad7ab03320d": "35bf68427d9c",   # linux-x86_64
+    "95951a42795a6ada42a5ccecb84d60b9c17361e16536644a83188896727fc0fc": "35bf68427d9c",   # windows-x86_64
+    "a26ffbb5ee873e1b00787fbeaa87880f4613a31b047c875fe065a7e8883dfd21": "02bceb9117e7",   # linux-x86_64
+    "b771fdf039679f10ab2aeed8bcf9fc3488d5597b14cfe36b462a2558f2affc9d": "02bceb9117e7",   # windows-x86_64
+    "01c23f4f1369764fef261f7b442a54f58d4f18131b7793085dde24f23e082b7d": "c7c535380bfb",   # linux-x86_64
+    "68b1ba824008979c16d98d20bcfe893b165cc33129bac8c4b0f086bbf22842b2": "c7c535380bfb",   # windows-x86_64
+    # (none of the three was ever built for macos-arm64)
 }
 _RETIRED_WHY = {
     "73864a5c493d": "it predates the router fix that keeps one waveform per cycle (R22): on a design "
@@ -59,6 +66,14 @@ _RETIRED_WHY = {
                     "ions standing on that junction with empty traps beside it, so the program it makes "
                     "breaks R23",
 }
+# the dock-and-rotate pass of these three turned a two-qubit `barrier a,b` into a CX and every
+# docked contact into a CX whatever its gate (a `cz` too), so a circuit with either compiled to a
+# program that does not implement it -- R10 rejects it, though the compiler's own check passed it
+# (fixed in 7265883d596f; tests/test_compiler_new_designs.py fails on each of them)
+for _v in ("35bf68427d9c", "02bceb9117e7", "c7c535380bfb"):
+    _RETIRED_WHY[_v] = ("its dock-and-rotate pass compiles a two-qubit `barrier a,b` as a CX and "
+                        "any docked two-qubit gate (a `cz` too) as a CX, so a circuit with either "
+                        "compiles to a program that does not implement it (R10)")
 
 MANIFEST = Path(__file__).with_name("toolchain.json")
 #: what `qcheck` is built from (Compiler/lean/checker/lakefile.toml): its version is a digest of
