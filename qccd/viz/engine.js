@@ -2458,8 +2458,19 @@ function makeModel(prims, deg, ce, segs, opts) {
     if (!v) throw new EngineError('architecture declares no `' + name + '` primitive');
     return v;
   }
-  function nonTransport(type, gateName) {
+  function nonTransport(type, gateName, single) {
     if (kind === 'deck') return _charge(0, 0, 0, {});
+    // `CostModel.gate_1q`: a single-qubit gate is priced from `1q_gate`, never from
+    // `ms_gate` -- a VZ from `z_gate` where the device declares one, else as three
+    // pulses (`Z_AS_PULSES`).  Pricing every gate frame at `ms_gate` charged each
+    // 10 us rotation of a reproduced TISCC round 2,000 us (thread 44).
+    if (type === 'gate' && single) {
+      if (gateName === 'VZ') {
+        if (own(prims.scalars, 'z_gate')) return _charge(0, 1, num(scalar('z_gate').us), {});
+        return _charge(0, 1, 3 * num(scalar('1q_gate').us), {});
+      }
+      return _charge(0, 1, num(scalar('1q_gate').us), {});
+    }
     if (type === 'gate') {
       if (gateName === 'SWAP') {
         var sw = scalar('gate_swap'), ms = scalar('ms_gate');
@@ -2504,6 +2515,16 @@ function makeModel(prims, deg, ce, segs, opts) {
       return ch;
     }
   };
+}
+
+// A gate frame is single-qubit when an operand is one ion -- `replay.py`'s test,
+// `iter_operands(instr)` holding a 1-tuple, read off the frame's `acts`.  A frame from
+// before `acts` existed carries `pairs` only and is priced as it always was.
+function _singleQubit(f) {
+  var a = f.acts;
+  if (f.type !== 'gate' || !a) return false;
+  for (var i = 0; i < a.length; i++) if (a[i].length === 1) return true;
+  return false;
 }
 
 // Python's `round()` -- HALF TO EVEN.  `Math.round` is half-up and also disagrees on
@@ -2625,7 +2646,7 @@ function priceFrames(frames, loops, model, classes, opts) {
         }
       }
       var ch0;
-      try { ch0 = model.nonTransport(f.type, f.gate); }
+      try { ch0 = model.nonTransport(f.type, f.gate, _singleQubit(f)); }
       catch (err) { ch0 = _charge(0, 1, 0, {}); warnings.push(err.message); }
       fc += ch0.cost; fd += ch0.depth; fus += ch0.us;
       _anom(model, pos, q, life, comp, fus, peak);

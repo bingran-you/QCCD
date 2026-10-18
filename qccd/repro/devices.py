@@ -179,8 +179,11 @@ TABLES: dict[str, dict[str, Any]] = {
                  "note": "Table 1: intra-trap shift 58 us a position, inter-trap shift 250 us a "
                          "broadcast cycle, swaps 200 / 500 us; two-qubit gate 141 us effective "
                          "(58 + 25 + 58), which both worked examples need"},
+    # a junction move crosses two segments, zone -> junction -> zone: the first overlaps the
+    # junction's 105 us and the second adds 5.25, so it costs Move + Junction = 110.25 us,
+    # TISCC's own price (declaring the junction at 110.25 charged 115.5)
     "leblond2023": {"source": "2311.10687", "shuttle_us": 5.25, "split_us": 0, "merge_us": 0,
-                    "junction_us": {"3": 110.25, "4": 110.25},
+                    "junction_us": {"3": 105, "4": 105},
                     "note": "TISCC's gate table: Move 5.25 us; a junction move is Move + Junction "
                             "(105 us); ZZ 2000 us includes split, merge and cooling"},
 }

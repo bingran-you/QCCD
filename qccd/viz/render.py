@@ -239,6 +239,10 @@ def build_view_model(
             # and two for an MS instead of lighting none for either.
             f["acts"] = [list(t) for t in iter_operands(instr)]
             f["sites"] = list(instr.sites)
+            # the rotation each operand gets: R(theta, phi), VZ(lambda), MS(theta) --
+            # without it the list printed a bare R for every pulse (thread 44)
+            if instr.params:
+                f["params"] = [list(p) for p in instr.params]
         elif instr.type == "cool":
             f["broadcast"] = bool(instr.broadcast)
             f["ions"] = list(instr.ions)
@@ -3798,6 +3802,17 @@ function opText(f){
   if(li!=null) return LST.ops[LST.op[li]];
   return (f.type||'').toUpperCase().slice(0,6);
 }
+// a gate's angles, as multiples of pi/4 where they are, from its FIRST operand; a
+// trailing `…` when the operands of one instruction do not all turn alike
+function angles(f){
+  const P=f.params; if(!P||!P.length) return '';
+  const a=x=>{const k=Math.round(x/(Math.PI/4));
+    if(Math.abs(x-k*Math.PI/4)>1e-6) return Number(x).toPrecision(3);
+    const n={0:'0',1:'π/4',2:'π/2',3:'3π/4',4:'π',[-1]:'−π/4',[-2]:'−π/2',[-3]:'−3π/4',[-4]:'−π'}[k];
+    return n===undefined?k+'π/4':n;};
+  const one=JSON.stringify(P[0]), same=P.every(p=>JSON.stringify(p)===one);
+  return '('+P[0].map(a).join(', ')+')'+(same?'':'…');
+}
 function argsHTML(f){
   if(f.shift){
     const loop=f.shift[0], d=f.shift[1];
@@ -3818,7 +3833,7 @@ function argsHTML(f){
     const n=f.pairs.length, out=[];
     for(let j=0;j<Math.min(2,n);j++)
       out.push(ref('ion',f.pairs[j][0])+'&middot;'+ref('ion',f.pairs[j][1]));
-    return (f.gate?esc(f.gate)+' ':'')+out.join(', ')
+    return (f.gate?esc(f.gate)+angles(f)+' ':'')+out.join(', ')
       +(n>2?' <i class="mut">+'+(n-2)+'</i>':'')
       +((f.sites&&f.sites.length)?' @'+ref('site',f.sites[0]):'');
   }
