@@ -408,6 +408,89 @@ def test_a_qcheck_input_with_a_widened_device_is_refused(cc, toffoli, tmp_path):
     assert "hops" in " ".join(v["lean_why"]), v
 
 
+# ------------------------------------------------------------------ the evaluator binds a Toffoli task
+#
+# The workspace evaluator's `certificate_binding` stage compared `circuit_ops` with the task
+# circuit as `qccdc_cli parse` reads it, exactly -- but `circuit_ops` is LOWERED, so every
+# honest certificate for a circuit with a `ccx` or `cswap` was refused.  It now calls
+# `check_cert.check_binding`.  No shipped release has a composite, so one is made here.
+
+
+def _release(tmp: Path, body: str):
+    """A task release like ghz4@1 (its physics and limits), for the circuit `body`."""
+    import hashlib
+    from qccd.workspace.tasks import TaskRelease, find_release
+    base = find_release("ghz4@1")
+    d = tmp / "releases" / "toffoli@1"
+    d.mkdir(parents=True)
+    shutil.copy(base.root / "physics.json", d / "physics.json")
+    _qasm(d, body, 3, "circuit.qasm")
+    man = copy.deepcopy(base.manifest)
+    man["task"], man["title"] = "toffoli", "a Toffoli"
+    man["circuit"]["digest"] = "sha256:" + hashlib.sha256((d / "circuit.qasm").read_bytes()).hexdigest()
+    (d / "release.json").write_text(json.dumps(man, indent=1), encoding="utf-8")
+    return TaskRelease.load(d)
+
+
+def _bundle(tmp: Path, release, name: str):
+    """The Toffoli compiled onto ghz4's starter device under the release's physics, cooled,
+    and sealed as a bundle for `release`."""
+    from qccd.api import Machine
+    from qccd.workspace.bundle import write_bundle
+    from qccd.workspace.tasks import FIXED_BLOCKS
+    qccdc = _toolchain()
+    if qccdc is None:
+        pytest.skip("qccdc_cli is not built")
+    w = tmp / f"c_{name}"
+    w.mkdir()
+    doc = Machine.chain(n=4, name="chain4").arch.to_json()
+    doc.update({b: release.physics()[b] for b in FIXED_BLOCKS})
+    (w / "device.arch.json").write_text(json.dumps(doc), encoding="utf-8")
+    subprocess.run([sys.executable, str(BRIDGE / "export_arch.py"), str(w / "device.arch.json"), "-o",
+                    str(w / "device.expanded.json")], check=True, capture_output=True)
+    subprocess.run([str(qccdc), "compile", str(release.circuit_path), "--arch", str(w / "device.expanded.json"),
+                    "-o", str(w / "prog")], check=True, capture_output=True)
+    subprocess.run([sys.executable, str(BRIDGE / "insert_cooling.py"), str(w / "prog.tsir.json"), "--arch",
+                    str(w / "device.arch.json"), "-o", str(w / "prog.cooled.tsir.json")], check=True, capture_output=True)
+    rd = lambda f: json.loads((w / f).read_text(encoding="utf-8"))  # noqa: E731
+    return write_bundle(tmp / f"b_{name}", task_id=release.id, task_digest=release.digest, device=doc,
+                        program=rd("prog.cooled.tsir.json"), certified_program=rd("prog.tsir.json"),
+                        certificate=rd("prog.qcert.json")).root
+
+
+def _grade(release, bundle, tmp):
+    from qccd.workspace.evaluator import grade
+    rep = grade(release, bundle, "reference", workdir=tmp)
+    return {st["id"]: st["status"] for st in rep["stages"]}, rep
+
+
+def test_the_evaluator_binds_an_honest_toffoli_certificate(tmp_path):
+    from qccd.workspace.evaluator import Toolchain
+    if Toolchain.discover().qcheck is None:
+        pytest.skip("the Lean checker is not built")
+    rel = _release(tmp_path / "r", "ccx q[0],q[1],q[2];\nmeasure q -> c;")
+    st, rep = _grade(rel, _bundle(tmp_path, rel, "honest"), tmp_path / "w")
+    assert st["certificate_binding"] == "passed", rep
+    assert st["lean_certificate"] == "passed", rep
+    assert st["semantics"] == "passed", rep           # the exact unitary, against the task's QASM
+
+
+def test_the_evaluator_refuses_a_toffoli_certificate_for_another_task(tmp_path):
+    """The same compiled Toffoli, sealed for a task whose circuit is a Toffoli onto another
+    target: the binding refuses it and so does the semantic check."""
+    honest = _release(tmp_path / "r1", "ccx q[0],q[1],q[2];\nmeasure q -> c;")
+    other = _release(tmp_path / "r2", "ccx q[0],q[2],q[1];\nmeasure q -> c;")
+    b = _bundle(tmp_path, honest, "honest")
+    from qccd.workspace.bundle import read_bundle, write_bundle
+    docs = read_bundle(b).docs
+    resealed = write_bundle(tmp_path / "b_other", task_id=other.id, task_digest=other.digest, device=docs["device"],
+                            program=docs["program"], certified_program=docs["certified_program"],
+                            certificate=docs["certificate"]).root
+    st, rep = _grade(other, resealed, tmp_path / "w")
+    assert st["certificate_binding"] == "failed", rep
+    assert st["semantics"] == "failed", rep
+
+
 # ------------------------------------------------------------------ the pieces, no compiler
 
 

@@ -3,9 +3,9 @@
 One contract, independent of transport: the local service, the CLI and the official
 worker all call `grade`.  It reuses the toolchain rather than restating it -- the loader
 (`Architecture.from_json`), the replay and the 27 rules (`qccd.verify.verify`), the
-compiler's parser (`qccdc_cli parse`), the trusted checker input builder
-(`Compiler/bridge/mk_qcheck_input.py`), the proved Lean checker (`qcheck`) and the
-semantic checker (`Compiler/bridge/check_cert.py`).
+trusted checker input builder (`Compiler/bridge/mk_qcheck_input.py`), the proved Lean
+checker (`qcheck`) and the semantic checker (`Compiler/bridge/check_cert.py`, whose
+`check_binding` is also the certificate binding).
 
 WHAT A PASSING REFERENCE REPORT ESTABLISHES, stage by stage (and nothing more):
 
@@ -22,8 +22,10 @@ WHAT A PASSING REFERENCE REPORT ESTABLISHES, stage by stage (and nothing more):
   correspondence       the final program is the certified program with only the release's
                        allowed transformations applied (inserted `cool` instructions),
                        instruction by instruction, ids included.
-  certificate_binding  the certificate's circuit is the trusted task circuit (op for op,
-                       as the compiler's own parser reads the release's QASM); its gate
+  certificate_binding  the certificate's circuit is the trusted task circuit, op for op
+                       (`check_cert.check_binding`: a 1- or 2-qubit op as itself, a
+                       composite as a run of ops whose product is its defining unitary),
+                       with the task's qubit count and a one-to-one qubit map; its gate
                        witnesses name instructions of the certified program that carry the
                        same operation stamps (`qccd.ir.source_map`).
   lean_certificate     the proved Lean checker accepts the certificate against facts it
@@ -482,35 +484,44 @@ def _correspondence_stage(st: _Stage, release: TaskRelease, final, certified) ->
             inserted=len(inserted), certified_instructions=len(cids))
 
 
+_CHECK_CERT: dict = {}
+
+
+def _check_cert(tc: Toolchain):
+    """`Compiler/bridge/check_cert.py`, loaded by path: the ONE definition of what binds a
+    certificate to a circuit (`check_binding`), shared with the semantics stage, which runs
+    the same file as a script."""
+    path = Path(tc.bridge) / "check_cert.py"
+    if path not in _CHECK_CERT:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("qccd_evaluator_check_cert", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _CHECK_CERT[path] = mod
+    return _CHECK_CERT[path]
+
+
 def _binding_stage(st: _Stage, release: TaskRelease, tc: Toolchain, cw: Path, cert: Mapping,
                    certified, limits: Mapping, cancel) -> None:
-    if tc.qccdc is None:
-        st.diag("TOOLCHAIN.QCCDC_MISSING", "the compiler (qccdc_cli) is not installed, so the task "
-                "circuit cannot be parsed to bind the certificate: run `qccd toolchain install`")
-        st.done("unsupported", "needs qccdc_cli parse")
+    # `circuit_ops` is the LOWERED circuit -- a `ccx` is fifteen 1- and 2-qubit ops -- so
+    # an exact comparison with the parsed task circuit refused every honest certificate
+    # for a circuit with a composite.  `check_binding` compares op by op, a composite with
+    # the run of ops whose product is its defining unitary, plus the qubit count and map.
+    try:
+        cc = _check_cert(tc)
+        qc = cc.load_source(cw / "circuit.qasm")
+        src = cc.source_ops(qc)
+    except ImportError as exc:
+        st.diag("TOOLCHAIN.QISKIT_MISSING", f"the circuit reader is not installed ({exc.name}): "
+                "pip install -e \".[agent]\"")
+        st.done("unsupported", "needs qiskit to read the task circuit")
         return
-    r = run_limited([tc.qccdc, "parse", cw / "circuit.qasm", "-o", cw / "circuit.parsed.json"],
-                    cwd=cw, timeout=float(limits.get("compile_timeout_s", 600)), mem_mb=4096, cancel=cancel)
-    if r.status in ("timeout", "cancelled"):
-        st.done(r.status, "qccdc_cli parse")
+    except Exception as exc:  # the trusted circuit not loading is an evaluator problem
+        st.diag("TOOLCHAIN.PARSE_FAILED", f"reading the trusted circuit failed: {type(exc).__name__}: {exc}")
+        st.done("internal_error", "check_cert.load_source")
         return
-    if not r.ok:
-        st.diag("TOOLCHAIN.PARSE_FAILED", f"parsing the trusted circuit failed: {r.stderr[-500:] or r.stdout[-500:]}")
-        st.done("internal_error", "qccdc_cli parse")
-        return
-    parsed = json.loads((cw / "circuit.parsed.json").read_text(encoding="utf-8"))
-    want = [(o["i"], o["name"], list(o["qubits"]), [float(x) for x in o.get("params") or []])
-            for o in parsed["ops"]]
-    got = [(o.get("i"), o.get("name"), list(o.get("qubits") or []), [float(x) for x in o.get("params") or []])
-           for o in cert.get("circuit_ops") or []]
-    problems = []
-    if cert.get("n_qubits") != parsed.get("n_qubits"):
-        problems.append(f"the certificate is for {cert.get('n_qubits')} qubits, the task circuit has "
-                        f"{parsed.get('n_qubits')}")
-    if got != want:
-        k = next((i for i in range(min(len(got), len(want))) if got[i] != want[i]), min(len(got), len(want)))
-        problems.append(f"the certificate's circuit differs from the task circuit at op {k} "
-                        f"({got[k] if k < len(got) else 'missing'} vs {want[k] if k < len(want) else 'missing'})")
+    problems = [f"the certificate does not describe the task circuit: {p}"
+                for p in cc.check_binding(dict(cert), qc, src)]
     if cert.get("unrealised"):
         problems.append(f"{len(cert['unrealised'])} circuit ops are unrealised: a partial program")
     # the gate witnesses must name certified-program instructions with matching stamps
@@ -522,11 +533,11 @@ def _binding_stage(st: _Stage, release: TaskRelease, tc: Toolchain, cw: Path, ce
     for p in problems:
         st.diag("CERT.BINDING", p)
     if problems:
-        st.done("failed", "circuit ops (compiler parser), qubit count, coverage, witness stamps")
+        st.done("failed", "circuit ops (check_cert.check_binding), qubit count and map, coverage, witness stamps")
     else:
-        st.done("passed", "circuit ops equal the release circuit as parsed by qccdc_cli; "
-                "every gate witness names a certified instruction with the same op stamp",
-                ops=len(want))
+        st.done("passed", "circuit ops are the release circuit op by op, composites as their lowering "
+                "(check_cert.check_binding); every gate witness names a certified instruction with the "
+                "same op stamp", ops=len(src))
 
 
 def _lean_stage(st: _Stage, tc: Toolchain, cw: Path, limits: Mapping, cancel) -> None:

@@ -544,9 +544,9 @@ worker all call it.
 | program | well-formed TSIR within limits | `validate_program` |
 | rules | replay under the task model; only R7b, R9 and R10 may be skipped, only R15 may be partial | `qccd.verify.verify` |
 | correspondence | the final program is the certified program with only allowed insertions (`cool`, fresh ids), identical otherwise except the provenance index `meta.call` | new |
-| certificate_binding | the certificate's `circuit_ops` are the **release's** circuit as the compiler's own parser reads it; gate witnesses match certified instructions | `qccdc_cli parse`, `qccd.ir.source_map` |
+| certificate_binding | the certificate's `circuit_ops` are the **release's** circuit op by op (a composite such as `ccx` as the run of ops whose product is its defining unitary), with its qubit count and a one-to-one qubit map; gate witnesses match certified instructions | `check_cert.check_binding`, `qccd.ir.source_map` |
 | lean_certificate | `QCCDC.Cert.check` (proved sound) accepts, against facts re-derived from the **submitted** device | `mk_qcheck_input.py`, `qcheck` |
-| semantics | O1 transport replay and O2 tableau of the emitted pulses equal to the trusted circuit (partial outside Clifford) | `check_cert.py` without `--qcheck` |
+| semantics | O1 transport replay, witnesses tied to the program's instructions, and O2: the emitted pulses, measurements and resets equal to the trusted circuit -- a stabilizer tableau, or outside Clifford an exact unitary up to 10 qubits (partial beyond) | `check_cert.py` without `--qcheck` |
 | metrics | `T_jones`, `T_transport` (ms, modelled), `instructions`, `dacs`, `ions_per_instruction` | `metrics.compute_metrics` |
 
 **Eligible** means every required stage `passed` under the `reference` profile. `skipped`,
