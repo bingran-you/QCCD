@@ -6,8 +6,18 @@ theorem in `Sound.lean` mean something rather than being a tautology dressed up.
 
 `Implements` is a **Prop**, written in terms of a replay of the certificate's movement from
 the initial placement.  It never mentions the checker.  It says what it means for the
-compiled program to realise the circuit, and it would say the same thing if no checker
-existed.
+compiled program to follow its certificate -- qubits on distinct ions, every move a hop the
+architecture admits, every op other than a measurement, reset or barrier witnessed exactly
+once, by ions the replay has together in a trap that can gate, dependent ops in program
+order -- and it would say the same thing if no checker existed.
+
+It does not say that the program applies the circuit's gates.  A witness (`GateW`) names an
+op, a cycle, a trap and ions; it names no gate, and the checker never reads the pulses the
+program emits.  Which gate fires is decided by the semantic comparison in
+`bridge/check_cert.py`, which composes the emitted pulses and compares them with the source
+circuit, and R10 rests on the two together.  A compiler that turned a two-qubit `barrier`
+or a docked `cz` into a CX (releases up to c7c535380bfb) was accepted here and refused
+there.
 
 `check` is then *nothing but* `decide (Implements inp)`.  So the theorem
 `check inp = true → Implements inp` is `of_decide_eq_true`, and all of the content has
@@ -17,20 +27,22 @@ meaning is the arrangement that hides its assumptions; this one cannot.
 
 The conjuncts are the whole claim:
 
-  1. `unrealised = []`   -- the compiler realised every op it was given
+  1. `unrealised = []`   -- the compiler declined no op it was given
   2. `MapInjective`      -- distinct qubits get distinct ions
   3. `MapTotal`          -- every qubit of the circuit is mapped
   4. `EventsSorted`      -- movement is in cycle order, so replaying it is well defined
   5. `RotationsKnown`    -- every rotation names a loop the ARCHITECTURE declares
   6. `MovesAreHops`      -- an ion never teleports: every move is one the architecture
                             admits, and departs from where the ion actually is
-  7. `GatesLegal`        -- operands co-located, at the named trap, and that trap can gate
+  7. `GatesLegal`        -- the ions a witness names are together at the trap it names,
+                            and that trap can gate
   8. `Covered`           -- every circuit op that needs a witness has exactly one
   9. `Grounded`          -- and every witness realises an op that exists
  10. `RespectsOrder`     -- two ops sharing a qubit happen in program order
 
-Together they are O1, and O3 comes with (8)-(10): a dropped gate fails coverage, an
-invented one fails grounding, and a reordered pair fails the order check.
+Together they are O1: a dropped gate fails coverage, an invented one fails grounding, and
+a reordered pair fails the order check.  None of them is O3, the Pauli frame, and none is
+gate identity; both are the semantic comparison's (`Compiler/PLAN.md` D1).
 
 ## Why the replay is a list
 
@@ -239,8 +251,11 @@ def RespectsOrder (inp : Input) : Prop :=
     (a.qubits.any (fun q => b.qubits.contains q)) = true →
       Commutes a.name a.qubits b.name b.qubits = true ∨ a.t < b.t
 
-/-- **The specification.**  What it means for the compiled program to implement the
-circuit, said without reference to any checker. -/
+/-- **The specification.**  What it means for the compiled program to follow its
+certificate -- mapping, transport, co-location and order -- said without reference to any
+checker.  It names no gate, so it is not by itself "the program implements the circuit":
+which gates the program applies is decided by comparing its emitted pulses with the source
+circuit (`bridge/check_cert.py`), and R10 needs both. -/
 def Implements (inp : Input) : Prop :=
   inp.unrealised = [] ∧
   MapInjective inp ∧

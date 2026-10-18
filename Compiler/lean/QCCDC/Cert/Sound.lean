@@ -1,11 +1,17 @@
 /-
 # Soundness, and what it does and does not say
 
-`check_sound` is the theorem R10 rests on.  It is short, and that is the design: `check`
-is defined as `decide (Implements inp)`, so soundness is `of_decide_eq_true` and every
-substantive question has been moved into whether `Implements` says the right thing --
-which a reader can settle by reading `Check.lean`, rather than by auditing a pile of
-`Bool`s against a meaning asserted elsewhere.
+`check_sound` is the theorem the transport-and-order half of R10 rests on.  It is short,
+and that is the design: `check` is defined as `decide (Implements inp)`, so soundness is
+`of_decide_eq_true` and every substantive question has been moved into whether
+`Implements` says the right thing -- which a reader can settle by reading `Check.lean`,
+rather than by auditing a pile of `Bool`s against a meaning asserted elsewhere.
+
+What it does not say is that the program applies the circuit's gates.  `Implements` is
+about the certificate -- mapping, transport, co-location, order -- and a witness names no
+gate.  Which gate fires is the other half of R10: `bridge/check_cert.py` composes the
+emitted pulses and compares them with the source circuit, and that comparison is computed,
+not proved here.
 
 What follows the main theorem is more useful than the main theorem: the *rejection*
 lemmas.  A checker is only worth running if a wrong certificate fails it, so each named
@@ -17,12 +23,13 @@ import QCCDC.Cert.Check
 
 namespace QCCDC.Cert
 
-/-- **The soundness theorem.**  If the checker accepts, the compiled program implements
-the circuit -- in the sense `Implements` spells out. -/
+/-- **The soundness theorem.**  If the checker accepts, `Implements` holds: the compiled
+program follows its certificate in mapping, transport, co-location and order.  Which gates
+it applies is not part of that (see the header). -/
 theorem check_sound {inp : Input} (h : check inp = true) : Implements inp :=
   of_decide_eq_true h
 
-/-- And the converse: the checker accepts everything that does implement the circuit, so
+/-- And the converse: the checker accepts every certificate that satisfies `Implements`, so
 a rejection is always a real defect and never a limitation of the check. -/
 theorem check_complete {inp : Input} (h : Implements inp) : check inp = true :=
   decide_eq_true h

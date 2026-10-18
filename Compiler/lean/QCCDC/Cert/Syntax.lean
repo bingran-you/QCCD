@@ -1,8 +1,12 @@
 /-
 # The certificate, as the trusted checker reads it
 
-Obligation O1 of `Compiler/PLAN.md` §1: every gate the compiled program executes must
-find its operands already in one trap, and that trap must be able to gate.
+Obligation O1 of `Compiler/PLAN.md` §1, as the certificate carries it: every circuit op
+that needs one has exactly one gate witness, the ions that witness names are already in one
+trap at its cycle, and that trap must be able to gate.  A witness (`GateW`) names an op, a
+cycle, a trap and ions -- never a gate, and never the pulses the program emits -- so which
+gate the compiled program executes is not read here; `bridge/check_cert.py` decides it by
+composing the emitted pulses and comparing them with the source circuit.
 
 ## What is in here, and what is deliberately not
 
