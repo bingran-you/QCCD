@@ -11,8 +11,9 @@ cycle `t` in trap `site` -- must find its ions already together in that trap, an
 must be gate-capable; the proved Lean checker (`--qcheck`, `QCCDC.Cert.check_sound`)
 decides the same question of the same witnesses -- on an input that must equal the one
 rebuilt here from this certificate and this device (`qcheck_binding`), so its verdict is
-this certificate's and not some other's.  This half is about the witnesses, not
-the emitted program: it never reads the TSIR's gate instructions.  Positions the
+this certificate's and not some other's.  This half is about the witnesses; what ties
+them to the emitted program is `check_witnesses`: each names its op's own ions, and an
+instruction of its op's kind on them.  Positions the
 certificate also claims are cross-checked, never believed -- the discipline
 `qccd/ir/import_deck.py` applies to the shipped artifact, for the same reason.
 
@@ -34,8 +35,11 @@ compiler's reasoning enters.  A swapped operand, a dropped gate, a wrong rotatio
 a mis-tracked frame all move the tableau, or the unitary.
 
 This subsumes Pauli-frame tracking rather than implementing it separately, which is the
-whole argument for D1: a frame error IS a tableau difference.  Both routes compare the
-unitary part only: `measure`, `reset` and `barrier` are skipped on both sides.
+whole argument for D1: a frame error IS a tableau difference.  Measurements and resets are
+compared too, in their deferred form on both sides (`readout_plan`): the `j`-th measurement
+of a qubit is a CNOT onto a fresh qubit, its `j`-th reset a SWAP with one, so a readout on
+the wrong ion, at an inequivalent point, or one the circuit does not have moves the tableau
+or the unitary like any gate.  `barrier` is skipped on both sides.
 
     python Compiler/bridge/check_cert.py build/out/ghz8_grid9x9 \
         --qasm bench/ghz8.qasm --arch arch/grid9x9.arch.json
@@ -196,6 +200,52 @@ def check_o1(cert: dict, arch: Architecture) -> list[str]:
     return problems
 
 
+def check_witnesses(cert: dict, prog: TSIR) -> list[str]:
+    """Does every witness describe the program it certifies?  The problems, empty if so.
+
+    The Lean checker relates a witness to the circuit op it names and the ions it names,
+    never to the op's own qubits and never to the program: a witness for `cx q0,q1` naming
+    two other ions that happen to stand together, or a witness for a measurement naming a
+    gate pulse, is accepted there.  So, against the program and the qubit->ion map:
+
+    * a witness names the ions its op's qubits are mapped to, no more and no fewer;
+    * the instruction it names exists, and is of its op's kind -- a gate pulse on at least
+      one of those ions for a gate, a measurement or reset of the ion for a measurement or
+      reset;
+    * no witness names a barrier, which is a fence no instruction performs.
+    """
+    by_id = {i.id: i for i in prog.instructions}
+    ops = {o.get("i"): o for o in cert.get("circuit_ops", [])}
+    qmap = cert.get("map", {})
+    problems: list[str] = []
+    for g in cert.get("gates", []):
+        op = ops.get(g.get("dag"))
+        if op is None:
+            problems.append(f"witness for op {g.get('dag')}: the certificate has no such op")
+            continue
+        what = f"witness for op {op['i']} ({op['name']} {op['qubits']})"
+        want = sorted(str(qmap.get(str(q), f"<qubit {q}>")) for q in op["qubits"])
+        if sorted(map(str, g.get("ions", []))) != want:
+            problems.append(f"{what}: names ions {g.get('ions')}, its qubits are on {want}")
+        ins = by_id.get(g.get("instr"))
+        if op["name"] == "barrier":
+            problems.append(f"{what}: a barrier is a fence, which no instruction performs")
+        elif ins is None:
+            problems.append(f"{what}: names instruction {g.get('instr')}, which the program does not have")
+        else:
+            on = set(ins.ions) | {x for p in ins.pairs for x in p}
+            if op["name"] in ("measure", "reset"):
+                if ins.type != op["name"] or not set(want) <= set(ins.ions):
+                    problems.append(f"{what}: names instruction {ins.id}, a {ins.type} on "
+                                    f"{sorted(on)}, not a {op['name']} of {want}")
+            elif ins.type != "gate" or not (on & set(want)):
+                problems.append(f"{what}: names instruction {ins.id}, a {ins.type} on "
+                                f"{sorted(on)}, not a gate pulse on {want}")
+        if len(problems) >= 6:
+            break
+    return problems
+
+
 # ------------------------------------------------------------------ O2 / O3
 
 
@@ -203,46 +253,95 @@ def is_right_angle(x: float, eps: float = 1e-9) -> bool:
     return abs(x / (PI / 2) - round(x / (PI / 2))) < eps
 
 
-def tableau_from_program(prog: TSIR, cert: dict, n: int):
+#: the parameters a pulse carries when the program writes none
+_NO_PARAMS = {"R": (0.0, 0.0), "VZ": (0.0,), "MS": (0.0,)}
+
+
+def program_steps(prog: TSIR, qubit_of: dict[str, int]):
+    """The EMITTED program, read over the logical qubits: `(gate, qubits, params)` for each
+    native pulse, `("measure" | "reset", (qubit,), ())` for each ion a readout or reset
+    instruction names, in program order.  The qubit is None for an ion that carries none.
+
+    The operands are the IR's own (`qccd.ir.tsir.iter_operands`), so every spelling the
+    program format allows is read: an `MS` written as two `ions` rather than `pairs` is one
+    pair, not nothing.  Anything that cannot be read exactly raises NotImplementedError --
+    a pulse skipped here would be a program compared with that pulse taken out.
+    """
+    from qccd.ir.tsir import iter_operands
+
+    for instr in prog.instructions:
+        if instr.type in ("measure", "reset"):
+            for ion in instr.ions:
+                yield instr.type, (qubit_of.get(ion),), ()
+            continue
+        if instr.type != "gate":
+            continue
+        if instr.gate not in NATIVE:
+            raise NotImplementedError(f"gate {instr.gate!r} is not a native pulse {NATIVE}")
+        width = 2 if instr.gate == "MS" else 1
+        params = list(instr.params)
+        for k, operand in enumerate(iter_operands(instr)):
+            if len(operand) != width:
+                raise NotImplementedError(
+                    f"instruction {instr.id}: {instr.gate} on {len(operand)} ion(s)")
+            qs = []
+            for ion in operand:
+                if ion not in qubit_of:
+                    raise NotImplementedError(
+                        f"instruction {instr.id}: {instr.gate} on ion {ion}, which carries no qubit")
+                qs.append(qubit_of[ion])
+            yield instr.gate, tuple(qs), tuple(params[k]) if k < len(params) else _NO_PARAMS[instr.gate]
+
+
+def tableau_from_program(prog: TSIR, cert: dict, n: int, anc: dict | None = None):
     """Compose the EMITTED pulses into a stabilizer tableau over the logical qubits.
 
-    Reads the hardware program, not the circuit and not the compiler's intent.
+    Reads the hardware program, not the circuit and not the compiler's intent.  With
+    `anc` (`readout_plan`), each measurement and reset becomes the unitary that defers it
+    onto its own fresh qubit, so where it happens is compared too; without, they are
+    skipped, as `qccd/bench/check.py` expects.
     """
     import stim
 
     qubit_of = {ion: int(q) for q, ion in cert["map"].items()}
     circ = stim.Circuit()
-    for instr in prog.instructions:
-        if instr.type != "gate":
-            continue
-        params = list(instr.params)
-        if instr.gate == "R":
-            for k, ion in enumerate(instr.ions):
-                th, ph = params[k] if k < len(params) else (0.0, 0.0)
-                if not (is_right_angle(th) and is_right_angle(ph)):
-                    raise NotImplementedError(f"non-Clifford pulse R({th},{ph})")
-                _emit_r(circ, qubit_of[ion], th, ph)
-        elif instr.gate == "VZ":
-            for k, ion in enumerate(instr.ions):
-                (lam,) = params[k] if k < len(params) else (0.0,)
-                if not is_right_angle(lam):
-                    raise NotImplementedError(f"non-Clifford frame VZ({lam})")
-                # VZ(lam) = diag(1, e^{i lam}) -- S applied `lam / (pi/2)` times
-                for _ in range(round(lam / (PI / 2)) % 4):
-                    circ.append("S", [qubit_of[ion]])
-        elif instr.gate == "MS":
-            for k, (a, b) in enumerate(instr.pairs):
-                (th,) = params[k] if k < len(params) else (0.0,)
-                if not is_right_angle(th):
-                    raise NotImplementedError(f"non-Clifford MS({th})")
-                _emit_ms(circ, qubit_of[a], qubit_of[b], th)
+    circ.append("I", list(range(n + len(anc or {}))))
+    seen: dict = {}
+    for gate, qs, p in program_steps(prog, qubit_of):
+        if gate in ("measure", "reset"):
+            if anc is not None:
+                _defer(circ.append, gate, qs[0], seen, anc)
+        elif gate == "R":
+            th, ph = p
+            if not (is_right_angle(th) and is_right_angle(ph)):
+                raise NotImplementedError(f"non-Clifford pulse R({th},{ph})")
+            _emit_r(circ, qs[0], th, ph)
+        elif gate == "VZ":
+            (lam,) = p
+            if not is_right_angle(lam):
+                raise NotImplementedError(f"non-Clifford frame VZ({lam})")
+            # VZ(lam) = diag(1, e^{i lam}) -- S applied `lam / (pi/2)` times
+            for _ in range(round(lam / (PI / 2)) % 4):
+                circ.append("S", [qs[0]])
         else:
-            # skipping it would compare a program with that gate taken out
-            raise NotImplementedError(f"gate {instr.gate!r} is not a native pulse {NATIVE}")
-    circ_padded = stim.Circuit()
-    circ_padded.append("I", list(range(n)))
-    circ_padded += circ
-    return stim.Tableau.from_circuit(circ_padded)
+            (th,) = p
+            if not is_right_angle(th):
+                raise NotImplementedError(f"non-Clifford MS({th})")
+            _emit_ms(circ, qs[0], qs[1], th)
+    return stim.Tableau.from_circuit(circ)
+
+
+def _defer(emit, kind: str, q: int | None, seen: dict, anc: dict) -> None:
+    """The deferred form of the `j`-th measurement or reset of qubit `q`: a CNOT onto its
+    fresh qubit (a Z measurement IS that CNOT, read out at the end) or a SWAP with it (a
+    reset hands the old state to a qubit nobody reads and takes a fresh |0>).  A last
+    measurement on both sides is absent from `anc`: deferring it is exact on each side
+    alone, so it drops out of the comparison."""
+    j = seen.get(q, 0)
+    seen[q] = j + 1
+    a = anc.get((q, j))
+    if a is not None:
+        emit("CX" if kind == "measure" else "SWAP", [q, a])
 
 
 def _emit_r(circ, q: int, theta: float, phi: float) -> None:
@@ -283,16 +382,33 @@ def _emit_ms(circ, a: int, b: int, theta: float) -> None:
     circ.append("SQRT_XX" if k == 1 else "SQRT_XX_DAG", [a, b])
 
 
-def program_unitary(prog: TSIR, cert: dict, n: int):
-    """Compose the EMITTED pulses into the exact `2^n x 2^n` unitary over the logical qubits,
-    through the same qubit->ion map as `tableau_from_program`."""
-    unknown = sorted({str(i.gate) for i in prog.instructions
-                      if i.type == "gate" and i.gate not in NATIVE})
-    if unknown:
-        # `unitary.program_unitary` would skip them, comparing a program without them
-        raise NotImplementedError(f"gate(s) {unknown} are not native pulses {NATIVE}")
+def program_unitary(prog: TSIR, cert: dict, n: int, anc: dict | None = None):
+    """Compose the EMITTED pulses into the exact unitary over the logical qubits, through
+    the same reading of the program and the same qubit->ion map as `tableau_from_program`;
+    with `anc`, over `n + len(anc)` qubits, each measurement and reset deferred."""
+    import numpy as np
+
+    U = _unitary()
     qubit_of = {ion: int(q) for q, ion in cert["map"].items()}
-    return _unitary().program_unitary(prog.instructions, qubit_of, n)
+    width = n + len(anc or {})
+    M = np.eye(1 << width, dtype=complex)
+
+    def apply(name, qs):
+        nonlocal M
+        M = U.apply_gate(M, U.gate_matrix(name.lower(), [])[0], list(qs), width)
+
+    seen: dict = {}
+    for gate, qs, p in program_steps(prog, qubit_of):
+        if gate in ("measure", "reset"):
+            if anc is not None:
+                _defer(apply, gate, qs[0], seen, anc)
+        elif gate == "R":
+            M = U.apply_gate(M, U.r_pulse(*p), list(qs), width)
+        elif gate == "VZ":
+            M = U.apply_gate(M, U.vz(*p), list(qs), width)
+        else:
+            M = U.apply_gate(M, U.ms(*p), list(qs), width)
+    return M
 
 
 # ------------------------------------------------------------------ the source circuit
@@ -364,37 +480,51 @@ def source_matrix(o: dict, cache: dict | None = None):
     return m
 
 
-def source_unitary(ops: list[dict], n: int):
+def source_unitary(ops: list[dict], n: int, anc: dict | None = None):
     """The SOURCE circuit's exact unitary: every unitary op of the QASM at its defining
-    matrix, composites included; measure/reset/barrier skipped, as on the program side."""
+    matrix, composites included; barriers skipped; measure/reset deferred onto the qubits
+    `anc` gives them (`readout_plan`), or skipped without it, as on the program side."""
     import numpy as np
 
     U = _unitary()
-    M = np.eye(1 << n, dtype=complex)
+    width = n + len(anc or {})
+    M = np.eye(1 << width, dtype=complex)
     cache: dict = {}
+
+    def apply(name, qs):
+        nonlocal M
+        M = U.apply_gate(M, U.gate_matrix(name.lower(), [])[0], list(qs), width)
+
+    seen: dict = {}
     for o in ops:
         if o["name"] in NON_UNITARY:
+            if anc is not None and o["name"] != "barrier":
+                _defer(apply, o["name"], o["qubits"][0], seen, anc)
             continue
         if o["cond"]:
             raise NotImplementedError(f"classically conditioned source gate {o['name']}")
-        M = U.apply_gate(M, source_matrix(o, cache), o["qubits"], n)
+        M = U.apply_gate(M, source_matrix(o, cache), o["qubits"], width)
     return M
 
 
-def circuit_tableau(qasm: Path, n: int, ops: list[dict] | None = None):
-    """The source circuit's tableau, via qiskit -> stim, for the Clifford fragment."""
+def circuit_tableau(qasm: Path, n: int, ops: list[dict] | None = None, anc: dict | None = None):
+    """The source circuit's tableau, via qiskit -> stim, for the Clifford fragment; with
+    `anc`, each measurement and reset deferred as on the program side."""
     import stim
 
     if ops is None:
         ops = source_ops(load_source(qasm))
     circ = stim.Circuit()
-    circ.append("I", list(range(n)))
+    circ.append("I", list(range(n + len(anc or {}))))
     simple = {"x": "X", "y": "Y", "z": "Z", "h": "H", "s": "S", "sdg": "S_DAG",
               "sx": "SQRT_X", "sxdg": "SQRT_X_DAG", "id": "I",
               "cx": "CX", "cy": "CY", "cz": "CZ", "swap": "SWAP"}
+    seen: dict = {}
     for o in ops:
         name, qs = o["name"], o["qubits"]
         if name in NON_UNITARY:
+            if anc is not None and name != "barrier":
+                _defer(circ.append, name, qs[0], seen, anc)
             continue
         if o["cond"]:
             raise NotImplementedError(f"classically conditioned source gate {name}")
@@ -407,6 +537,73 @@ def circuit_tableau(qasm: Path, n: int, ops: list[dict] | None = None):
         else:
             raise NotImplementedError(f"non-Clifford source gate {name}")
     return stim.Tableau.from_circuit(circ)
+
+
+# ------------------------------------------------------------------ measurements and resets
+
+
+def readout_plan(src: list[dict], steps: list, n: int) -> tuple[dict, list[str]]:
+    """Pair the circuit's measurements and resets with the program's, qubit by qubit.
+
+    Both semantic routes compare unitaries, and a measurement or reset is not one -- so
+    they used to be skipped, and a program that measured the wrong ion, measured before a
+    gate instead of after it, or measured or reset a qubit the circuit does not was
+    accepted.  Each is now compared in its deferred form (`_defer`): the `j`-th
+    measurement of qubit `q` is a CNOT onto a fresh qubit of its own, the `j`-th reset a
+    SWAP with one, on BOTH sides, so the two extended unitaries agree exactly when the
+    readouts happen at equivalent points.  Two readouts that commute with what lies
+    between them stay equal (a Z measurement before or after a CNOT it controls), as they
+    should.
+
+    Returns `(anc, problems)`: `anc` maps `(q, j)` to that event's fresh qubit; a
+    measurement that is the last thing to happen to its qubit on both sides is left out,
+    since deferring it is exact on each side alone.  `problems` is non-empty when the
+    sequences of measurements and resets per qubit already differ.
+    """
+    def events(seq):
+        ev: dict[int, list] = {}
+        for kind, qs in seq:
+            for q in qs:
+                if ev.get(q):
+                    ev[q][-1][1] = False         # something happens to q after its last readout
+            if kind in ("measure", "reset"):
+                ev.setdefault(qs[0], []).append([kind, True])
+        return ev
+
+    def from_source():
+        for o in src:
+            if o["name"] == "barrier":
+                continue
+            if o["name"] in ("measure", "reset"):
+                if o["cond"]:
+                    raise NotImplementedError(f"classically conditioned {o['name']}")
+                yield o["name"], tuple(o["qubits"])
+            else:
+                yield "gate", tuple(o["qubits"])
+
+    a = events(from_source())
+    b = events((g if g in ("measure", "reset") else "gate", qs) for g, qs, _ in steps)
+    problems = []
+    if None in b:
+        problems.append(f"the program measures or resets {len(b[None])} time(s) an ion that "
+                        "carries no qubit")
+    for q in sorted(k for k in set(a) | set(b) if k is not None):
+        ka, kb = [k for k, _ in a.get(q, [])], [k for k, _ in b.get(q, [])]
+        if ka != kb:
+            problems.append(f"qubit {q}: the circuit {_story(ka)}, the program {_story(kb)}")
+    anc: dict = {}
+    if not problems:
+        for q in sorted(a):
+            for j, ((kind, last_a), (_, last_b)) in enumerate(zip(a[q], b[q])):
+                if not (kind == "measure" and last_a and last_b):
+                    anc[(q, j)] = n + len(anc)
+    return anc, problems
+
+
+def _story(kinds: list[str]) -> str:
+    if not kinds:
+        return "never measures or resets it"
+    return "then ".join(f"{'measures' if k == 'measure' else 'resets'} it " for k in kinds).strip()
 
 
 # ------------------------------------------------------------------ the binding
@@ -583,7 +780,7 @@ def main(argv: list[str] | None = None) -> int:
     binding = check_binding(cert, qc, src)
     verdict["binding"] = "ok" if not binding else binding[:6]
 
-    o1 = check_o1(cert, arch)
+    o1 = check_o1(cert, arch) + check_witnesses(cert, prog)
     o1_all = [f"certificate vs QASM: {b}" for b in binding] + o1
     verdict["o1_transport"] = "ok" if not o1_all else o1_all[:6]
 
@@ -615,14 +812,32 @@ def main(argv: list[str] | None = None) -> int:
 
     n = cert["n_qubits"]
     same: bool | None = None
+    anc: dict | None = None
+    readout: list[str] | None = None
     if qc.num_qubits != n or any(b.startswith("map ") for b in binding):
         # the pulses cannot be read over the circuit's qubits; R10 fails on the binding
         verdict["o2_semantics"] = "not checked: the certificate's qubits are not the QASM's"
         verdict["method"] = "none"
     else:
         try:
-            got = tableau_from_program(prog, cert, n)
-            want = circuit_tableau(Path(args.qasm), n, src)
+            qubit_of = {ion: int(q) for q, ion in cert["map"].items()}
+            anc, readout = readout_plan(src, list(program_steps(prog, qubit_of)), n)
+        except NotImplementedError as exc:
+            anc, readout = None, None
+            verdict["o2_semantics"] = f"not checked: {exc}"
+            verdict["method"] = "none: the program cannot be read exactly"
+        if readout:
+            same = False
+            verdict["readout"] = readout[:6]
+            verdict["o2_semantics"] = f"READOUT MISMATCH: {readout[0]}"
+            verdict["method"] = "measurements and resets, qubit by qubit, against the source QASM"
+        elif anc is not None:
+            verdict["readout"] = (f"ok: {len(anc)} measurement(s)/reset(s) compared in place, "
+                                  "final measurements at the end")
+    if anc is not None and not readout:
+        try:
+            got = tableau_from_program(prog, cert, n, anc)
+            want = circuit_tableau(Path(args.qasm), n, src, anc)
             same = got == want
             verdict["o2_semantics"] = "ok" if same else "TABLEAU MISMATCH"
             verdict["method"] = ("stabilizer tableau, composed from the emitted pulses, "
@@ -638,23 +853,28 @@ def main(argv: list[str] | None = None) -> int:
             same = None
             verdict["o2_semantics"] = f"not checked: {exc}"
             verdict["method"] = "outside the Clifford fragment (decision D1)"
-            if n <= args.max_unitary_qubits:
+            width = n + len(anc)                 # the qubits, and one per deferred readout
+            if width > args.max_unitary_qubits:
+                verdict["o2_semantics"] = (
+                    f"not checked: {exc}; {n} qubits and {len(anc)} mid-circuit "
+                    f"measurement(s)/reset(s) exceed --max-unitary-qubits {args.max_unitary_qubits}")
+            else:
                 try:
                     U = _unitary()
-                    a = program_unitary(prog, cert, n)
-                    b = source_unitary(src, n)
+                    a = program_unitary(prog, cert, n, anc)
+                    b = source_unitary(src, n, anc)
                     ok_u, alpha, worst = U.same_up_to_phase(a, b)
                     same = ok_u
                     verdict["o2_semantics"] = (
                         f"ok (max entry error {worst:.2e})" if ok_u
                         else f"UNITARY MISMATCH (max entry error {worst:.2e})")
                     verdict["method"] = (
-                        f"exact {1 << n}x{1 << n} unitary, built from the emitted pulses, "
+                        f"exact {1 << width}x{1 << width} unitary, built from the emitted pulses, "
                         f"against the source QASM; global phase {alpha:+.4f}")
                 except NotImplementedError as exc2:
                     verdict["o2_semantics"] = f"not checked: {exc2}"
                 except MemoryError:
-                    verdict["o2_semantics"] = f"not checked: {n} qubits is too large"
+                    verdict["o2_semantics"] = f"not checked: {width} qubits is too large"
 
     structural_ok = (not o1) and not unrealised
     if unbound:
@@ -673,7 +893,8 @@ def main(argv: list[str] | None = None) -> int:
             "circuit's")
     elif not structural_ok:
         verdict["R10"] = "FAILED"
-        verdict["R10_reason"] = "transport, co-location or coverage did not check out"
+        verdict["R10_reason"] = ("transport, co-location, coverage or the witnesses' "
+                                 "instructions did not check out")
     elif same is False:
         verdict["R10"] = "FAILED"
         verdict["R10_reason"] = "the compiled program does not implement the circuit"
@@ -707,6 +928,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  certificate vs QASM        : {verdict['binding']}")
         print(f"  O1 transport + co-location : {verdict['o1_transport']}")
         print(f"  O2 semantics               : {verdict['o2_semantics']}")
+        if "readout" in verdict:
+            print(f"  measurements and resets    : {verdict['readout']}")
         if "lean" in verdict:
             print(f"  proved Lean checker        : {verdict['lean']}")
         print(f"     ({verdict['method']})")

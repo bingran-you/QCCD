@@ -223,6 +223,156 @@ def test_a_certificate_whose_circuit_ops_is_not_the_qasm_is_refused(cc, toffoli,
     assert "does not describe the source circuit" in v["R10_reason"], v
 
 
+# ------------------------------------------------------------------ measurements and resets
+#
+# Both semantic routes compare unitaries, so measurements and resets used to be skipped on
+# both sides, and the Lean checker asks no witness of them.  Each fault below passed R10
+# end to end -- Lean checker accepting, tableau equal, binding ok -- on the earlier checker.
+
+MIDCIRCUIT = ("h q[0];\ncx q[0],q[1];\nmeasure q[0] -> c[0];\nreset q[0];\nh q[0];\ncx q[0],q[1];\n"
+              "measure q[0] -> c[0];\nmeasure q[1] -> c[1];")
+
+
+@pytest.fixture(scope="module")
+def midcircuit(tmp_path_factory):
+    from qccd.api import Machine
+    return _compile(tmp_path_factory.mktemp("mid"), MIDCIRCUIT, 2, Machine.chain(n=4, name="chain4"))
+
+
+def _at(t, typ, ion):
+    return next(k for k, i in enumerate(t["instructions"]) if i["type"] == typ and ion in (i.get("ions") or []))
+
+
+def _new_id(t):
+    t["id_seq"] = t["id_seq"] + 1
+    return t["id_seq"] - 1
+
+
+def _gates_on(t, ion):
+    return [k for k, i in enumerate(t["instructions"]) if i["type"] == "gate" and ion in (i.get("ions") or [])]
+
+
+def _extra(kind, on):
+    def edit(t, c, ex):
+        k = _at(t, "measure", c["map"]["0"])          # the mid-circuit measurement of q0
+        t["instructions"].insert(k + (kind == "reset"), {"type": kind, "id": _new_id(t), "ions": [c["map"][on]]})
+    return edit
+
+
+def _measure_before_h(t, c, ex):
+    ins, q0 = t["instructions"], c["map"]["0"]
+    m = ins.pop(_at(t, "measure", q0))
+    ins.insert(_gates_on(t, q0)[0], m)
+
+
+def _reset_after_h(t, c, ex):
+    ins, q0 = t["instructions"], c["map"]["0"]
+    k = _at(t, "reset", q0)
+    r = ins.pop(k)
+    ins.insert([g for g in _gates_on(t, q0) if g >= k][1] + 1, r)
+
+
+def _wrong_ion(kind):
+    def edit(t, c, ex):
+        t["instructions"][_at(t, kind, c["map"]["0"])]["ions"] = [c["map"]["1"]]
+    return edit
+
+
+def _extra_ms_as_two_ions(t, c, ex):
+    ms = next(i for i in t["instructions"] if i["type"] == "gate" and i.get("gate") == "MS")
+    extra = {k: v for k, v in ms.items() if k not in ("pairs", "arity")}
+    extra.update(id=_new_id(t), ions=list(ms["pairs"][0]), params=[ms["params"][0]])
+    t["instructions"].insert(_at(t, "measure", c["map"]["0"]), extra)
+
+
+def _witness(kind, instr_type):
+    """A witness for the mid-circuit measurement (or reset) naming an instruction of
+    another kind, at a cycle that respects program order, so the Lean checker accepts it."""
+    def edit(t, c, ex):
+        op = next(o for o in c["circuit_ops"] if o["name"] == kind)
+        before = max((g for g in c["gates"] if g["dag"] < op["i"]), key=lambda g: g["t"])
+        ins = next(i for i in t["instructions"] if i["type"] == instr_type)
+        c["gates"].append({"dag": op["i"], "instr": ins["id"], "t": before["t"] + 2 + (kind == "reset"),
+                           "site": before["site"], "ions": [c["map"][str(op["qubits"][0])]], "pulses": []})
+    return edit
+
+
+def _other_ions(t, c, ex):
+    """A one-qubit gate's witness naming the OTHER ion, at the trap that ion stands in then:
+    co-located, gate-capable, and so accepted by the Lean checker."""
+    from qccd.arch import Architecture
+    arch = Architecture.from_json(json.loads(ex["arch"].read_text(encoding="utf-8")))
+    snaps, _ = ex["cc"].replay_positions(c, arch)
+    g = next(g for g in c["gates"] if len(g["ions"]) == 1)
+    other = c["map"]["1"] if g["ions"][0] == c["map"]["0"] else c["map"]["0"]
+    g["ions"], g["site"] = [other], snaps[g["t"]][other]
+
+
+
+READOUT_FAULTS = {
+    "(a) a measurement witnessed by a gate pulse": (None, _witness("measure", "gate")),
+    "(a) a reset witnessed by a measurement": (None, _witness("reset", "measure")),
+    "(a) a witness naming other ions than its op's": (None, _other_ions),
+    "(b) an extra measurement, mid-circuit": (_extra("measure", "1"), None),
+    "(b) an extra reset, mid-circuit": (_extra("reset", "1"), None),
+    "(c) the measurement moved before the H on its qubit": (_measure_before_h, None),
+    "(c) the reset moved after the H on its qubit": (_reset_after_h, None),
+    "(d) the measurement on the wrong ion": (_wrong_ion("measure"), None),
+    "(d) the reset on the wrong ion": (_wrong_ion("reset"), None),
+    "an extra MS written as two ions, not as a pair": (_extra_ms_as_two_ions, None),
+}
+
+
+def _planted(ex, tmp_path, tsir_edit=None, cert_edit=None):
+    t = json.loads((Path(str(ex["prefix"]) + ".tsir.json")).read_text(encoding="utf-8"))
+    c = copy.deepcopy(ex["cert"])
+    for edit in (tsir_edit, cert_edit):
+        if edit:
+            edit(t, c, ex)
+    (tmp_path / "p.tsir.json").write_text(json.dumps(t), encoding="utf-8")
+    (tmp_path / "p.qcert.json").write_text(json.dumps(c), encoding="utf-8")
+    qcheck = tmp_path / "p.qcheck.json"
+    subprocess.run([sys.executable, str(BRIDGE / "mk_qcheck_input.py"), str(tmp_path / "p"), "--arch",
+                    str(ex["dir"] / "device.expanded.json"), "-o", str(qcheck)], check=True, capture_output=True)
+    return tmp_path / "p", qcheck
+
+
+def test_the_honest_midcircuit_program_passes(cc, midcircuit):
+    rc, v = r10(cc, midcircuit["prefix"], midcircuit["qasm"], midcircuit["arch"],
+                midcircuit["qcheck"] if _qcheck_built(cc) else None)
+    assert rc == 0 and v["R10"] in ("passed", "partial") and v["o2_semantics"] == "ok", v
+    assert v.get("readout", "ok").startswith("ok"), v
+
+
+def test_a_measurement_moved_past_a_gate_it_commutes_with_still_passes(cc, midcircuit, tmp_path):
+    """Measuring a CNOT's control before the CNOT instead of after it is the same
+    experiment: the check compares readouts by what they mean, not by where they stand."""
+    def edit(t, c, ex):
+        ins, q0 = t["instructions"], c["map"]["0"]
+        m = ins.pop(_at(t, "measure", q0))
+        cx_start = max(k for k in _gates_on(t, q0)
+                       if k < next(j for j, i in enumerate(ins) if i.get("gate") == "MS")
+                       and ins[k].get("gate") == "VZ") + 1
+        ins.insert(cx_start, m)
+    prefix, _ = _planted(midcircuit, tmp_path, edit)
+    rc, v = r10(cc, prefix, midcircuit["qasm"], midcircuit["arch"])
+    assert rc == 0 and v["o2_semantics"] == "ok", v
+
+
+@pytest.mark.parametrize("fault", list(READOUT_FAULTS))
+def test_a_misplaced_measurement_or_reset_fails_r10(cc, midcircuit, fault, tmp_path):
+    tsir_edit, cert_edit = READOUT_FAULTS[fault]
+    prefix, qcheck = _planted(dict(midcircuit, cc=cc), tmp_path, tsir_edit, cert_edit)
+    rc, v = r10(cc, prefix, midcircuit["qasm"], midcircuit["arch"], qcheck if _qcheck_built(cc) else None)
+    assert rc == 1 and v["R10"] == "FAILED", v
+    if _qcheck_built(cc):
+        assert v["lean"] == "accepted", v          # the proved checker does not see these
+    if cert_edit:
+        assert v["o1_transport"] != "ok", v        # the witness is not the program's
+    else:
+        assert "MISMATCH" in v["o2_semantics"], v
+
+
 # ------------------------------------------------------------------ the qcheck input is this certificate's
 
 
