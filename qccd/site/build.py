@@ -704,7 +704,7 @@ def landing(ts: list[dict]) -> str:
     if row:
         n_ins = row.get("instructions")
         cap = (f'{ex["what"]}: {n_ins} instructions, {_t(row):.1f} ms on the jones table, '
-               f'every rule passed{", R10 by the proved Lean checker" if _r10(row) else ""}. '
+               f'every rule passed{", R10 passed by the proved Lean checker and the tableau" if _r10(row) else ""}. '
                f'Step through it &rarr;')
         page = f'board/{task["id"]}/{row["page"]}'
         url = page + "#embed&play&step=2"
@@ -816,7 +816,7 @@ def board_index(ts: list[dict]) -> str:
         stats = (
             f'<div class="stat good"><span>fastest verified</span><b>{fmt(_t(best)) if best else "&ndash;"}</b>'
             f'<small>{html.escape(short_name(best)) if best else "none yet"}</small></div>'
-            f'<div class="stat lean"><span>R10 by Lean</span><b>{n_lean}</b><small>of {len(ok)} that run it</small></div>'
+            f'<div class="stat lean"><span>R10 passed</span><b>{n_lean}</b><small>of {len(ok)} that run it</small></div>'
             f'<div class="stat"><span>designs</span><b>{len(rows)}</b><small>{len(ok)} run the round</small></div>'
             f'<div class="stat{" warn" if (refused or n_bad) else ""}"><span>refused &middot; disqualified</span>'
             f'<b>{len(refused)} &middot; {n_bad}</b><small>{"by the compiler &middot; by the rules, not listed" if (refused or n_bad) else "none"}</small></div>')
@@ -841,7 +841,8 @@ def board_index(ts: list[dict]) -> str:
             '<section class="lb-sec" id="architecture"><h2>Architecture</h2>'
             "<p class=\"sub\">Devices, each compiled by the reference compiler. One board per task. A task is a "
             "fixed circuit, physics package and cost table; every design on a board ran that circuit, was "
-            "replayed against the 27 rules and, where it passed, checked by the proved Lean checker (R10). "
+            "replayed against the 27 rules and, where it passed, checked for R10 by the proved Lean checker on its "
+            "certificate and the tableau of its pulses. "
             "A design that fails any rule is disqualified and not listed. Each row shows the three fastest verified designs of its task; open a task for the full ranking of "
             "every listed design, where you can rank by anything and click a dot to step the programme in the studio. "
             "A round is only half of a QEC cycle, so every board also carries "
@@ -1339,8 +1340,9 @@ def compilation_page(built: list[dict]) -> str:
                 "</dl>"
                 "<p>Every single-qubit gate is a turn of the qubit, and three angles are enough to describe any turn "
                 "&mdash; how far, and about which axis. So each one becomes a turn about z followed by a laser pulse. "
-                "The rewrite is not done by hand: it is a proved identity, so the gate you wrote and the pulses that "
-                "fire are the same operation.</p>"
+                "The rewrite is not done by hand: it rests on a proved identity, so the pulses written for a gate "
+                "are that gate. That the pulses which fire are the ones for the gate you wrote is checked "
+                "separately, by composing them back (R10, below).</p>"
                 "<div class=\"tw\"><table><thead><tr><th>what you write</th><th>which gates</th>"
                 "<th>what the machine actually does</th></tr></thead><tbody>"
                 + "".join(f'<tr><td>{a}</td><td><details class="gset"><summary>{len(b.split())} gates</summary>'
@@ -1364,7 +1366,7 @@ def compilation_page(built: list[dict]) -> str:
         ("Emit", "prog.tsir.json + prog.qcert.json", "the hardware programme in the language, every instruction stamped with the circuit op it serves (<code>meta.op</code>), and the certificate: the mapping, the moves, one witness per gate with its site, ions and pulses."),
         ("Cool", "prog.cooled.tsir.json", "the cooling pass replays the programme under the heating model and inserts cooling where a gate would otherwise fire hot (R7)."),
         ("Verify the rules", "rules.json", "the same verifier the studio runs replays the cooled programme and reports the 26 structural rules; R10 is what remains."),
-        ("Verify R10", "verdict.json", "<b>O1</b>: the certificate's moves are replayed from <code>init</code>; every gate must find its operands together in a trap that can gate, every hop must be one the device admits, every op witnessed exactly once and in order. The Lean checker <code>QCCDC.Cert.check</code> decides this, and <code>check_sound</code> proves that an accepted input implements the circuit. The device facts it judges against are re-derived from the architecture by code the compiler never runs. <b>O2</b>: the pulses are read out of the emitted programme, composed through the mapping into a stabilizer tableau and compared with the circuit's; outside the Clifford fragment an exact unitary is compared instead. A swapped operand, a dropped gate, a wrong angle or a mis-tracked frame all move the tableau."),
+        ("Verify R10", "verdict.json", "<b>O1</b>: the certificate's moves are replayed from <code>init</code>; every gate witness must find its ions together in a trap that can gate, every hop must be one the device admits, every op other than a measurement, reset or barrier witnessed exactly once and in order. The Lean checker <code>QCCDC.Cert.check</code> decides this, and <code>check_sound</code> proves that an accepted input satisfies exactly these conditions. A witness names an op, a cycle, a trap and ions, never a gate or its pulses, so O1 does not see which gate fires. The device facts it judges against are re-derived from the architecture by code the compiler never runs. <b>O2</b>: the pulses are read out of the emitted programme, composed through the mapping into a stabilizer tableau and compared with the circuit's; outside the Clifford fragment an exact unitary is compared instead, against the lowered circuit the certificate carries. A swapped operand, a dropped gate, a wrong angle, a mis-tracked frame or one gate compiled as another all move the tableau. O2 is computed, not proved, and it is the half that says which gates the programme applies."),
         ("Draw", "the page", "the studio joins the programme and the circuit through the stamps, but only after checking every witness against the stamp on the instruction it names; a disagreement refuses to draw."),
     ]
     body.append("<h2 id=\"pipeline\">How a circuit becomes a machine programme</h2>"
@@ -1391,7 +1393,7 @@ def compilation_page(built: list[dict]) -> str:
                     f'<div><pre><code>{html.escape(_listing(bell["tsir"], c))}</code></pre></div></div>')
         body.append("<h2 id=\"pulses\">The pulse sequence, matched to the gate</h2>"
                     "<p class=\"sub\">Each gate witness names the instruction that completes the op, the site, the ions and the "
-                    "pulses in time order. Two checks meet here: the lowering is a theorem (these pulses equal this gate, up "
+                    "pulses in time order. Two checks meet here: the identity behind the lowering is a theorem (these pulses equal this gate, up "
                     "to global phase), and O2 composes the pulses actually emitted back into the circuit's semantics, so a "
                     "pulse the compiler emitted but did not witness, or witnessed but did not emit, is caught.</p><div class=\"pulses\">"
                     + "".join(f'<code>op {w["dag"]} ({c["circuit_ops"][w["dag"]]["name"]}) at {w["site"]}, instruction #{w["instr"]}: {html.escape(", ".join(w["pulses"]))}</code>' for w in c["gates"])
