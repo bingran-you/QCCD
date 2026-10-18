@@ -1191,8 +1191,12 @@ input[type=range]{flex:1 1 60px;min-width:60px;max-width:260px;accent-color:var(
 .track{flex:0 0 auto;height:10px;background:var(--soft);border-top:1px solid var(--line);
 display:flex;overflow:hidden;margin:0}
 .track i{display:block;height:100%}
-/* THE TRANSPORT APPARATUS FOLDS AWAY WHILE THERE IS NOTHING TO TRANSPORT. */
-body[data-noprog="1"] .ctrl,
+/* THE TRANSPORT APPARATUS FOLDS AWAY WHILE THERE IS NOTHING TO TRANSPORT -- but not the
+   view: Fit, + and - stay, since a design with no programme is the page you build on, and
+   folding the whole group took the only zoom buttons with it (asked 2026-10-17). */
+body[data-noprog="1"] #play,body[data-noprog="1"] #step,body[data-noprog="1"] #glide,
+body[data-noprog="1"] #phase,body[data-noprog="1"] #reset,body[data-noprog="1"] #slider,
+body[data-noprog="1"] #speed,body[data-noprog="1"] #mode,
 body[data-noprog="1"] #track,
 body[data-noprog="1"] #tl,
 body[data-noprog="1"] .metrics,
@@ -1360,7 +1364,7 @@ border-radius:12px;padding:22px}
    The card is `position:fixed` at the pointer and takes no pointer events, so it can
    never sit between the pointer and the thing it explains.  The captions live inside
    their regions and appear only while <body data-explain="1">. */
-.hint{position:fixed;z-index:8;max-width:320px;background:var(--panel);color:var(--ink);
+.hint{position:fixed;z-index:96;max-width:320px;background:var(--panel);color:var(--ink);
   border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;
   padding:7px 10px;font-size:12px;line-height:1.4;box-shadow:0 4px 14px rgba(0,0,0,.14);
   pointer-events:none}
@@ -1631,6 +1635,8 @@ textarea.src.out{min-height:120px;opacity:.85}
         <button id="phase" title="next phase" data-hint="phase">Phase</button>
         <button id="reset" data-hint="reset">Reset</button>
         <button id="fit" data-hint="fit">Fit</button>
+        <button id="zIn" data-hint="zoom:in" title="zoom in" aria-label="zoom in">+</button>
+        <button id="zOut" data-hint="zoom:out" title="zoom out" aria-label="zoom out">−</button>
         <input type="range" id="slider" min="0" value="0" data-hint="slider">
         <select id="speed" data-hint="speed"><option value="1">1x</option>
         <option value="4" selected>4x</option>
@@ -3286,7 +3292,11 @@ function zoomAt(clientX, clientY, deltaY){
         y: VB.y + (clientY - fit.r.top  - fit.oy) / fit.s };
   // the outer bound admits where `fit()` put the box: on a small device that is wider
   // than 2.5 x the device, and the first wheel notch must not snap the view in
-  const k=clamp(0.12*L.W, VB.w*Math.pow(1.0018, deltaY), Math.max(2.5*L.W, VB.w));
+  // the outer bound: twelve times the device, never under sixty grid steps -- it was
+  // 2.5 x the device, eleven steps on a small one, and the wheel then did nothing
+  // ("sometimes I get stuck when I try to zoom out", 2026-10-17)
+  const far=Math.max(12*Math.max(L.W, L.H*VB.w/Math.max(1e-9, VB.h)), 60*(L.g||72), VB.w);
+  const k=clamp(0.12*L.W, VB.w*Math.pow(1.0018, deltaY), far);
   // The box keeps ITS OWN shape when a fit framed more than the device (the classical
   // floor below it), or its first wheel notch would crop that back out.  Otherwise the
   // arithmetic is exactly what it always was: `m` stays under the cursor to the bit, which
@@ -3470,6 +3480,10 @@ function ruleBadges(){
 }
 function renderSide(){
 const evd = D.evidence || {replayed_cycles: P.frames.length};
+// THE DEVICE ON THE CANVAS, not the one the page was built with: `A.hardware` is fixed at
+// build time, so on the studio's blank canvas this table read 0 DACs for a device the
+// Report priced at 33 (found walking lesson A5, 2026-10-17).  The editor reprices it live.
+const hw = (window.EDITOR && EDITOR.hardware && EDITOR.hardware()) || A.hardware;
 document.getElementById('side').innerHTML =
   `<h3>Rules</h3>`+
   (evd.replayed_cycles === 0 && !P.frames.length
@@ -3613,6 +3627,12 @@ document.getElementById('phase').onclick=()=>{stop(); unfocus(document.getElemen
 document.getElementById('reset').onclick=()=>{stop();frame=0;phase=1;fit();draw();
   unfocus(document.getElementById('reset'));};
 document.getElementById('fit').onclick=()=>{fit(); unfocus(document.getElementById('fit'));};
+// + and -: the wheel's own zoom, three notches at a time, about the middle of the canvas
+for(const [id, dy] of [['zIn', -200], ['zOut', 200]]){
+  const b=document.getElementById(id);
+  if(b) b.onclick=()=>{ const r=svg.getBoundingClientRect();
+    zoomAt(r.left+r.width/2, r.top+r.height/2, dy); unfocus(b); };
+}
 slider.oninput=e=>{stop();frame=parseInt(e.target.value,10);phase=1;draw();};
 MODE.onchange=draw;
 
