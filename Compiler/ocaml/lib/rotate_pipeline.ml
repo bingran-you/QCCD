@@ -36,14 +36,19 @@ type plan = {
 
 (* Two-colour the interaction graph.  Returns (dock side, loop side) with the dock side
    the smaller, or raises if the circuit cannot be split -- which is the honest answer for
-   a circuit whose qubits all have to meet each other. *)
+   a circuit whose qubits all have to meet each other.
+
+   A barrier is not an interaction, whatever its width: two qubits a `barrier a,b` names
+   never have to meet.  The NAME is tested before the arity, here and in every match of
+   this pass, because a two-qubit barrier has the shape of a gate (2026-10-17). *)
 let bipartition (c : Circuit.t) : int list * int list =
   let colour = Array.make c.n_qubits (-1) in
   let adj = Array.make c.n_qubits [] in
   List.iter
     (fun (o : Circuit.op) ->
-      match o.qubits with
-      | [ a; b ] ->
+      match (o.name, o.qubits) with
+      | "barrier", _ -> ()
+      | _, [ a; b ] ->
         adj.(a) <- b :: adj.(a);
         adj.(b) <- a :: adj.(b)
       | _ -> ())
@@ -337,6 +342,9 @@ let run ?(sweep = Monotone) ?placement ?(dock_all = false) (a : Arch.t) (c : Cir
     end
   in
 
+  (* the circuit's ops by index: a contact runs the gate its op names *)
+  let op_at = Array.of_list c.ops in
+
   (* One contact batch: dock, run the CX pulse sequence, undock -- with no rotation in
      between, because a docked ion is off the loop and would not come back to the slot it
      left.
@@ -417,12 +425,21 @@ let run ?(sweep = Monotone) ?placement ?(dock_all = false) (a : Arch.t) (c : Cir
       emit_docking true;
 
       (* the CX sequence, round by round: every pair is at a different dock, so the k-th
-         pulse of each can share one cycle without breaking R12 *)
+         pulse of each can share one cycle without breaking R12.
+
+         The pulses are the op's OWN decomposition, operand 0 first.  A fixed "cx" here
+         compiled every two-qubit op as a CX -- a `cz` too, and a two-qubit barrier --
+         and the programme passed every hardware rule while computing something else. *)
       let seqs =
         List.map
           (fun (rider, (d : Conveyor.dock), partner, dag, ctrl_is_rider) ->
             let ctrl, tgt = if ctrl_is_rider then (rider, partner) else (partner, rider) in
-            let dc = Gateset_composites.decompose_op ~gates:c.gates "cx" [] [ 0; 1 ] in
+            let (o : Circuit.op) = op_at.(dag) in
+            let dc =
+              try Gateset_composites.decompose_op ~gates:c.gates o.name o.params [ 0; 1 ]
+              with Gateset.Unsupported m ->
+                raise (Not_applicable (Printf.sprintf "op %d (%s): %s" dag o.name m))
+            in
             let name k = if k = 0 then ctrl else tgt in
             ( d,
               dag,
@@ -648,14 +665,18 @@ let run ?(sweep = Monotone) ?placement ?(dock_all = false) (a : Arch.t) (c : Cir
             && (not (blocked i))
             &&
             let (o : Circuit.op) = ops.(i) in
-            match o.qubits with
-            | [ _ ] -> true
-            | [ _; _ ] -> false
+            (* a barrier of ANY width is a fence and costs no rotation: once ready (every
+               earlier op on its wires done) it is finished here, and whatever waits on it
+               becomes ready.  Testing the arity first sent `barrier a,b` to the contact
+               scheduler, which compiled it as a CX: 1728 contacts for a BB round's 864
+               CNOTs, and a programme that did not implement the circuit. *)
+            match (o.name, o.qubits) with
+            | "barrier", _ -> true
+            | _, [ _ ] -> true
+            | _, [ _; _ ] -> false
             | _ ->
-              if o.name = "barrier" then true
-              else
-                raise
-                  (Not_applicable (Printf.sprintf "%s has an unsupported arity" o.name)))
+              raise
+                (Not_applicable (Printf.sprintf "%s has an unsupported arity" o.name)))
           (List.init n_ops (fun i -> i))
       in
       if ready1 = [] then again := false
@@ -690,9 +711,12 @@ let run ?(sweep = Monotone) ?placement ?(dock_all = false) (a : Arch.t) (c : Cir
     !progressed
   in
 
+  (* A contact is a two-qubit GATE.  A two-qubit barrier has the same shape and is not
+     one: `drain` finishes it as a fence, and it must never be scheduled here. *)
   let contact_of (o : Circuit.op) =
-    match o.qubits with
-    | [ p; q ] ->
+    match (o.name, o.qubits) with
+    | "barrier", _ -> None
+    | _, [ p; q ] ->
       let ip = ion p and iq = ion q in
       let rider, partner = if Hashtbl.mem x.dock_of ip then (iq, ip) else (ip, iq) in
       let ctrl_is_rider = ion (List.nth o.qubits 0) = rider in

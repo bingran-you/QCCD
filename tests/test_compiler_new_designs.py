@@ -85,15 +85,16 @@ CASES = {
 }
 
 
-def _compile(doc, circuit, tmp_path, mode=None):
-    """Compile `circuit` on `doc` exactly as the workspace does; the cooled program (as JSON),
-    the architecture, and what the replay found."""
+def _compile(doc, circuit, tmp_path, mode=None, qasm=None):
+    """Compile `circuit` (or the file `qasm`) on `doc` exactly as the workspace does; the cooled
+    program (as JSON), the architecture, and what the replay found."""
     (tmp_path / "device.arch.json").write_text(json.dumps(doc), encoding="utf-8")
     subprocess.run([sys.executable, str(BRIDGE / "export_arch.py"), str(tmp_path / "device.arch.json"), "-o",
                     str(tmp_path / "device.expanded.json")], check=True, capture_output=True)
     arch = Architecture.from_json(doc)
     mode = mode or ("rotate" if closed_loops(arch) else "compile")
-    cp = subprocess.run([str(QCCDC), mode, str(REPO / "Compiler" / "examples" / f"{circuit}.qasm"), "--arch",
+    qasm = qasm or REPO / "Compiler" / "examples" / f"{circuit}.qasm"
+    cp = subprocess.run([str(QCCDC), mode, str(qasm), "--arch",
                          str(tmp_path / "device.expanded.json"), "-o", str(tmp_path / "prog")],
                         capture_output=True, text=True, timeout=600)
     assert cp.returncode == 0, cp.stdout[-800:] + cp.stderr[-800:]
@@ -291,3 +292,161 @@ def test_h2_minimal_examples_compile_pass_every_rule_and_are_certified(case, tmp
         assert steps and all(len(i["participants"]) <= 4 for i in steps)
         assert len(ms) == 1 and ms[0]["sites"][0].startswith("DG")
         assert {"R1", "R3", "R4", "R11"} <= set(summary["passed"])
+
+
+# ------------------------------------------------------------------ a barrier is a fence
+#
+# Reported 2026-10-17 on BB[[144,12,12]] with a `barrier a,b` after each of its 864 CNOTs:
+# compiler c7c535380bfb's conveyor (`qccdc rotate`) read a two-qubit barrier by its SHAPE and
+# compiled it as a CX -- 1728 contacts for 864 CNOTs, a certificate its own self-check passed,
+# and a programme whose tableau is not the circuit's (R10).  The same reading made a barrier
+# between two riders a reason to refuse (the interaction graph "was not bipartite"), compiled a
+# CZ contact as a CX (the contact never asked which gate it was), and made the general router's
+# placer pull two ions together because a barrier named them.  A barrier of any width -- one
+# qubit, two, many -- orders the ops on its wires and does nothing else, in every pass.
+#
+# Every case below fails on c7c535380bfb (`QCCD_QCCDC=<exe>` reruns them on another compiler)
+# except the general router's and the race track's compiles, which always read the name before
+# the arity and are pinned here so that they keep doing so.
+
+QASM_HEAD = 'OPENQASM 2.0;\ninclude "qelib1.inc";\n'
+
+# an ESM-shaped round: ancillas q4 and q5 dock, q0..q3 ride; fences of width 1, 2 and 3
+FENCED = QASM_HEAD + """qreg q[6];
+creg c[2];
+reset q[4];
+reset q[5];
+h q[4];
+cx q[4],q[0];
+barrier q[4],q[0];
+cx q[4],q[1];
+barrier q[4],q[1];
+cx q[4],q[2];
+barrier q[4];
+h q[4];
+cx q[0],q[5];
+barrier q[0],q[5];
+cx q[1],q[5];
+barrier q[1],q[5];
+cx q[3],q[5];
+barrier q[3],q[5],q[4];
+measure q[4] -> c[0];
+measure q[5] -> c[1];
+"""
+# the same round fenced between two riders as well: they never meet, so nothing is refused
+FENCED_RIDERS = FENCED.replace("barrier q[4];\n", "barrier q[4];\nbarrier q[0],q[1];\n")
+# two CZ contacts and a CX, which are different gates (no barrier: this one is the contact's)
+CZ = QASM_HEAD + """qreg q[4];
+creg c[1];
+h q[3];
+cz q[3],q[0];
+cx q[1],q[3];
+cz q[2],q[3];
+measure q[3] -> c[0];
+"""
+
+FENCE_CASES = {
+    "ring with docks, rotate: barriers between a docked and a riding qubit": ("ring", FENCED, "rotate"),
+    "ring with docks, rotate: a barrier between two riders": ("ring", FENCED_RIDERS, "rotate"),
+    "chain, general router": ("chain", FENCED_RIDERS, "compile"),
+    "grid, general router": ("grid", FENCED, "compile"),
+}
+FENCE_DEVICES = {
+    "ring": lambda: Machine.ring(12, 2, 6, name="docks").arch.to_json(),
+    "chain": lambda: Machine.chain(8, name="line").arch.to_json(),
+    "grid": lambda: Machine.grid(3, 3, name="g").arch.to_json(),
+}
+
+
+def _two_qubit_gates(qasm):
+    return sum(1 for ln in qasm.splitlines() if ln.split(" ")[0] in ("cx", "cz"))
+
+
+def _r10(prefix, qasm, arch, expanded):
+    """R10 on a compiled programme: the stabilizer tableau composed from the emitted pulses
+    against the circuit's (`check_cert.py`), and the proved Lean checker when it is built."""
+    pytest.importorskip("stim")
+    pytest.importorskip("qiskit")
+    sys.path.insert(0, str(BRIDGE))
+    from check_cert import find_qcheck
+
+    cmd = [sys.executable, str(BRIDGE / "check_cert.py"), str(prefix), "--qasm", str(qasm), "--arch", str(arch),
+           "--json"]
+    if find_qcheck(REPO / "Compiler" / "lean") is not None:
+        subprocess.run([sys.executable, str(BRIDGE / "mk_qcheck_input.py"), str(prefix), "--arch", str(expanded),
+                        "-o", str(prefix) + ".qin.json"], check=True, capture_output=True)
+        cmd += ["--qcheck", str(prefix) + ".qin.json"]
+    cp = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+    return json.loads(cp.stdout)
+
+
+def _fenced_right(raw, cert, qasm, verdict):
+    """The programme has exactly the circuit's two-qubit gates, a witness for every gate and
+    none for a barrier, and R10 accepts it."""
+    ms = sum(len(i.get("pairs") or []) for i in raw["instructions"] if i["type"] == "gate" and i.get("gate") == "MS")
+    assert ms == _two_qubit_gates(qasm), f"{ms} entangling pulses for {_two_qubit_gates(qasm)} two-qubit gates"
+    name = {o["i"]: o["name"] for o in cert["circuit_ops"]}
+    seen = Counter(g["dag"] for g in cert["gates"])
+    assert not [d for d in seen if name[d] == "barrier"], "a barrier has a gate witness"
+    gates = [i for i, n in name.items() if n not in ("barrier", "measure", "reset")]
+    assert all(seen[i] == 1 for i in gates) and len(seen) == len(gates)
+    assert verdict["o2_semantics"] == "ok", verdict
+    assert verdict["R10"] in ("partial", "passed"), verdict
+    assert verdict.get("lean", "accepted") == "accepted", verdict
+
+
+def _compiled_right(device, qasm, mode, tmp_path):
+    (tmp_path / "c.qasm").write_text(qasm, encoding="utf-8")
+    raw, _, bad = _compile(FENCE_DEVICES[device](), None, tmp_path, mode=mode, qasm=tmp_path / "c.qasm")
+    assert not bad, f"{dict(Counter(v.rule for v in bad))}; first: {bad[0]}"
+    cert = json.loads((tmp_path / "prog.qcert.json").read_text(encoding="utf-8"))
+    if mode == "rotate":
+        assert dict(cert["claims"])["contacts"] == _two_qubit_gates(qasm)
+    verdict = _r10(tmp_path / "prog", tmp_path / "c.qasm", tmp_path / "device.arch.json",
+                   tmp_path / "device.expanded.json")
+    _fenced_right(raw, cert, qasm, verdict)
+
+
+@pytest.mark.parametrize("case", list(FENCE_CASES))
+def test_a_barrier_of_any_width_is_a_fence_never_a_gate(case, tmp_path):
+    _compiled_right(*FENCE_CASES[case], tmp_path)
+
+
+def test_a_contact_runs_its_own_gate_not_a_cx(tmp_path):
+    """The conveyor's contact emitted the CX decomposition for every two-qubit op; a CZ is
+    another gate, and the programme passed every rule while computing something else."""
+    _compiled_right("ring", CZ, "rotate", tmp_path)
+
+
+@pytest.mark.parametrize("device", ["chain", "grid"])
+def test_a_barrier_does_not_pull_two_ions_together(device, tmp_path):
+    """The placer weighs a pair by how often its qubits interact.  c7c535380bfb counted
+    `barrier a,b` as an interaction, so a fence at the very END of a circuit, where it orders
+    nothing, still moved where the ions start (on the chain: 10 transport cycles became 16).
+    The programme with it is the programme without it."""
+    body = "qreg q[6];\nh q[0];\n" + "".join(f"cx q[{i}],q[{i + 1}];\n" for i in range(5))
+    progs = {}
+    for tag, tail in (("plain", ""), ("fenced", "barrier q[0],q[5];\n")):
+        (tmp_path / tag).mkdir()
+        (tmp_path / tag / "c.qasm").write_text(QASM_HEAD + body + tail, encoding="utf-8")
+        raw, _, bad = _compile(FENCE_DEVICES[device](), None, tmp_path / tag, mode="compile",
+                               qasm=tmp_path / tag / "c.qasm")
+        assert not bad, f"{tag}: {dict(Counter(v.rule for v in bad))}; first: {bad[0]}"
+        progs[tag] = [{k: v for k, v in i.items() if k != "meta"} for i in raw["instructions"]
+                      if i["type"] != "barrier"]
+    assert progs["fenced"][0] == progs["plain"][0], "the barrier moved where the ions start"
+    assert progs["fenced"] == progs["plain"]
+
+
+def test_a_barrier_on_the_race_track_is_a_fence(tmp_path):
+    """The race track (H2: one loop, no docks) with a two-qubit barrier either side of its one
+    CX: one entangling pulse, no witness for either barrier, and R10 accepts it."""
+    m5 = next(c for c in H2_MINIMAL if c["id"].startswith("M5"))
+    qasm = (QASM_HEAD + "qreg q[32];\nh q[0];\nbarrier q[0],q[31];\ncx q[0],q[31];\nbarrier q[31],q[0];\n"
+            "h q[31];\n")
+    raw, _ = _h2_minimal({**m5, "id": "pair barriers", "qasm": qasm}, tmp_path)
+    assert any((i.get("template") or {}).get("kind") == "loop_shift" for i in raw["instructions"]
+               if i["type"] == "simd"), "not the race track: the subject is its pass"
+    exp = tmp_path / "h2.expanded.json"
+    cert = json.loads((tmp_path / "prog.qcert.json").read_text(encoding="utf-8"))
+    _fenced_right(raw, cert, qasm, _r10(tmp_path / "prog", tmp_path / "c.qasm", H2_ARCH, exp))
