@@ -101,7 +101,52 @@ the `include snippets/qccd-official.conf;` line and `nginx -t && systemctl reloa
 The site file as it was before the include was added is
 `/root/qccd.academy.nginx.bak-20260923-000848`.
 
-**Deployed** 2026-10-05 16:36 UTC, from commit `f1e6273` (pushed): compiler `f88a49f79af1`, which
+**Deployed** 2026-10-18 03:23 UTC (2026-10-17 20:23 PDT), from commit `5b1a3f3` (pushed):
+compiler `7265883d596f`, in which a barrier is a fence and a docked two-qubit gate is its own
+gate. Every release from `35bf68427d9c` to `c7c535380bfb` compiled a two-qubit `barrier a,b`,
+and any docked `cz`, in the conveyor as a CX. Production ran `f88a49f79af1`, which predates
+them, so this deployment also brings what they added: R23 (no ion rests on a junction, in the
+verifier and in the compiler), the barrier as a fence, and the race-track pass. The previous
+deployment is in `.env.bak-f1e6273`, `VERSION.bak-f1e6273` and
+`docker-compose.prod.yml.bak-f1e6273` for a rollback.
+
+suite@1 was re-pinned in `5b1a3f3`, because the reference compiler's programs changed. The old
+and new published compilers on its 216 compiles (108 public pairs, rotate and compile) are
+byte-identical in rotate mode and differ on 41 compile runs. R23 changes 22 programs on
+`ladder_2x72` and `ring144_24v`, `02bceb9117e7` finishes 8 that ended unrealised, the race track
+compiles 3 on `h2_racetrack`, and `7265883d596f` itself changes none. The reference now has 100
+valid, 0 wrong and 8 refused (it had 88, 0 and 20). Only `baseline.json` and `suite.json`
+changed, so suite@1's digest is now `sha256:6624543e…`; every board's digest is unchanged.
+suite@1's public leaderboard was empty.
+
+The image was derived from `qccd-official:e70144e` again, the same way as `f1e6273`: the
+Dockerfile's OCaml stage verbatim, then `rm` and `COPY` of `qccd/`, `arch/` and
+`Compiler/bridge`. The OCaml stage was `CACHED` up to `dune build`, and its `qccdc_cli` is the
+published Linux `7265883d596f`, byte for byte (sha256 `ea3d4d42…`). Checked: the 312 files
+under `/opt/qccd/{qccd,arch,Compiler/bridge}` equal the `git archive` of `5b1a3f3`. Against
+`f1e6273`'s image, exactly the 38 files git changed and `qccdc_cli` differ, and `qcheck` is
+unchanged. The 18 layers are identical on both machines, and the first 13 are `e70144e`'s.
+`git archive` on this Windows checkout writes CRLF (core.autocrlf), so the image's Python files
+have CRLF line ends, as in `e70144e`'s and `f1e6273`'s. The suites and releases are marked
+`-text` and keep their pinned bytes.
+
+All checks were PRIVATE uploads by the operator uploader `deploy-smoke-5b1a3f3` (quota 2, its
+token deleted), one set in a local rehearsal and one in production:
+
+| check | rehearsal | production |
+|---|---|---|
+| GHZ starter, end to end | 11 s, `os_6dfa797b663dedda` | 9 s, `os_27bca510de26893f` |
+| Compiler board, the starter compiler (= the reference), 116 pairs | 721 s, `os_d5c2c3b0f1f13e5a` | 425 s, `os_c4bce259b7d0bc7a` |
+
+GHZ was eligible on both, with no stage or metric differences from the local grade. The
+compiler board was ELIGIBLE on both: 108 valid, 0 wrong, 8 refused (all 8 hidden pairs valid),
+speedup 1.0. Status and metrics equal `baseline.json` on all 108 public pairs. The LERs are
+equal on only 3 of the 32 memory pairs, so `ler_ratio` is 0.992, not 1. Seeded sampling is
+deterministic on each platform but differs between Windows, where the baseline is measured,
+and Linux. The `e70144e` run (2026-09-29) showed the same thing. The rehearsal's and
+production's 108 public records are identical, LERs included.
+
+**Deployed before** 2026-10-05 16:36 UTC, from commit `f1e6273` (pushed): compiler `f88a49f79af1`, which
 keeps one waveform per cycle (R22) on drawn designs too. Before it, the reference compiler in
 the image put 15 R22 violations into `adder3` on an L-shaped path; now none. `VERSION` on the
 server is the record of every deployment, including the two between this one and the next
@@ -127,7 +172,7 @@ cancel if it is not: the base tag moves without notice. And a script piped to
 `ssh ... 'bash -s'` is cut short by the first `docker compose exec` in it, which reads the
 rest of the script as its stdin: give those commands `</dev/null`.
 
-**Deployed before** 2026-09-26 19:11 UTC (12:11 PDT), from commit `67703cb` (pushed). It carries
+**And before that** 2026-09-26 19:11 UTC (12:11 PDT), from commit `67703cb` (pushed). It carries
 `3eea898`, in which the Lean checker computes a certificate's replay once instead of about
 3,700 times. The specification, the soundness theorem and its axioms are unchanged. The
 previous deployment (`259aba6`) is in `.env.bak-259aba6` and `VERSION.bak-259aba6` for a
@@ -146,7 +191,7 @@ image stores name images differently. The operator uploader `deploy-smoke-67703c
 holds the private smoke submissions `os_2901e4026a976ff4` (GHZ) and `os_0909b51fd3c47007` (BB);
 its token was deleted after use.
 
-**And before that** 2026-09-25 05:00 UTC (2026-09-24 22:00 PDT), from commit `259aba6` (pushed), which
+**Earlier** 2026-09-25 05:00 UTC (2026-09-24 22:00 PDT), from commit `259aba6` (pushed), which
 adds the website's five boards to the GHZ starter: `bb144@1`, `rep9@1`, `five_qubit@1`,
 `steane@1`, `surface17@1`. `VERSION` on the server records it; the previous deployment
 (`10152b1`, 2026-09-23) is in `.env.bak-10152b1` for a rollback. The GHZ release is
