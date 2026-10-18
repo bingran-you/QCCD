@@ -6660,7 +6660,7 @@ function newCanvas(opts) {
   // Seed the one key that makes a blank canvas RUNNABLE. `control.model` is required by
   // the schema, and without it `declare_class` is refused ("$.control: missing required
   // key 'model'") -- so a from-scratch device could be built and exported but never
-  // priced, and every one of the 27 rules stayed `unchecked` forever. `simd_classes` is
+  // priced, and every rule stayed `unchecked` forever. `simd_classes` is
   // the model every shipped architecture uses; `set_control` changes it.
   // Plus the smallest primitive set that makes a device PRICEABLE. Without these,
   // `declare_class` succeeds and pricing then dies on "architecture declares no
@@ -7380,9 +7380,9 @@ function framesAsTsir(stem) {
 
 // ------------------------------------------------------------------- the verdicts
 //
-// THREE STATES PER RULE, and the header counts rather than saying "all".  1 of the 27 is
-// state-free; the browser re-derives 21 of them off the pricing walk; the other 6 need
-// Python, and each is named WITH ITS REASON rather than being absent.
+// THREE STATES PER RULE, and the header counts rather than saying "all".  1 of the 28 is
+// state-free; the browser re-derives 21 of them (that one included) off the pricing walk;
+// the other 7 need Python, and each is named WITH ITS REASON rather than being absent.
 var RULES = null;
 function ruleReport() { return RULES; }
 
@@ -7432,7 +7432,7 @@ function evaluateNow(model) {
   }
 }
 
-// 27 entries, one per rule, each with its state and its reason.  The header text is
+// One entry per rule, each with its state and its reason.  The header text is
 // DERIVED from this array and never written down.
 function ruleCoverage() {
   var all = (D.evidence && D.evidence.rules_all) || [];

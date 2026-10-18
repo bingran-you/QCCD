@@ -4879,8 +4879,12 @@ function _report(chk, frames, priced, ctx, fatal) {
   skipped.R9 = "the programme's cost and step claims describe the device this page was " +
                'built for, not this one; after an edit the only honest verdict is "not ' +
                'applicable"';
-  skipped.R10 = 'needs the source circuit and a Pauli-frame tracker; the page carries no ' +
-                'circuit, only compiled output';
+  skipped.R10 = 'needs the source circuit: the proved checker holds the programme to its ' +
+                'certificate, and the tableau composes its pulses back into that circuit; ' +
+                'the page carries no circuit, only compiled output';
+  skipped.R23 = 'whether an ion rests on a junction is judged against the room off the ' +
+                'junctions, counted as the compiler counts it, and the loops the programme ' +
+                'rotates; that is not mirrored here yet, so R23 needs Python';
   skipped.R16 = 'gate error against n-bar is not mirrored client-side, and adding it ' +
                 'without a parity bucket would introduce a number with no oracle';
   partial.R15 = 'quanta are composed additively here, which R15 says is an upper bound; ' +
@@ -5346,7 +5350,7 @@ var API = {
   lint: lint, architectureViolations: architectureViolations,
   geometryViolations: geometryViolations, geometryLimits: geometryLimits,
   classParticipants: classParticipants, zonesInUse: zonesInUse,
-  // the browser rule set -- 21 of the 27, derived from the dispatcher and never listed
+  // the browser rule set -- 21 of the 28, derived from the dispatcher and never listed
   get MIRRORED_RULES() { return mirroredRules(); },
   checkFrames: checkFrames, evaluate: evaluate, RULE_WORK_CAP: RULE_WORK_CAP,
   // component variants -- the browser half of arch/variants.py

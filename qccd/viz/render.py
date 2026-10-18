@@ -3303,12 +3303,12 @@ function zoomAt(clientX, clientY, deltaY){
   const k=clamp(0.12*L.W, VB.w*Math.pow(1.0018, deltaY), far);
   // The box keeps ITS OWN shape when a fit framed more than the device (the classical
   // floor below it), or its first wheel notch would crop that back out.  Otherwise the
-  // arithmetic is exactly what it always was: `m` stays under the cursor to the bit, which
-  // `tests/test_aim.py` holds it to, and a rewrite that was merely equal in exact
-  // arithmetic drifted by 3e-14.
+  // arithmetic is exactly what it always was: `m` stays under the cursor to rounding.  At
+  // some device heights that is one ulp (3e-14 at true scale on a 1600x132 device), and no
+  // rearrangement is exact at all of them, so `tests/test_aim.py` holds it to ANCHOR_TOL.
   const own = Math.abs(VB.h*L.W - VB.w*L.H) > 1e-9*Math.max(1, VB.w*L.H);
   const nh = own ? VB.h*(k/Math.max(1e-9, VB.w)) : k*(L.H/L.W);
-  // keep `m` exactly under the cursor: its offset from the origin scales with the box
+  // keep `m` under the cursor: its offset from the origin scales with the box
   VB.x = m.x - (m.x - VB.x) * (k / VB.w);
   VB.y = m.y - (m.y - VB.y) * (nh / VB.h);
   VB.w = k; VB.h = nh; applyVB();
@@ -3453,9 +3453,9 @@ const capHist=SUM.capacity_histogram||{};
 // all.  Everything on the R1-R18 surface except the structural check needs a CycleView
 // built from a program, so it genuinely cannot be re-run in the browser -- and saying so
 // is the honest behaviour, not a limitation to paper over.
-// THE VERDICT SURFACE.  `RULES_STALE` -- which struck all 27 verdicts through the moment
-// anything was edited -- is GONE, not kept alongside: 21 of the 27 are now re-derived
-// client-side off the same walk that prices the programme, and only the other 6 go grey.
+// THE VERDICT SURFACE.  `RULES_STALE` -- which struck every verdict through the moment
+// anything was edited -- is GONE, not kept alongside: 21 of the 28 rules are now re-derived
+// client-side off the same walk that prices the programme, and only the other 7 go grey.
 // Two mechanisms would give the page two answers about the same rule.
 //
 // THREE STATES, and the heading COUNTS rather than saying "all": checked here, failed
