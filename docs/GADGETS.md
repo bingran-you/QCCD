@@ -68,7 +68,7 @@ reporting contract (`docs/rules.md`: *passed* only if the check ran):
 | status | meaning | drill-down |
 |---|---|---|
 | `verified` | the TSIR replays, no rule fails, and it ends in the placement it promised; R10 reported *skipped* with the verifier's reason | ion by ion |
-| `certified` | as `verified`, plus R10 *passed* by the proved Lean checker (none yet) | ion by ion |
+| `certified` | as `verified`, plus R10 *passed*: the proved Lean checker accepts the certificate and the emitted pulses compose to the circuit (none yet) | ion by ion |
 | `modeled` | no TSIR; an analytic abstract with its source named (none used) | none, and the tool says why |
 | `failed` | a TSIR that breaks a rule or its placement contract; G9 fails any schedule that uses it | ion by ion, violations listed |
 
