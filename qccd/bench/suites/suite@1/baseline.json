@@ -1,6 +1,6 @@
 {
  "compiler": "qccdc (reference) + insert_cooling",
- "measured": "2026-09-29",
+ "measured": "2026-10-17",
  "pairs": {
   "adder3@chain": {
    "ler": null,
@@ -13,7 +13,7 @@
     "transport_instructions": 116
    },
    "reason": "",
-   "seconds": 13.973,
+   "seconds": 0.698,
    "status": "valid"
   },
   "adder3@cyclone_base": {
@@ -27,7 +27,7 @@
     "transport_instructions": 86
    },
    "reason": "",
-   "seconds": 9.822,
+   "seconds": 0.799,
    "status": "valid"
   },
   "adder3@cyclone_dual_loop": {
@@ -41,7 +41,7 @@
     "transport_instructions": 261
    },
    "reason": "",
-   "seconds": 10.488,
+   "seconds": 1.839,
    "status": "valid"
   },
   "adder3@deck_unit_cell": {
@@ -55,7 +55,7 @@
     "transport_instructions": 91
    },
    "reason": "",
-   "seconds": 6.2,
+   "seconds": 0.707,
    "status": "valid"
   },
   "adder3@grid9x9": {
@@ -69,7 +69,7 @@
     "transport_instructions": 91
    },
    "reason": "",
-   "seconds": 8.1,
+   "seconds": 0.737,
    "status": "valid"
   },
   "adder3@h2_racetrack": {
@@ -83,43 +83,50 @@
     "transport_instructions": 165
    },
    "reason": "",
-   "seconds": 11.993,
+   "seconds": 1.06,
    "status": "valid"
   },
   "adder3@ladder_2x72": {
    "ler": null,
    "metrics": {
-    "T_jones": 10.635,
-    "T_transport": 11.349,
+    "T_jones": 12.885,
+    "T_transport": 13.753,
     "dacs": 56,
-    "instructions": 302,
-    "ions_per_instruction": 1.2419354838709677,
+    "instructions": 307,
+    "ions_per_instruction": 1.1935483870967742,
     "transport_instructions": 124
    },
    "reason": "",
-   "seconds": 13.314,
+   "seconds": 0.795,
    "status": "valid"
   },
   "adder3@ring144_24v": {
    "ler": null,
    "metrics": {
-    "T_jones": 24.29,
-    "T_transport": 27.741,
+    "T_jones": 25.59,
+    "T_transport": 29.041,
     "dacs": 46,
-    "instructions": 800,
-    "ions_per_instruction": 1.2155591572123177,
-    "transport_instructions": 617
+    "instructions": 676,
+    "ions_per_instruction": 1.1967545638945234,
+    "transport_instructions": 493
    },
    "reason": "",
-   "seconds": 5.078,
+   "seconds": 0.709,
    "status": "valid"
   },
   "adder3@stationary_chain": {
    "ler": null,
-   "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 2.809,
-   "status": "refused"
+   "metrics": {
+    "T_jones": 3.76,
+    "T_transport": 3.991,
+    "dacs": 48,
+    "instructions": 274,
+    "ions_per_instruction": 1.0,
+    "transport_instructions": 33
+   },
+   "reason": "",
+   "seconds": 0.696,
+   "status": "valid"
   },
   "bell2@chain": {
    "ler": null,
@@ -132,7 +139,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 15.0,
+   "seconds": 0.704,
    "status": "valid"
   },
   "bell2@cyclone_base": {
@@ -146,7 +153,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 19.582,
+   "seconds": 0.587,
    "status": "valid"
   },
   "bell2@cyclone_dual_loop": {
@@ -160,7 +167,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 21.86,
+   "seconds": 0.765,
    "status": "valid"
   },
   "bell2@deck_unit_cell": {
@@ -174,7 +181,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 18.35,
+   "seconds": 0.68,
    "status": "valid"
   },
   "bell2@grid9x9": {
@@ -188,7 +195,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 18.342,
+   "seconds": 0.665,
    "status": "valid"
   },
   "bell2@h2_racetrack": {
@@ -202,7 +209,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 16.309,
+   "seconds": 0.649,
    "status": "valid"
   },
   "bell2@ladder_2x72": {
@@ -216,7 +223,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 9.64,
+   "seconds": 0.757,
    "status": "valid"
   },
   "bell2@ring144_24v": {
@@ -225,12 +232,12 @@
     "T_jones": 1.015,
     "T_transport": 1.057,
     "dacs": 46,
-    "instructions": 19,
+    "instructions": 17,
     "ions_per_instruction": 1.0,
-    "transport_instructions": 8
+    "transport_instructions": 6
    },
    "reason": "",
-   "seconds": 9.832,
+   "seconds": 0.754,
    "status": "valid"
   },
   "bell2@stationary_chain": {
@@ -244,7 +251,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 12.068,
+   "seconds": 0.715,
    "status": "valid"
   },
   "bv6@chain": {
@@ -258,7 +265,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 3.615,
+   "seconds": 0.694,
    "status": "valid"
   },
   "bv6@cyclone_base": {
@@ -272,7 +279,7 @@
     "transport_instructions": 5
    },
    "reason": "",
-   "seconds": 3.548,
+   "seconds": 0.613,
    "status": "valid"
   },
   "bv6@cyclone_dual_loop": {
@@ -286,7 +293,7 @@
     "transport_instructions": 6
    },
    "reason": "",
-   "seconds": 3.945,
+   "seconds": 0.615,
    "status": "valid"
   },
   "bv6@deck_unit_cell": {
@@ -300,7 +307,7 @@
     "transport_instructions": 5
    },
    "reason": "",
-   "seconds": 4.186,
+   "seconds": 0.607,
    "status": "valid"
   },
   "bv6@grid9x9": {
@@ -314,7 +321,7 @@
     "transport_instructions": 5
    },
    "reason": "",
-   "seconds": 4.272,
+   "seconds": 0.594,
    "status": "valid"
   },
   "bv6@h2_racetrack": {
@@ -328,21 +335,21 @@
     "transport_instructions": 6
    },
    "reason": "",
-   "seconds": 4.822,
+   "seconds": 0.606,
    "status": "valid"
   },
   "bv6@ladder_2x72": {
    "ler": null,
    "metrics": {
-    "T_jones": 1.43,
-    "T_transport": 1.465,
+    "T_jones": 1.44,
+    "T_transport": 1.489,
     "dacs": 56,
-    "instructions": 36,
+    "instructions": 37,
     "ions_per_instruction": 1.0,
-    "transport_instructions": 6
+    "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 5.391,
+   "seconds": 0.635,
    "status": "valid"
   },
   "bv6@ring144_24v": {
@@ -351,26 +358,33 @@
     "T_jones": 3.075,
     "T_transport": 3.313,
     "dacs": 46,
-    "instructions": 76,
+    "instructions": 66,
     "ions_per_instruction": 1.0,
-    "transport_instructions": 44
+    "transport_instructions": 34
    },
    "reason": "",
-   "seconds": 4.605,
+   "seconds": 0.639,
    "status": "valid"
   },
   "bv6@stationary_chain": {
    "ler": null,
-   "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 2.168,
-   "status": "refused"
+   "metrics": {
+    "T_jones": 1.125,
+    "T_transport": 1.181,
+    "dacs": 48,
+    "instructions": 45,
+    "ions_per_instruction": 1.0,
+    "transport_instructions": 8
+   },
+   "reason": "",
+   "seconds": 0.578,
+   "status": "valid"
   },
   "clifford12@chain": {
    "ler": null,
    "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 5.827,
+   "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
+   "seconds": 2.447,
    "status": "refused"
   },
   "clifford12@cyclone_base": {
@@ -384,14 +398,14 @@
     "transport_instructions": 296
    },
    "reason": "",
-   "seconds": 4.697,
+   "seconds": 0.778,
    "status": "valid"
   },
   "clifford12@cyclone_dual_loop": {
    "ler": null,
    "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 5.475,
+   "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has 2 closed loops; this pass drives exactly one",
+   "seconds": 1.859,
    "status": "refused"
   },
   "clifford12@deck_unit_cell": {
@@ -405,7 +419,7 @@
     "transport_instructions": 141
    },
    "reason": "",
-   "seconds": 7.044,
+   "seconds": 1.366,
    "status": "valid"
   },
   "clifford12@grid9x9": {
@@ -419,43 +433,64 @@
     "transport_instructions": 141
    },
    "reason": "",
-   "seconds": 5.878,
+   "seconds": 1.595,
    "status": "valid"
   },
   "clifford12@h2_racetrack": {
    "ler": null,
-   "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 3.293,
-   "status": "refused"
+   "metrics": {
+    "T_jones": 21.835,
+    "T_transport": 25.069,
+    "dacs": 72,
+    "instructions": 956,
+    "ions_per_instruction": 1.12987012987013,
+    "transport_instructions": 462
+   },
+   "reason": "",
+   "seconds": 1.543,
+   "status": "valid"
   },
   "clifford12@ladder_2x72": {
    "ler": null,
-   "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 55.243,
-   "status": "refused"
+   "metrics": {
+    "T_jones": 49.045,
+    "T_transport": 51.138,
+    "dacs": 56,
+    "instructions": 806,
+    "ions_per_instruction": 1.0535117056856187,
+    "transport_instructions": 299
+   },
+   "reason": "",
+   "seconds": 8.241,
+   "status": "valid"
   },
   "clifford12@ring144_24v": {
    "ler": null,
    "metrics": {
-    "T_jones": 66.38,
-    "T_transport": 75.662,
+    "T_jones": 66.795,
+    "T_transport": 76.098,
     "dacs": 46,
-    "instructions": 2161,
-    "ions_per_instruction": 1.1268973891924712,
-    "transport_instructions": 1647
+    "instructions": 1843,
+    "ions_per_instruction": 1.1203912716328066,
+    "transport_instructions": 1329
    },
    "reason": "",
-   "seconds": 10.613,
+   "seconds": 1.305,
    "status": "valid"
   },
   "clifford12@stationary_chain": {
    "ler": null,
-   "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 3.114,
-   "status": "refused"
+   "metrics": {
+    "T_jones": 9.73,
+    "T_transport": 10.171,
+    "dacs": 48,
+    "instructions": 618,
+    "ions_per_instruction": 1.0,
+    "transport_instructions": 63
+   },
+   "reason": "",
+   "seconds": 0.803,
+   "status": "valid"
   },
   "ghz16@chain": {
    "ler": null,
@@ -468,7 +503,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 9.367,
+   "seconds": 0.716,
    "status": "valid"
   },
   "ghz16@cyclone_base": {
@@ -482,7 +517,7 @@
     "transport_instructions": 80
    },
    "reason": "",
-   "seconds": 7.653,
+   "seconds": 0.773,
    "status": "valid"
   },
   "ghz16@cyclone_dual_loop": {
@@ -496,7 +531,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 4.602,
+   "seconds": 0.748,
    "status": "valid"
   },
   "ghz16@deck_unit_cell": {
@@ -510,7 +545,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 4.201,
+   "seconds": 0.65,
    "status": "valid"
   },
   "ghz16@grid9x9": {
@@ -524,7 +559,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 3.505,
+   "seconds": 0.638,
    "status": "valid"
   },
   "ghz16@h2_racetrack": {
@@ -538,7 +573,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 4.413,
+   "seconds": 0.634,
    "status": "valid"
   },
   "ghz16@ladder_2x72": {
@@ -547,12 +582,12 @@
     "T_jones": 4.07,
     "T_transport": 4.175,
     "dacs": 56,
-    "instructions": 115,
+    "instructions": 112,
     "ions_per_instruction": 1.0,
-    "transport_instructions": 18
+    "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 5.167,
+   "seconds": 0.668,
    "status": "valid"
   },
   "ghz16@ring144_24v": {
@@ -561,12 +596,12 @@
     "T_jones": 10.745,
     "T_transport": 11.375,
     "dacs": 46,
-    "instructions": 229,
+    "instructions": 199,
     "ions_per_instruction": 1.0,
-    "transport_instructions": 120
+    "transport_instructions": 90
    },
    "reason": "",
-   "seconds": 4.355,
+   "seconds": 0.663,
    "status": "valid"
   },
   "ghz16@stationary_chain": {
@@ -580,7 +615,7 @@
     "transport_instructions": 2
    },
    "reason": "",
-   "seconds": 4.967,
+   "seconds": 0.603,
    "status": "valid"
   },
   "ghz32@chain": {
@@ -594,7 +629,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 5.302,
+   "seconds": 0.8,
    "status": "valid"
   },
   "ghz32@cyclone_base": {
@@ -608,7 +643,7 @@
     "transport_instructions": 331
    },
    "reason": "",
-   "seconds": 7.023,
+   "seconds": 0.854,
    "status": "valid"
   },
   "ghz32@cyclone_dual_loop": {
@@ -622,7 +657,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 5.432,
+   "seconds": 0.85,
    "status": "valid"
   },
   "ghz32@deck_unit_cell": {
@@ -636,7 +671,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 5.889,
+   "seconds": 0.658,
    "status": "valid"
   },
   "ghz32@grid9x9": {
@@ -650,7 +685,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 5.06,
+   "seconds": 0.674,
    "status": "valid"
   },
   "ghz32@h2_racetrack": {
@@ -664,7 +699,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 3.964,
+   "seconds": 0.66,
    "status": "valid"
   },
   "ghz32@ladder_2x72": {
@@ -673,26 +708,33 @@
     "T_jones": 7.99,
     "T_transport": 8.207,
     "dacs": 56,
-    "instructions": 233,
+    "instructions": 227,
     "ions_per_instruction": 1.0,
-    "transport_instructions": 37
+    "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 4.199,
+   "seconds": 0.721,
    "status": "valid"
   },
   "ghz32@ring144_24v": {
    "ler": null,
-   "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: measure acts on q1, which rides the loop; only docked ions can gate",
-   "seconds": 3.363,
-   "status": "refused"
+   "metrics": {
+    "T_jones": 37.23,
+    "T_transport": 42.403,
+    "dacs": 46,
+    "instructions": 960,
+    "ions_per_instruction": 1.3856562922868743,
+    "transport_instructions": 739
+   },
+   "reason": "",
+   "seconds": 0.905,
+   "status": "valid"
   },
   "ghz32@stationary_chain": {
    "ler": null,
    "metrics": null,
-   "reason": "qccdc cannot compile this pair: C:\\Users\\yezhu\\AppData\\Local\\Temp\\tmpt7dt9o5m\\work\\pairs\\ghz32@stationary_chain\\circuit.qasm: stationary_chain has 2 usable traps (30 ion slots) but the circuit needs 32",
-   "seconds": 2.512,
+   "reason": "qccdc cannot compile this pair: work\\pairs\\ghz32@stationary_chain\\circuit.qasm: stationary_chain has 2 usable traps (30 ion slots) but the circuit needs 32",
+   "seconds": 0.318,
    "status": "refused"
   },
   "ghz8@chain": {
@@ -706,7 +748,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 8.918,
+   "seconds": 0.634,
    "status": "valid"
   },
   "ghz8@cyclone_base": {
@@ -720,7 +762,7 @@
     "transport_instructions": 19
    },
    "reason": "",
-   "seconds": 10.358,
+   "seconds": 0.652,
    "status": "valid"
   },
   "ghz8@cyclone_dual_loop": {
@@ -734,7 +776,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 8.687,
+   "seconds": 0.699,
    "status": "valid"
   },
   "ghz8@deck_unit_cell": {
@@ -748,7 +790,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 10.822,
+   "seconds": 0.634,
    "status": "valid"
   },
   "ghz8@grid9x9": {
@@ -762,7 +804,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 8.363,
+   "seconds": 0.642,
    "status": "valid"
   },
   "ghz8@h2_racetrack": {
@@ -776,7 +818,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 9.48,
+   "seconds": 0.648,
    "status": "valid"
   },
   "ghz8@ladder_2x72": {
@@ -785,12 +827,12 @@
     "T_jones": 2.31,
     "T_transport": 2.359,
     "dacs": 56,
-    "instructions": 57,
+    "instructions": 55,
     "ions_per_instruction": 1.0,
-    "transport_instructions": 9
+    "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 8.857,
+   "seconds": 0.677,
    "status": "valid"
   },
   "ghz8@ring144_24v": {
@@ -799,12 +841,12 @@
     "T_jones": 5.185,
     "T_transport": 5.479,
     "dacs": 46,
-    "instructions": 109,
+    "instructions": 95,
     "ions_per_instruction": 1.0,
-    "transport_instructions": 56
+    "transport_instructions": 42
    },
    "reason": "",
-   "seconds": 10.321,
+   "seconds": 0.661,
    "status": "valid"
   },
   "ghz8@stationary_chain": {
@@ -818,14 +860,14 @@
     "transport_instructions": 0
    },
    "reason": "",
-   "seconds": 10.5,
+   "seconds": 0.62,
    "status": "valid"
   },
   "qft6@chain": {
    "ler": null,
    "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 8.256,
+   "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
+   "seconds": 3.467,
    "status": "refused"
   },
   "qft6@cyclone_base": {
@@ -839,7 +881,7 @@
     "transport_instructions": 38
    },
    "reason": "",
-   "seconds": 8.535,
+   "seconds": 0.721,
    "status": "valid"
   },
   "qft6@cyclone_dual_loop": {
@@ -853,7 +895,7 @@
     "transport_instructions": 114
    },
    "reason": "",
-   "seconds": 12.646,
+   "seconds": 1.044,
    "status": "valid"
   },
   "qft6@deck_unit_cell": {
@@ -867,7 +909,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 9.061,
+   "seconds": 1.193,
    "status": "valid"
   },
   "qft6@grid9x9": {
@@ -881,7 +923,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 8.357,
+   "seconds": 1.195,
    "status": "valid"
   },
   "qft6@h2_racetrack": {
@@ -895,43 +937,50 @@
     "transport_instructions": 82
    },
    "reason": "",
-   "seconds": 12.216,
+   "seconds": 0.769,
    "status": "valid"
   },
   "qft6@ladder_2x72": {
    "ler": null,
    "metrics": {
-    "T_jones": 13.1,
-    "T_transport": 13.457,
+    "T_jones": 13.305,
+    "T_transport": 13.753,
     "dacs": 56,
-    "instructions": 292,
-    "ions_per_instruction": 1.240506329113924,
-    "transport_instructions": 79
+    "instructions": 277,
+    "ions_per_instruction": 1.140625,
+    "transport_instructions": 64
    },
    "reason": "",
-   "seconds": 13.006,
+   "seconds": 0.936,
    "status": "valid"
   },
   "qft6@ring144_24v": {
    "ler": null,
    "metrics": {
-    "T_jones": 18.73,
-    "T_transport": 20.585,
+    "T_jones": 18.48,
+    "T_transport": 20.265,
     "dacs": 46,
-    "instructions": 549,
-    "ions_per_instruction": 1.095808383233533,
-    "transport_instructions": 334
+    "instructions": 470,
+    "ions_per_instruction": 1.1411764705882352,
+    "transport_instructions": 255
    },
    "reason": "",
-   "seconds": 27.365,
+   "seconds": 3.221,
    "status": "valid"
   },
   "qft6@stationary_chain": {
    "ler": null,
-   "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 7.743,
-   "status": "refused"
+   "metrics": {
+    "T_jones": 2.655,
+    "T_transport": 2.739,
+    "dacs": 48,
+    "instructions": 220,
+    "ions_per_instruction": 1.0,
+    "transport_instructions": 12
+   },
+   "reason": "",
+   "seconds": 0.66,
+   "status": "valid"
   },
   "rep3_r3_z@chain": {
    "ler": {
@@ -962,7 +1011,7 @@
     "transport_instructions": 14
    },
    "reason": "",
-   "seconds": 7.174,
+   "seconds": 0.65,
    "status": "valid"
   },
   "rep3_r3_z@cyclone_base": {
@@ -994,7 +1043,7 @@
     "transport_instructions": 17
    },
    "reason": "",
-   "seconds": 7.159,
+   "seconds": 0.664,
    "status": "valid"
   },
   "rep3_r3_z@cyclone_dual_loop": {
@@ -1026,7 +1075,7 @@
     "transport_instructions": 12
    },
    "reason": "",
-   "seconds": 8.187,
+   "seconds": 0.692,
    "status": "valid"
   },
   "rep3_r3_z@deck_unit_cell": {
@@ -1058,7 +1107,7 @@
     "transport_instructions": 14
    },
    "reason": "",
-   "seconds": 7.96,
+   "seconds": 0.63,
    "status": "valid"
   },
   "rep3_r3_z@grid9x9": {
@@ -1090,7 +1139,7 @@
     "transport_instructions": 14
    },
    "reason": "",
-   "seconds": 7.592,
+   "seconds": 0.565,
    "status": "valid"
   },
   "rep3_r3_z@h2_racetrack": {
@@ -1122,39 +1171,39 @@
     "transport_instructions": 12
    },
    "reason": "",
-   "seconds": 8.006,
+   "seconds": 0.569,
    "status": "valid"
   },
   "rep3_r3_z@ladder_2x72": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 5.041666125971123e-06,
+     "idle": 1.352083103867141e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
-     "ms_heating": 0.008780999999999995,
+     "ms_heating": 0.0004019999999999996,
      "reset": 0.02,
-     "total": 0.06646604166612835
+     "total": 0.05809552083104105
     },
-    "errors": 8,
-    "hi": 0.00015786843812503332,
-    "ler": 8e-05,
-    "lo": 4.053852835999305e-05,
+    "errors": 11,
+    "hi": 0.00019697922289584855,
+    "ler": 0.00011,
+    "lo": 6.142543880242281e-05,
     "noise": "qccd-noise@1",
-    "per_round": 2.6667377809319603e-05,
+    "per_round": 3.6668011193286e-05,
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 1.09,
-    "T_transport": 1.174,
+    "T_jones": 3.125,
+    "T_transport": 3.258,
     "dacs": 56,
-    "instructions": 49,
-    "ions_per_instruction": 2.0,
-    "transport_instructions": 12
+    "instructions": 61,
+    "ions_per_instruction": 1.1578947368421053,
+    "transport_instructions": 19
    },
    "reason": "",
-   "seconds": 5.648,
+   "seconds": 0.579,
    "status": "valid"
   },
   "rep3_r3_z@ring144_24v": {
@@ -1186,7 +1235,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 7.178,
+   "seconds": 0.583,
    "status": "valid"
   },
   "rep3_r3_z@stationary_chain": {
@@ -1218,7 +1267,7 @@
     "transport_instructions": 13
    },
    "reason": "",
-   "seconds": 7.1,
+   "seconds": 0.55,
    "status": "valid"
   },
   "rep5_r5_z@chain": {
@@ -1250,7 +1299,7 @@
     "transport_instructions": 24
    },
    "reason": "",
-   "seconds": 6.141,
+   "seconds": 0.585,
    "status": "valid"
   },
   "rep5_r5_z@cyclone_base": {
@@ -1282,7 +1331,7 @@
     "transport_instructions": 39
    },
    "reason": "",
-   "seconds": 6.687,
+   "seconds": 0.577,
    "status": "valid"
   },
   "rep5_r5_z@cyclone_dual_loop": {
@@ -1314,7 +1363,7 @@
     "transport_instructions": 20
    },
    "reason": "",
-   "seconds": 6.489,
+   "seconds": 0.65,
    "status": "valid"
   },
   "rep5_r5_z@deck_unit_cell": {
@@ -1346,7 +1395,7 @@
     "transport_instructions": 43
    },
    "reason": "",
-   "seconds": 6.484,
+   "seconds": 0.656,
    "status": "valid"
   },
   "rep5_r5_z@grid9x9": {
@@ -1378,7 +1427,7 @@
     "transport_instructions": 43
    },
    "reason": "",
-   "seconds": 5.572,
+   "seconds": 0.671,
    "status": "valid"
   },
   "rep5_r5_z@h2_racetrack": {
@@ -1410,20 +1459,20 @@
     "transport_instructions": 20
    },
    "reason": "",
-   "seconds": 6.542,
+   "seconds": 0.663,
    "status": "valid"
   },
   "rep5_r5_z@ladder_2x72": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 5.0174991991225326e-05,
+     "idle": 5.088749186982211e-05,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.19765017499199894
+     "total": 0.19765088749187754
     },
     "errors": 0,
     "hi": 3.841311258303963e-05,
@@ -1434,15 +1483,15 @@
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 6.57,
-    "T_transport": 6.738,
+    "T_jones": 6.665,
+    "T_transport": 6.966,
     "dacs": 56,
     "instructions": 114,
-    "ions_per_instruction": 2.2093023255813953,
+    "ions_per_instruction": 1.7674418604651163,
     "transport_instructions": 43
    },
    "reason": "",
-   "seconds": 5.061,
+   "seconds": 0.693,
    "status": "valid"
   },
   "rep5_r5_z@ring144_24v": {
@@ -1474,21 +1523,46 @@
     "transport_instructions": 103
    },
    "reason": "",
-   "seconds": 5.906,
+   "seconds": 0.761,
    "status": "valid"
   },
   "rep5_r5_z@stationary_chain": {
-   "ler": null,
-   "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 3.286,
-   "status": "refused"
+   "ler": {
+    "budget": {
+     "gate_1q": 0.004000000000008441,
+     "idle": 2.1974997644058636e-05,
+     "measure": 0.040000000000001146,
+     "ms_base": 0.07359999999999811,
+     "ms_chain": 0.003882528282968054,
+     "ms_heating": 0.031232999999999945,
+     "reset": 0.08,
+     "total": 0.23273750328061976
+    },
+    "errors": 0,
+    "hi": 3.841311258303963e-05,
+    "ler": 0.0,
+    "lo": 0.0,
+    "noise": "qccd-noise@1",
+    "per_round": 0.0,
+    "shots": 100000
+   },
+   "metrics": {
+    "T_jones": 2.81,
+    "T_transport": 3.104,
+    "dacs": 48,
+    "instructions": 155,
+    "ions_per_instruction": 1.0,
+    "transport_instructions": 42
+   },
+   "reason": "",
+   "seconds": 0.662,
+   "status": "valid"
   },
   "steane_r3_z@chain": {
    "ler": null,
    "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 9.75,
+   "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
+   "seconds": 2.699,
    "status": "refused"
   },
   "steane_r3_z@cyclone_base": {
@@ -1520,14 +1594,14 @@
     "transport_instructions": 825
    },
    "reason": "",
-   "seconds": 19.298,
+   "seconds": 1.376,
    "status": "valid"
   },
   "steane_r3_z@cyclone_dual_loop": {
    "ler": null,
    "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 20.555,
+   "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has 2 closed loops; this pass drives exactly one",
+   "seconds": 2.596,
    "status": "refused"
   },
   "steane_r3_z@deck_unit_cell": {
@@ -1559,7 +1633,7 @@
     "transport_instructions": 187
    },
    "reason": "",
-   "seconds": 28.222,
+   "seconds": 2.324,
    "status": "valid"
   },
   "steane_r3_z@grid9x9": {
@@ -1591,92 +1665,142 @@
     "transport_instructions": 187
    },
    "reason": "",
-   "seconds": 28.056,
+   "seconds": 2.54,
    "status": "valid"
   },
   "steane_r3_z@h2_racetrack": {
-   "ler": null,
-   "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 8.949,
-   "status": "refused"
+   "ler": {
+    "budget": {
+     "gate_1q": 0.009450000000019942,
+     "idle": 0.000209799974244973,
+     "measure": 0.05440000000000156,
+     "ms_base": 0.16559999999999575,
+     "ms_chain": 0.0,
+     "ms_heating": 0.009887999999999987,
+     "reset": 0.09000000000000002,
+     "total": 0.32954779997426226
+    },
+    "errors": 122,
+    "hi": 0.007278022567804781,
+    "ler": 0.0061,
+    "lo": 0.005111670648415369,
+    "noise": "qccd-noise@1",
+    "per_round": 0.0020374818461854627,
+    "shots": 20000
+   },
+   "metrics": {
+    "T_jones": 15.615,
+    "T_transport": 21.999,
+    "dacs": 72,
+    "instructions": 1116,
+    "ions_per_instruction": 1.1469298245614035,
+    "transport_instructions": 912
+   },
+   "reason": "",
+   "seconds": 1.494,
+   "status": "valid"
   },
   "steane_r3_z@ladder_2x72": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.00042886661179153407,
+     "idle": 0.0008019331577449051,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.09,
-     "total": 0.31987886661180875
+     "total": 0.3202519331577621
     },
-    "errors": 119,
-    "hi": 0.007114836777978246,
-    "ler": 0.00595,
-    "lo": 0.004974914049058734,
+    "errors": 108,
+    "hi": 0.006514989037369452,
+    "ler": 0.0054,
+    "lo": 0.004474973029329244,
     "noise": "qccd-noise@1",
-    "per_round": 0.0019872799990182655,
+    "per_round": 0.001803249755131131,
     "shots": 20000
    },
    "metrics": {
-    "T_jones": 32.045,
-    "T_transport": 34.348,
+    "T_jones": 60.025,
+    "T_transport": 63.448,
     "dacs": 56,
-    "instructions": 720,
-    "ions_per_instruction": 1.35625,
-    "transport_instructions": 480
+    "instructions": 729,
+    "ions_per_instruction": 1.1206543967280163,
+    "transport_instructions": 489
    },
    "reason": "",
-   "seconds": 41.017,
+   "seconds": 23.074,
    "status": "valid"
   },
   "steane_r3_z@ring144_24v": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.0010162665747390776,
+     "idle": 0.0009993999031800982,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.09,
-     "total": 0.3204662665747563
+     "total": 0.3204493999031973
     },
-    "errors": 111,
-    "hi": 0.006678828838738108,
-    "ler": 0.00555,
-    "lo": 0.004611075617143757,
+    "errors": 113,
+    "hi": 0.00678795062969948,
+    "ler": 0.00565,
+    "lo": 0.004701915418971162,
     "noise": "qccd-noise@1",
-    "per_round": 0.0018534330919129927,
+    "per_round": 0.001886891453352857,
     "shots": 20000
    },
    "metrics": {
-    "T_jones": 76.1,
-    "T_transport": 91.416,
+    "T_jones": 74.835,
+    "T_transport": 89.5,
     "dacs": 46,
-    "instructions": 2935,
-    "ions_per_instruction": 1.2682745825602968,
-    "transport_instructions": 2695
+    "instructions": 2335,
+    "ions_per_instruction": 1.3379474940334128,
+    "transport_instructions": 2095
    },
    "reason": "",
-   "seconds": 41.103,
+   "seconds": 4.887,
    "status": "valid"
   },
   "steane_r3_z@stationary_chain": {
-   "ler": null,
-   "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 4.039,
-   "status": "refused"
+   "ler": {
+    "budget": {
+     "gate_1q": 0.009450000000019942,
+     "idle": 0.0001572666453837357,
+     "measure": 0.05440000000000156,
+     "ms_base": 0.16559999999999575,
+     "ms_chain": 0.048688970620497894,
+     "ms_heating": 0.04172899999999988,
+     "reset": 0.09,
+     "total": 0.41002523726589873
+    },
+    "errors": 173,
+    "hi": 0.01003107619212648,
+    "ler": 0.00865,
+    "lo": 0.007457637640207534,
+    "noise": "qccd-noise@1",
+    "per_round": 0.0028916871278229506,
+    "shots": 20000
+   },
+   "metrics": {
+    "T_jones": 11.675,
+    "T_transport": 12.396,
+    "dacs": 48,
+    "instructions": 462,
+    "ions_per_instruction": 1.0,
+    "transport_instructions": 103
+   },
+   "reason": "",
+   "seconds": 0.754,
+   "status": "valid"
   },
   "surface3_r3_z@chain": {
    "ler": null,
    "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 6.202,
+   "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
+   "seconds": 1.873,
    "status": "refused"
   },
   "surface3_r3_z@cyclone_base": {
@@ -1708,14 +1832,14 @@
     "transport_instructions": 278
    },
    "reason": "",
-   "seconds": 7.525,
+   "seconds": 0.799,
    "status": "valid"
   },
   "surface3_r3_z@cyclone_dual_loop": {
    "ler": null,
    "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 6.931,
+   "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has 2 closed loops; this pass drives exactly one",
+   "seconds": 2.242,
    "status": "refused"
   },
   "surface3_r3_z@deck_unit_cell": {
@@ -1747,7 +1871,7 @@
     "transport_instructions": 130
    },
    "reason": "",
-   "seconds": 10.052,
+   "seconds": 1.185,
    "status": "valid"
   },
   "surface3_r3_z@grid9x9": {
@@ -1779,46 +1903,71 @@
     "transport_instructions": 130
    },
    "reason": "",
-   "seconds": 6.319,
+   "seconds": 1.142,
    "status": "valid"
   },
   "surface3_r3_z@h2_racetrack": {
-   "ler": null,
-   "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 5.751,
-   "status": "refused"
+   "ler": {
+    "budget": {
+     "gate_1q": 0.00780000000001646,
+     "idle": 0.00013507915228710976,
+     "measure": 0.05280000000000151,
+     "ms_base": 0.1324799999999966,
+     "ms_chain": 0.0,
+     "ms_heating": 0.0012180000000000003,
+     "reset": 0.07999999999999999,
+     "total": 0.2744330791523017
+    },
+    "errors": 112,
+    "hi": 0.001924683639824266,
+    "ler": 0.0016,
+    "lo": 0.0013300157319912132,
+    "noise": "qccd-noise@1",
+    "per_round": 0.0005336180308873617,
+    "shots": 70000
+   },
+   "metrics": {
+    "T_jones": 9.415,
+    "T_transport": 14.798,
+    "dacs": 72,
+    "instructions": 877,
+    "ions_per_instruction": 1.1560468140442133,
+    "transport_instructions": 769
+   },
+   "reason": "",
+   "seconds": 1.292,
+   "status": "valid"
   },
   "surface3_r3_z@ladder_2x72": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 0.0004212457838337902,
+     "idle": 0.0006748290244020239,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.07999999999999999,
-     "total": 0.2735012457838484
+     "total": 0.2737548290244166
     },
-    "errors": 106,
-    "hi": 0.0014241521682648302,
-    "ler": 0.0011777777777777778,
-    "lo": 0.0009739839037321376,
+    "errors": 105,
+    "hi": 0.0018153435315257408,
+    "ler": 0.0015,
+    "lo": 0.0012393668152840835,
     "noise": "qccd-noise@1",
-    "per_round": 0.00039274682246537296,
-    "shots": 90000
+    "per_round": 0.0005002502085418303,
+    "shots": 70000
    },
    "metrics": {
-    "T_jones": 29.615,
-    "T_transport": 31.435,
+    "T_jones": 47.515,
+    "T_transport": 50.819,
     "dacs": 56,
-    "instructions": 591,
-    "ions_per_instruction": 1.25,
-    "transport_instructions": 436
+    "instructions": 627,
+    "ions_per_instruction": 1.1292372881355932,
+    "transport_instructions": 472
    },
    "reason": "",
-   "seconds": 22.419,
+   "seconds": 12.523,
    "status": "valid"
   },
   "surface3_r3_z@ring144_24v": {
@@ -1850,15 +1999,40 @@
     "transport_instructions": 198
    },
    "reason": "",
-   "seconds": 7.063,
+   "seconds": 0.848,
    "status": "valid"
   },
   "surface3_r3_z@stationary_chain": {
-   "ler": null,
-   "metrics": null,
-   "reason": "qccdc cannot compile this pair:   rotation does not apply either: the device has no closed loop with docks",
-   "seconds": 3.735,
-   "status": "refused"
+   "ler": {
+    "budget": {
+     "gate_1q": 0.00780000000001646,
+     "idle": 9.243749086951247e-05,
+     "measure": 0.05280000000000151,
+     "ms_base": 0.1324799999999966,
+     "ms_chain": 0.04879529755640244,
+     "ms_heating": 0.049374499999999814,
+     "reset": 0.07999999999999999,
+     "total": 0.3713422350472863
+    },
+    "errors": 121,
+    "hi": 0.0036129834635893676,
+    "ler": 0.003025,
+    "lo": 0.0025324628199571595,
+    "noise": "qccd-noise@1",
+    "per_round": 0.0010093517815794595,
+    "shots": 40000
+   },
+   "metrics": {
+    "T_jones": 6.405,
+    "T_transport": 7.07,
+    "dacs": 48,
+    "instructions": 370,
+    "ions_per_instruction": 1.0,
+    "transport_instructions": 95
+   },
+   "reason": "",
+   "seconds": 0.714,
+   "status": "valid"
   }
  }
 }
