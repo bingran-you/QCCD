@@ -31,6 +31,16 @@
 #sitenav.qc-tight{gap:1px;padding:0 10px}
 #sitenav.qc-tight a{padding:0 4px;font-size:12.5px}
 #sitenav.qc-tight a.sn-brand{padding-left:0;margin-right:4px}
+/* under ~1200 px even that overflowed, for every reader (Sign in included): the places
+   close up once more and the search box narrows, and last of all the search box folds
+   away -- the bar keeps every place and the controls here */
+#sitenav.qc-tight2 a{padding:0 3px;font-size:12px}
+#sitenav.qc-tight2 .sn-sq{min-width:90px}
+#sitenav.qc-tight3 .sn-sq{display:none}
+#qcnav[data-fit="4"] #qc-count{display:none}
+#qcnav[data-fit="4"] #qc-me b,#qcnav[data-fit="4"] .qc-lbl{display:none}
+#qcnav[data-fit="4"] #qc-hide{padding:0 6px}
+#qcnav[data-fit="4"]{gap:5px;margin-left:4px}
 .qc-menu{position:absolute;right:0;top:36px;background:#fff;border:1px solid #cfceca;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);
  padding:4px 0;min-width:190px;z-index:1300;font-size:13px;line-height:1.3}
 .qc-menu button{display:block;width:100%;text-align:left;border:0;background:none;font:inherit;padding:7px 12px;cursor:pointer;color:#0b0b0b}
@@ -235,15 +245,18 @@ body.qc-placing,body.qc-placing *{cursor:crosshair!important}
     applyHidden(); renderNav(); schedule();
   }
   // Step the bar down until it fits the window: 0 everything, 1 no name, 2 icons only and a
-  // short count, 3 the places in the bar closer together.  Measured, not guessed from a
-  // width, because the bar's contents differ from page to page.
+  // short count, 3 the places in the bar closer together, 4 closer still with a narrower
+  // search box, 5 no search box, 6 no count either.  Measured, not guessed from a width, because the bar's
+  // contents differ from page to page.
   function fitNav(){
     var bar = document.getElementById('sitenav');
     if(!NAV || !bar || NAV.parentNode !== bar) return;
     var c = document.getElementById('qc-count');
-    for(var k = 0; k <= 3; k++){
-      NAV.setAttribute('data-fit', String(k));
+    for(var k = 0; k <= 6; k++){
+      NAV.setAttribute('data-fit', String(k < 3 ? k : k < 6 ? 3 : 4));
       bar.classList.toggle('qc-tight', k >= 3);
+      bar.classList.toggle('qc-tight2', k >= 4);
+      bar.classList.toggle('qc-tight3', k >= 5);
       if(c) c.textContent = c.getAttribute(k >= 2 ? 'data-short' : 'data-long');
       if(bar.scrollWidth <= bar.clientWidth + 1) break;
     }
@@ -854,7 +867,7 @@ body.qc-placing,body.qc-placing *{cursor:crosshair!important}
     if(invited) dropInviteFromUrl();
     api('GET', '/me').then(function(d){ ME = d && d.user; renderNav(); load(); if(invited) openInvite(invited); })
       .catch(function(){ /* no accounts service behind this copy of the page: nothing to show */ if(NAV && NAV.parentNode) NAV.parentNode.removeChild(NAV); NAV = null;
-                         var b = document.getElementById('sitenav'); if(b) b.classList.remove('qc-tight'); });
+                         var b = document.getElementById('sitenav'); if(b) { b.classList.remove('qc-tight'); b.classList.remove('qc-tight2'); b.classList.remove('qc-tight3'); } });
   }
   window.QCCOMMENTS = {
     state: function(){ return { me: ME, placing: PLACING, hidden: HIDDEN, page: PAGE,
