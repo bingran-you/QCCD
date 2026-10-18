@@ -219,7 +219,8 @@ bash Compiler/run_c1.sh
 bash Compiler/run_c2.sh
 
 # the C3 gate: compile 4 circuits onto 6 architectures, insert cooling, check all
-# 23 rules, and discharge R10 against the certificate
+# 23 rules, and decide R10: the proved checker holds the program to its
+# certificate, and the tableau composes its pulses back into the circuit
 bash Compiler/run_c3.sh
 
 # the C4 oracle: re-solve the router's own sub-problems exactly, and price the
@@ -260,7 +261,7 @@ cloning Mathlib at all.
 | [`ocaml/lib/place.ml`](ocaml/lib/place.ml) | placement — greedy weighted insertion |
 | [`ocaml/lib/route.ml`](ocaml/lib/route.ml) | the router: prioritised space-time A*, with the rules as its reservation table |
 | [`ocaml/lib/compile.ml`](ocaml/lib/compile.ml) | the pipeline, and TSIR emission |
-| [`ocaml/lib/cert.ml`](ocaml/lib/cert.ml) | the certificate R10 is discharged against |
+| [`ocaml/lib/cert.ml`](ocaml/lib/cert.ml) | the certificate: where and when each statement runs, which the proved checker holds the program to |
 | [`lean/QCCDC/Cert/`](lean/QCCDC/Cert/) | `Check.lean` (the specification), `Sound.lean` (proved), `qcheck` (compiled) |
 | [`bridge/mutate_cert.py`](bridge/mutate_cert.py) | 11 seeded defects the checker has to reject |
 | [`bench/`](bench/) | the C1 corpus: 7 named circuits + 500 seeded random ones |
