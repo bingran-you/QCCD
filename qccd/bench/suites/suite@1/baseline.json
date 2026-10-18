@@ -1,6 +1,6 @@
 {
  "compiler": "qccdc (reference) + insert_cooling",
- "measured": "2026-10-17",
+ "measured": "2026-10-18",
  "pairs": {
   "adder3@chain": {
    "ler": null,
@@ -13,7 +13,7 @@
     "transport_instructions": 116
    },
    "reason": "",
-   "seconds": 0.698,
+   "seconds": 1.323,
    "status": "valid"
   },
   "adder3@cyclone_base": {
@@ -27,7 +27,7 @@
     "transport_instructions": 86
    },
    "reason": "",
-   "seconds": 0.799,
+   "seconds": 0.516,
    "status": "valid"
   },
   "adder3@cyclone_dual_loop": {
@@ -41,7 +41,7 @@
     "transport_instructions": 261
    },
    "reason": "",
-   "seconds": 1.839,
+   "seconds": 1.434,
    "status": "valid"
   },
   "adder3@deck_unit_cell": {
@@ -55,7 +55,7 @@
     "transport_instructions": 91
    },
    "reason": "",
-   "seconds": 0.707,
+   "seconds": 0.61,
    "status": "valid"
   },
   "adder3@grid9x9": {
@@ -69,7 +69,7 @@
     "transport_instructions": 91
    },
    "reason": "",
-   "seconds": 0.737,
+   "seconds": 0.516,
    "status": "valid"
   },
   "adder3@h2_racetrack": {
@@ -83,7 +83,7 @@
     "transport_instructions": 165
    },
    "reason": "",
-   "seconds": 1.06,
+   "seconds": 0.767,
    "status": "valid"
   },
   "adder3@ladder_2x72": {
@@ -97,7 +97,7 @@
     "transport_instructions": 124
    },
    "reason": "",
-   "seconds": 0.795,
+   "seconds": 0.566,
    "status": "valid"
   },
   "adder3@ring144_24v": {
@@ -111,7 +111,7 @@
     "transport_instructions": 493
    },
    "reason": "",
-   "seconds": 0.709,
+   "seconds": 0.603,
    "status": "valid"
   },
   "adder3@stationary_chain": {
@@ -125,7 +125,7 @@
     "transport_instructions": 33
    },
    "reason": "",
-   "seconds": 0.696,
+   "seconds": 0.516,
    "status": "valid"
   },
   "bell2@chain": {
@@ -139,7 +139,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.704,
+   "seconds": 0.516,
    "status": "valid"
   },
   "bell2@cyclone_base": {
@@ -153,7 +153,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.587,
+   "seconds": 0.434,
    "status": "valid"
   },
   "bell2@cyclone_dual_loop": {
@@ -167,7 +167,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.765,
+   "seconds": 0.466,
    "status": "valid"
   },
   "bell2@deck_unit_cell": {
@@ -181,7 +181,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.68,
+   "seconds": 0.516,
    "status": "valid"
   },
   "bell2@grid9x9": {
@@ -195,7 +195,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.665,
+   "seconds": 0.516,
    "status": "valid"
   },
   "bell2@h2_racetrack": {
@@ -209,7 +209,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.649,
+   "seconds": 2.054,
    "status": "valid"
   },
   "bell2@ladder_2x72": {
@@ -223,7 +223,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.757,
+   "seconds": 0.717,
    "status": "valid"
   },
   "bell2@ring144_24v": {
@@ -237,7 +237,7 @@
     "transport_instructions": 6
    },
    "reason": "",
-   "seconds": 0.754,
+   "seconds": 0.567,
    "status": "valid"
   },
   "bell2@stationary_chain": {
@@ -251,7 +251,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.715,
+   "seconds": 0.466,
    "status": "valid"
   },
   "bv6@chain": {
@@ -265,7 +265,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.694,
+   "seconds": 0.517,
    "status": "valid"
   },
   "bv6@cyclone_base": {
@@ -279,7 +279,7 @@
     "transport_instructions": 5
    },
    "reason": "",
-   "seconds": 0.613,
+   "seconds": 0.516,
    "status": "valid"
   },
   "bv6@cyclone_dual_loop": {
@@ -293,7 +293,7 @@
     "transport_instructions": 6
    },
    "reason": "",
-   "seconds": 0.615,
+   "seconds": 0.516,
    "status": "valid"
   },
   "bv6@deck_unit_cell": {
@@ -307,7 +307,7 @@
     "transport_instructions": 5
    },
    "reason": "",
-   "seconds": 0.607,
+   "seconds": 0.516,
    "status": "valid"
   },
   "bv6@grid9x9": {
@@ -321,7 +321,7 @@
     "transport_instructions": 5
    },
    "reason": "",
-   "seconds": 0.594,
+   "seconds": 0.466,
    "status": "valid"
   },
   "bv6@h2_racetrack": {
@@ -335,7 +335,7 @@
     "transport_instructions": 6
    },
    "reason": "",
-   "seconds": 0.606,
+   "seconds": 0.466,
    "status": "valid"
   },
   "bv6@ladder_2x72": {
@@ -349,7 +349,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.635,
+   "seconds": 0.566,
    "status": "valid"
   },
   "bv6@ring144_24v": {
@@ -363,7 +363,7 @@
     "transport_instructions": 34
    },
    "reason": "",
-   "seconds": 0.639,
+   "seconds": 0.466,
    "status": "valid"
   },
   "bv6@stationary_chain": {
@@ -377,14 +377,14 @@
     "transport_instructions": 8
    },
    "reason": "",
-   "seconds": 0.578,
+   "seconds": 0.466,
    "status": "valid"
   },
   "clifford12@chain": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
-   "seconds": 2.447,
+   "seconds": 3.288,
    "status": "refused"
   },
   "clifford12@cyclone_base": {
@@ -398,14 +398,14 @@
     "transport_instructions": 296
    },
    "reason": "",
-   "seconds": 0.778,
+   "seconds": 0.606,
    "status": "valid"
   },
   "clifford12@cyclone_dual_loop": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has 2 closed loops; this pass drives exactly one",
-   "seconds": 1.859,
+   "seconds": 1.403,
    "status": "refused"
   },
   "clifford12@deck_unit_cell": {
@@ -419,7 +419,7 @@
     "transport_instructions": 141
    },
    "reason": "",
-   "seconds": 1.366,
+   "seconds": 1.035,
    "status": "valid"
   },
   "clifford12@grid9x9": {
@@ -433,7 +433,7 @@
     "transport_instructions": 141
    },
    "reason": "",
-   "seconds": 1.595,
+   "seconds": 1.034,
    "status": "valid"
   },
   "clifford12@h2_racetrack": {
@@ -447,7 +447,7 @@
     "transport_instructions": 462
    },
    "reason": "",
-   "seconds": 1.543,
+   "seconds": 1.01,
    "status": "valid"
   },
   "clifford12@ladder_2x72": {
@@ -461,7 +461,7 @@
     "transport_instructions": 299
    },
    "reason": "",
-   "seconds": 8.241,
+   "seconds": 5.87,
    "status": "valid"
   },
   "clifford12@ring144_24v": {
@@ -475,7 +475,7 @@
     "transport_instructions": 1329
    },
    "reason": "",
-   "seconds": 1.305,
+   "seconds": 0.803,
    "status": "valid"
   },
   "clifford12@stationary_chain": {
@@ -489,7 +489,7 @@
     "transport_instructions": 63
    },
    "reason": "",
-   "seconds": 0.803,
+   "seconds": 0.566,
    "status": "valid"
   },
   "ghz16@chain": {
@@ -503,7 +503,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 0.716,
+   "seconds": 0.466,
    "status": "valid"
   },
   "ghz16@cyclone_base": {
@@ -517,7 +517,7 @@
     "transport_instructions": 80
    },
    "reason": "",
-   "seconds": 0.773,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz16@cyclone_dual_loop": {
@@ -531,7 +531,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 0.748,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz16@deck_unit_cell": {
@@ -545,7 +545,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 0.65,
+   "seconds": 0.466,
    "status": "valid"
   },
   "ghz16@grid9x9": {
@@ -559,7 +559,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 0.638,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz16@h2_racetrack": {
@@ -573,7 +573,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 0.634,
+   "seconds": 0.517,
    "status": "valid"
   },
   "ghz16@ladder_2x72": {
@@ -587,7 +587,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 0.668,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz16@ring144_24v": {
@@ -601,7 +601,7 @@
     "transport_instructions": 90
    },
    "reason": "",
-   "seconds": 0.663,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz16@stationary_chain": {
@@ -615,7 +615,7 @@
     "transport_instructions": 2
    },
    "reason": "",
-   "seconds": 0.603,
+   "seconds": 0.466,
    "status": "valid"
   },
   "ghz32@chain": {
@@ -629,7 +629,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.8,
+   "seconds": 0.573,
    "status": "valid"
   },
   "ghz32@cyclone_base": {
@@ -643,7 +643,7 @@
     "transport_instructions": 331
    },
    "reason": "",
-   "seconds": 0.854,
+   "seconds": 0.603,
    "status": "valid"
   },
   "ghz32@cyclone_dual_loop": {
@@ -657,7 +657,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.85,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz32@deck_unit_cell": {
@@ -671,7 +671,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.658,
+   "seconds": 0.566,
    "status": "valid"
   },
   "ghz32@grid9x9": {
@@ -685,7 +685,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.674,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz32@h2_racetrack": {
@@ -699,7 +699,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.66,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz32@ladder_2x72": {
@@ -713,7 +713,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.721,
+   "seconds": 0.566,
    "status": "valid"
   },
   "ghz32@ring144_24v": {
@@ -727,14 +727,14 @@
     "transport_instructions": 739
    },
    "reason": "",
-   "seconds": 0.905,
+   "seconds": 0.803,
    "status": "valid"
   },
   "ghz32@stationary_chain": {
    "ler": null,
    "metrics": null,
-   "reason": "qccdc cannot compile this pair: work\\pairs\\ghz32@stationary_chain\\circuit.qasm: stationary_chain has 2 usable traps (30 ion slots) but the circuit needs 32",
-   "seconds": 0.318,
+   "reason": "qccdc cannot compile this pair: /sandbox/jobs/oj_9928df36b3f0a362/req/00072/in/circuit.qasm: stationary_chain has 2 usable traps (30 ion slots) but the circuit needs 32",
+   "seconds": 0.266,
    "status": "refused"
   },
   "ghz8@chain": {
@@ -748,7 +748,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.634,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz8@cyclone_base": {
@@ -762,7 +762,7 @@
     "transport_instructions": 19
    },
    "reason": "",
-   "seconds": 0.652,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz8@cyclone_dual_loop": {
@@ -776,7 +776,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.699,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz8@deck_unit_cell": {
@@ -790,7 +790,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.634,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz8@grid9x9": {
@@ -804,7 +804,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.642,
+   "seconds": 0.517,
    "status": "valid"
   },
   "ghz8@h2_racetrack": {
@@ -818,7 +818,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.648,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz8@ladder_2x72": {
@@ -832,7 +832,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.677,
+   "seconds": 0.516,
    "status": "valid"
   },
   "ghz8@ring144_24v": {
@@ -846,7 +846,7 @@
     "transport_instructions": 42
    },
    "reason": "",
-   "seconds": 0.661,
+   "seconds": 0.466,
    "status": "valid"
   },
   "ghz8@stationary_chain": {
@@ -860,14 +860,14 @@
     "transport_instructions": 0
    },
    "reason": "",
-   "seconds": 0.62,
+   "seconds": 0.466,
    "status": "valid"
   },
   "qft6@chain": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
-   "seconds": 3.467,
+   "seconds": 2.804,
    "status": "refused"
   },
   "qft6@cyclone_base": {
@@ -881,7 +881,7 @@
     "transport_instructions": 38
    },
    "reason": "",
-   "seconds": 0.721,
+   "seconds": 0.516,
    "status": "valid"
   },
   "qft6@cyclone_dual_loop": {
@@ -895,7 +895,7 @@
     "transport_instructions": 114
    },
    "reason": "",
-   "seconds": 1.044,
+   "seconds": 0.803,
    "status": "valid"
   },
   "qft6@deck_unit_cell": {
@@ -909,7 +909,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 1.193,
+   "seconds": 0.967,
    "status": "valid"
   },
   "qft6@grid9x9": {
@@ -923,7 +923,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 1.195,
+   "seconds": 1.003,
    "status": "valid"
   },
   "qft6@h2_racetrack": {
@@ -937,7 +937,7 @@
     "transport_instructions": 82
    },
    "reason": "",
-   "seconds": 0.769,
+   "seconds": 0.602,
    "status": "valid"
   },
   "qft6@ladder_2x72": {
@@ -951,7 +951,7 @@
     "transport_instructions": 64
    },
    "reason": "",
-   "seconds": 0.936,
+   "seconds": 0.716,
    "status": "valid"
   },
   "qft6@ring144_24v": {
@@ -965,7 +965,7 @@
     "transport_instructions": 255
    },
    "reason": "",
-   "seconds": 3.221,
+   "seconds": 2.411,
    "status": "valid"
   },
   "qft6@stationary_chain": {
@@ -979,27 +979,27 @@
     "transport_instructions": 12
    },
    "reason": "",
-   "seconds": 0.66,
+   "seconds": 0.516,
    "status": "valid"
   },
   "rep3_r3_z@chain": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 5.083332792754636e-06,
+     "idle": 5.083332782207517e-06,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
      "ms_heating": 0.008189999999999994,
      "reset": 0.02,
-     "total": 0.06587508333279513
+     "total": 0.06587508333278458
     },
-    "errors": 11,
-    "hi": 0.00019697922289584855,
-    "ler": 0.00011,
-    "lo": 6.142543880242281e-05,
+    "errors": 12,
+    "hi": 0.00020975501269607244,
+    "ler": 0.00012,
+    "lo": 6.86488807399473e-05,
     "noise": "qccd-noise@1",
-    "per_round": 3.6668011193286e-05,
+    "per_round": 4.0001600106642776e-05,
     "shots": 100000
    },
    "metrics": {
@@ -1011,27 +1011,27 @@
     "transport_instructions": 14
    },
    "reason": "",
-   "seconds": 0.65,
+   "seconds": 1.119,
    "status": "valid"
   },
   "rep3_r3_z@cyclone_base": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 5.145832792929905e-06,
+     "idle": 5.145832781550119e-06,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
      "ms_heating": 0.007595999999999996,
      "reset": 0.02,
-     "total": 0.0652811458327953
+     "total": 0.06528114583278392
     },
-    "errors": 9,
-    "hi": 0.00017105476038045442,
-    "ler": 9e-05,
-    "lo": 4.735143784232029e-05,
+    "errors": 10,
+    "hi": 0.00018408469545089215,
+    "ler": 0.0001,
+    "lo": 5.4320734509630915e-05,
     "noise": "qccd-noise@1",
-    "per_round": 3.000090004501299e-05,
+    "per_round": 3.3334444506150085e-05,
     "shots": 100000
    },
    "metrics": {
@@ -1043,27 +1043,27 @@
     "transport_instructions": 17
    },
    "reason": "",
-   "seconds": 0.664,
+   "seconds": 1.172,
    "status": "valid"
   },
   "rep3_r3_z@cyclone_dual_loop": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 5.041666125971123e-06,
+     "idle": 5.041666115979115e-06,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
      "ms_heating": 0.008780999999999995,
      "reset": 0.02,
-     "total": 0.06646604166612835
+     "total": 0.06646604166611836
     },
-    "errors": 8,
-    "hi": 0.00015786843812503332,
-    "ler": 8e-05,
-    "lo": 4.053852835999305e-05,
+    "errors": 18,
+    "hi": 0.00028453276522102933,
+    "ler": 0.00018,
+    "lo": 0.00011386651864148043,
     "noise": "qccd-noise@1",
-    "per_round": 2.6667377809319603e-05,
+    "per_round": 6.000360036007013e-05,
     "shots": 100000
    },
    "metrics": {
@@ -1075,27 +1075,27 @@
     "transport_instructions": 12
    },
    "reason": "",
-   "seconds": 0.692,
+   "seconds": 0.971,
    "status": "valid"
   },
   "rep3_r3_z@deck_unit_cell": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 1.9583330155559242e-05,
+     "idle": 1.9583330148897904e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.02,
-     "total": 0.05769958333015794
+     "total": 0.05769958333015128
     },
-    "errors": 5,
-    "hi": 0.0001170520768033956,
-    "ler": 5e-05,
-    "lo": 2.1357194468385736e-05,
+    "errors": 8,
+    "hi": 0.00015786843812503332,
+    "ler": 8e-05,
+    "lo": 4.053852835999305e-05,
     "noise": "qccd-noise@1",
-    "per_round": 1.666694445212613e-05,
+    "per_round": 2.6667377809319603e-05,
     "shots": 100000
    },
    "metrics": {
@@ -1107,27 +1107,27 @@
     "transport_instructions": 14
    },
    "reason": "",
-   "seconds": 0.63,
+   "seconds": 0.566,
    "status": "valid"
   },
   "rep3_r3_z@grid9x9": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 1.9583330155559242e-05,
+     "idle": 1.9583330148897904e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.02,
-     "total": 0.05769958333015794
+     "total": 0.05769958333015128
     },
-    "errors": 5,
-    "hi": 0.0001170520768033956,
-    "ler": 5e-05,
-    "lo": 2.1357194468385736e-05,
+    "errors": 8,
+    "hi": 0.00015786843812503332,
+    "ler": 8e-05,
+    "lo": 4.053852835999305e-05,
     "noise": "qccd-noise@1",
-    "per_round": 1.666694445212613e-05,
+    "per_round": 2.6667377809319603e-05,
     "shots": 100000
    },
    "metrics": {
@@ -1139,27 +1139,27 @@
     "transport_instructions": 14
    },
    "reason": "",
-   "seconds": 0.565,
+   "seconds": 0.566,
    "status": "valid"
   },
   "rep3_r3_z@h2_racetrack": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 5.041666125971123e-06,
+     "idle": 5.041666115979115e-06,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
      "ms_heating": 0.008780999999999995,
      "reset": 0.02,
-     "total": 0.06646604166612835
+     "total": 0.06646604166611836
     },
-    "errors": 8,
-    "hi": 0.00015786843812503332,
-    "ler": 8e-05,
-    "lo": 4.053852835999305e-05,
+    "errors": 18,
+    "hi": 0.00028453276522102933,
+    "ler": 0.00018,
+    "lo": 0.00011386651864148043,
     "noise": "qccd-noise@1",
-    "per_round": 2.6667377809319603e-05,
+    "per_round": 6.000360036007013e-05,
     "shots": 100000
    },
    "metrics": {
@@ -1171,27 +1171,27 @@
     "transport_instructions": 12
    },
    "reason": "",
-   "seconds": 0.569,
+   "seconds": 0.516,
    "status": "valid"
   },
   "rep3_r3_z@ladder_2x72": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 1.352083103867141e-05,
+     "idle": 1.3520831028124292e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
      "ms_heating": 0.0004019999999999996,
      "reset": 0.02,
-     "total": 0.05809552083104105
+     "total": 0.058095520831030506
     },
-    "errors": 11,
-    "hi": 0.00019697922289584855,
-    "ler": 0.00011,
-    "lo": 6.142543880242281e-05,
+    "errors": 9,
+    "hi": 0.00017105476038045442,
+    "ler": 9e-05,
+    "lo": 4.735143784232029e-05,
     "noise": "qccd-noise@1",
-    "per_round": 3.6668011193286e-05,
+    "per_round": 3.000090004501299e-05,
     "shots": 100000
    },
    "metrics": {
@@ -1203,27 +1203,27 @@
     "transport_instructions": 19
    },
    "reason": "",
-   "seconds": 0.579,
+   "seconds": 0.606,
    "status": "valid"
   },
   "rep3_r3_z@ring144_24v": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 6.491664239882677e-05,
+     "idle": 6.49166423855041e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.02,
-     "total": 0.05774491664240121
+     "total": 0.057744916642387886
     },
-    "errors": 13,
-    "hi": 0.00022242557135429937,
-    "ler": 0.00013,
-    "lo": 7.597755381946865e-05,
+    "errors": 4,
+    "hi": 0.0001028547142286384,
+    "ler": 4e-05,
+    "lo": 1.5555325305394583e-05,
     "noise": "qccd-noise@1",
-    "per_round": 4.333521124677553e-05,
+    "per_round": 1.333351111509895e-05,
     "shots": 100000
    },
    "metrics": {
@@ -1235,27 +1235,27 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.583,
+   "seconds": 0.717,
    "status": "valid"
   },
   "rep3_r3_z@stationary_chain": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 5.062499459362879e-06,
+     "idle": 5.062499449093316e-06,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
      "ms_heating": 0.006386999999999997,
      "reset": 0.02,
-     "total": 0.06407206249946173
+     "total": 0.06407206249945147
     },
-    "errors": 11,
-    "hi": 0.00019697922289584855,
-    "ler": 0.00011,
-    "lo": 6.142543880242281e-05,
+    "errors": 10,
+    "hi": 0.00018408469545089215,
+    "ler": 0.0001,
+    "lo": 5.4320734509630915e-05,
     "noise": "qccd-noise@1",
-    "per_round": 3.6668011193286e-05,
+    "per_round": 3.3334444506150085e-05,
     "shots": 100000
    },
    "metrics": {
@@ -1267,20 +1267,20 @@
     "transport_instructions": 13
    },
    "reason": "",
-   "seconds": 0.55,
+   "seconds": 0.567,
    "status": "valid"
   },
   "rep5_r5_z@chain": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 1.5674998240400306e-05,
+     "idle": 1.5674998208425883e-05,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
      "ms_heating": 0.037155999999999974,
      "reset": 0.08,
-     "total": 0.23477167499824808
+     "total": 0.2347716749982161
     },
     "errors": 0,
     "hi": 3.841311258303963e-05,
@@ -1299,27 +1299,27 @@
     "transport_instructions": 24
    },
    "reason": "",
-   "seconds": 0.585,
+   "seconds": 0.634,
    "status": "valid"
   },
   "rep5_r5_z@cyclone_base": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 2.5237495991037306e-05,
+     "idle": 2.5237495951568878e-05,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
      "ms_heating": 0.013151999999999994,
      "reset": 0.08,
-     "total": 0.21077723749599872
+     "total": 0.21077723749595925
     },
-    "errors": 1,
-    "hi": 5.664709659040966e-05,
-    "ler": 1e-05,
-    "lo": 1.7652477303783126e-06,
+    "errors": 0,
+    "hi": 3.841311258303963e-05,
+    "ler": 0.0,
+    "lo": 0.0,
     "noise": "qccd-noise@1",
-    "per_round": 2.00000799999156e-06,
+    "per_round": 0.0,
     "shots": 100000
    },
    "metrics": {
@@ -1331,27 +1331,27 @@
     "transport_instructions": 39
    },
    "reason": "",
-   "seconds": 0.577,
+   "seconds": 0.603,
    "status": "valid"
   },
   "rep5_r5_z@cyclone_dual_loop": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 1.552499823997966e-05,
+     "idle": 1.5524998210003638e-05,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
      "ms_heating": 0.03791599999999998,
      "reset": 0.08,
-     "total": 0.23553152499824764
+     "total": 0.23553152499821767
     },
-    "errors": 0,
-    "hi": 3.841311258303963e-05,
-    "ler": 0.0,
-    "lo": 0.0,
+    "errors": 1,
+    "hi": 5.664709659040966e-05,
+    "ler": 1e-05,
+    "lo": 1.7652477303783126e-06,
     "noise": "qccd-noise@1",
-    "per_round": 0.0,
+    "per_round": 2.00000799999156e-06,
     "shots": 100000
    },
    "metrics": {
@@ -1363,27 +1363,27 @@
     "transport_instructions": 20
    },
    "reason": "",
-   "seconds": 0.65,
+   "seconds": 0.603,
    "status": "valid"
   },
   "rep5_r5_z@deck_unit_cell": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 7.248748952032313e-05,
+     "idle": 7.248748950033912e-05,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.19767248748952804
+     "total": 0.19767248748950805
     },
-    "errors": 2,
-    "hi": 7.292683754201227e-05,
-    "ler": 2e-05,
-    "lo": 5.484738516524055e-06,
+    "errors": 0,
+    "hi": 3.841311258303963e-05,
+    "ler": 0.0,
+    "lo": 0.0,
     "noise": "qccd-noise@1",
-    "per_round": 4.000032000406328e-06,
+    "per_round": 0.0,
     "shots": 100000
    },
    "metrics": {
@@ -1395,27 +1395,27 @@
     "transport_instructions": 43
    },
    "reason": "",
-   "seconds": 0.656,
+   "seconds": 1.321,
    "status": "valid"
   },
   "rep5_r5_z@grid9x9": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 7.248748952032313e-05,
+     "idle": 7.248748950033912e-05,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.19767248748952804
+     "total": 0.19767248748950805
     },
-    "errors": 2,
-    "hi": 7.292683754201227e-05,
-    "ler": 2e-05,
-    "lo": 5.484738516524055e-06,
+    "errors": 0,
+    "hi": 3.841311258303963e-05,
+    "ler": 0.0,
+    "lo": 0.0,
     "noise": "qccd-noise@1",
-    "per_round": 4.000032000406328e-06,
+    "per_round": 0.0,
     "shots": 100000
    },
    "metrics": {
@@ -1427,27 +1427,27 @@
     "transport_instructions": 43
    },
    "reason": "",
-   "seconds": 0.671,
+   "seconds": 0.603,
    "status": "valid"
   },
   "rep5_r5_z@h2_racetrack": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 1.552499823997966e-05,
+     "idle": 1.5524998210003638e-05,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
      "ms_heating": 0.03791599999999998,
      "reset": 0.08,
-     "total": 0.23553152499824764
+     "total": 0.23553152499821767
     },
-    "errors": 0,
-    "hi": 3.841311258303963e-05,
-    "ler": 0.0,
-    "lo": 0.0,
+    "errors": 1,
+    "hi": 5.664709659040966e-05,
+    "ler": 1e-05,
+    "lo": 1.7652477303783126e-06,
     "noise": "qccd-noise@1",
-    "per_round": 0.0,
+    "per_round": 2.00000799999156e-06,
     "shots": 100000
    },
    "metrics": {
@@ -1459,27 +1459,27 @@
     "transport_instructions": 20
    },
    "reason": "",
-   "seconds": 0.663,
+   "seconds": 0.567,
    "status": "valid"
   },
   "rep5_r5_z@ladder_2x72": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 5.088749186982211e-05,
+     "idle": 5.088749183784769e-05,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.19765088749187754
+     "total": 0.19765088749184556
     },
-    "errors": 0,
-    "hi": 3.841311258303963e-05,
-    "ler": 0.0,
-    "lo": 0.0,
+    "errors": 1,
+    "hi": 5.664709659040966e-05,
+    "ler": 1e-05,
+    "lo": 1.7652477303783126e-06,
     "noise": "qccd-noise@1",
-    "per_round": 0.0,
+    "per_round": 2.00000799999156e-06,
     "shots": 100000
    },
    "metrics": {
@@ -1491,20 +1491,20 @@
     "transport_instructions": 43
    },
    "reason": "",
-   "seconds": 0.693,
+   "seconds": 0.602,
    "status": "valid"
   },
   "rep5_r5_z@ring144_24v": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 0.0004172247655699901,
+     "idle": 0.00041722476549005405,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.1980172247655777
+     "total": 0.19801722476549777
     },
     "errors": 0,
     "hi": 3.841311258303963e-05,
@@ -1523,20 +1523,20 @@
     "transport_instructions": 103
    },
    "reason": "",
-   "seconds": 0.761,
+   "seconds": 0.666,
    "status": "valid"
   },
   "rep5_r5_z@stationary_chain": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 2.1974997644058636e-05,
+     "idle": 2.1974997583107392e-05,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.003882528282968054,
      "ms_heating": 0.031232999999999945,
      "reset": 0.08,
-     "total": 0.23273750328061976
+     "total": 0.2327375032805588
     },
     "errors": 0,
     "hi": 3.841311258303963e-05,
@@ -1555,34 +1555,34 @@
     "transport_instructions": 42
    },
    "reason": "",
-   "seconds": 0.662,
+   "seconds": 0.567,
    "status": "valid"
   },
   "steane_r3_z@chain": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
-   "seconds": 2.699,
+   "seconds": 3.925,
    "status": "refused"
   },
   "steane_r3_z@cyclone_base": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.00024139996601224567,
+     "idle": 0.00024139996516847617,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
      "ms_chain": 0.0,
      "ms_heating": 0.004448499999999998,
      "reset": 0.09,
-     "total": 0.3241398999660295
+     "total": 0.3241398999651857
     },
-    "errors": 118,
-    "hi": 0.007060404194893776,
-    "ler": 0.0059,
-    "lo": 0.004929365835748815,
+    "errors": 114,
+    "hi": 0.006842480926671937,
+    "ler": 0.0057,
+    "lo": 0.004747365918393096,
     "noise": "qccd-noise@1",
-    "per_round": 0.001970547172242876,
+    "per_round": 0.001903621475289441,
     "shots": 20000
    },
    "metrics": {
@@ -1594,34 +1594,34 @@
     "transport_instructions": 825
    },
    "reason": "",
-   "seconds": 1.376,
+   "seconds": 1.267,
    "status": "valid"
   },
   "steane_r3_z@cyclone_dual_loop": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has 2 closed loops; this pass drives exactly one",
-   "seconds": 2.596,
+   "seconds": 2.204,
    "status": "refused"
   },
   "steane_r3_z@deck_unit_cell": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.0005060665980138879,
+     "idle": 0.0005060665979028656,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.09,
-     "total": 0.3199560665980311
+     "total": 0.3199560665979201
     },
-    "errors": 103,
-    "hi": 0.0062414842252658895,
-    "ler": 0.00515,
-    "lo": 0.004248573859460859,
+    "errors": 113,
+    "hi": 0.00678795062969948,
+    "ler": 0.00565,
+    "lo": 0.004701915418971162,
     "noise": "qccd-noise@1",
-    "per_round": 0.0017196220717046184,
+    "per_round": 0.001886891453352857,
     "shots": 20000
    },
    "metrics": {
@@ -1633,27 +1633,27 @@
     "transport_instructions": 187
    },
    "reason": "",
-   "seconds": 2.324,
+   "seconds": 2.436,
    "status": "valid"
   },
   "steane_r3_z@grid9x9": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.0005060665980138879,
+     "idle": 0.0005060665979028656,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.09,
-     "total": 0.3199560665980311
+     "total": 0.3199560665979201
     },
-    "errors": 103,
-    "hi": 0.0062414842252658895,
-    "ler": 0.00515,
-    "lo": 0.004248573859460859,
+    "errors": 113,
+    "hi": 0.00678795062969948,
+    "ler": 0.00565,
+    "lo": 0.004701915418971162,
     "noise": "qccd-noise@1",
-    "per_round": 0.0017196220717046184,
+    "per_round": 0.001886891453352857,
     "shots": 20000
    },
    "metrics": {
@@ -1665,27 +1665,27 @@
     "transport_instructions": 187
    },
    "reason": "",
-   "seconds": 2.54,
+   "seconds": 2.405,
    "status": "valid"
   },
   "steane_r3_z@h2_racetrack": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.000209799974244973,
+     "idle": 0.000209799973339031,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
      "ms_chain": 0.0,
      "ms_heating": 0.009887999999999987,
      "reset": 0.09000000000000002,
-     "total": 0.32954779997426226
+     "total": 0.3295477999733563
     },
-    "errors": 122,
-    "hi": 0.007278022567804781,
-    "ler": 0.0061,
-    "lo": 0.005111670648415369,
+    "errors": 103,
+    "hi": 0.0062414842252658895,
+    "ler": 0.00515,
+    "lo": 0.004248573859460859,
     "noise": "qccd-noise@1",
-    "per_round": 0.0020374818461854627,
+    "per_round": 0.0017196220717046184,
     "shots": 20000
    },
    "metrics": {
@@ -1697,27 +1697,27 @@
     "transport_instructions": 912
    },
    "reason": "",
-   "seconds": 1.494,
+   "seconds": 1.167,
    "status": "valid"
   },
   "steane_r3_z@ladder_2x72": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.0008019331577449051,
+     "idle": 0.0008019331573523303,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.09,
-     "total": 0.3202519331577621
+     "total": 0.32025193315736955
     },
-    "errors": 108,
-    "hi": 0.006514989037369452,
-    "ler": 0.0054,
-    "lo": 0.004474973029329244,
+    "errors": 104,
+    "hi": 0.006296230472696864,
+    "ler": 0.0052,
+    "lo": 0.004293808408424273,
     "noise": "qccd-noise@1",
-    "per_round": 0.001803249755131131,
+    "per_round": 0.0017363464874881052,
     "shots": 20000
    },
    "metrics": {
@@ -1729,27 +1729,27 @@
     "transport_instructions": 489
    },
    "reason": "",
-   "seconds": 23.074,
+   "seconds": 22.665,
    "status": "valid"
   },
   "steane_r3_z@ring144_24v": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.0009993999031800982,
+     "idle": 0.0009993999016515431,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.09,
-     "total": 0.3204493999031973
+     "total": 0.32044939990166876
     },
-    "errors": 113,
-    "hi": 0.00678795062969948,
-    "ler": 0.00565,
-    "lo": 0.004701915418971162,
+    "errors": 104,
+    "hi": 0.006296230472696864,
+    "ler": 0.0052,
+    "lo": 0.004293808408424273,
     "noise": "qccd-noise@1",
-    "per_round": 0.001886891453352857,
+    "per_round": 0.0017363464874881052,
     "shots": 20000
    },
    "metrics": {
@@ -1761,27 +1761,27 @@
     "transport_instructions": 2095
    },
    "reason": "",
-   "seconds": 4.887,
+   "seconds": 3.968,
    "status": "valid"
   },
   "steane_r3_z@stationary_chain": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.0001572666453837357,
+     "idle": 0.00015726664508619592,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
      "ms_chain": 0.048688970620497894,
      "ms_heating": 0.04172899999999988,
      "reset": 0.09,
-     "total": 0.41002523726589873
+     "total": 0.4100252372656012
     },
-    "errors": 173,
-    "hi": 0.01003107619212648,
-    "ler": 0.00865,
-    "lo": 0.007457637640207534,
+    "errors": 143,
+    "hi": 0.00841605357029801,
+    "ler": 0.00715,
+    "lo": 0.00607323637020432,
     "noise": "qccd-noise@1",
-    "per_round": 0.0028916871278229506,
+    "per_round": 0.002389036282555712,
     "shots": 20000
    },
    "metrics": {
@@ -1793,35 +1793,35 @@
     "transport_instructions": 103
    },
    "reason": "",
-   "seconds": 0.754,
+   "seconds": 0.566,
    "status": "valid"
   },
   "surface3_r3_z@chain": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
-   "seconds": 1.873,
+   "seconds": 1.717,
    "status": "refused"
   },
   "surface3_r3_z@cyclone_base": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 0.00014343747726014433,
+     "idle": 0.00014343747692041608,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.0,
      "ms_heating": 0.004101499999999999,
      "reset": 0.07999999999999999,
-     "total": 0.2773249374772747
+     "total": 0.277324937476935
     },
-    "errors": 106,
-    "hi": 0.0018309821447948448,
-    "ler": 0.0015142857142857143,
-    "lo": 0.0012522980627300729,
+    "errors": 118,
+    "hi": 0.0017659427934341432,
+    "ler": 0.001475,
+    "lo": 0.0012319314891919544,
     "noise": "qccd-noise@1",
-    "per_round": 0.0005050169039015895,
-    "shots": 70000
+    "per_round": 0.0004919086010620743,
+    "shots": 80000
    },
    "metrics": {
     "T_jones": 10.005,
@@ -1832,35 +1832,35 @@
     "transport_instructions": 278
    },
    "reason": "",
-   "seconds": 0.799,
+   "seconds": 0.603,
    "status": "valid"
   },
   "surface3_r3_z@cyclone_dual_loop": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has 2 closed loops; this pass drives exactly one",
-   "seconds": 2.242,
+   "seconds": 2.007,
    "status": "refused"
   },
   "surface3_r3_z@deck_unit_cell": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 0.000362454117732669,
+     "idle": 0.00036245411765528646,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.07999999999999999,
-     "total": 0.27344245411774726
+     "total": 0.2734424541176699
     },
-    "errors": 110,
-    "hi": 0.0018934740428560174,
-    "ler": 0.0015714285714285715,
-    "lo": 0.0013040856075292747,
+    "errors": 115,
+    "hi": 0.0015334145940315417,
+    "ler": 0.0012777777777777779,
+    "lo": 0.001064712941754619,
     "noise": "qccd-noise@1",
-    "per_round": 0.0005240841400129259,
-    "shots": 70000
+    "per_round": 0.00042610746771087893,
+    "shots": 90000
    },
    "metrics": {
     "T_jones": 25.465,
@@ -1871,28 +1871,28 @@
     "transport_instructions": 130
    },
    "reason": "",
-   "seconds": 1.185,
+   "seconds": 1.067,
    "status": "valid"
   },
   "surface3_r3_z@grid9x9": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 0.000362454117732669,
+     "idle": 0.00036245411765528646,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.07999999999999999,
-     "total": 0.27344245411774726
+     "total": 0.2734424541176699
     },
-    "errors": 110,
-    "hi": 0.0018934740428560174,
-    "ler": 0.0015714285714285715,
-    "lo": 0.0013040856075292747,
+    "errors": 115,
+    "hi": 0.0015334145940315417,
+    "ler": 0.0012777777777777779,
+    "lo": 0.001064712941754619,
     "noise": "qccd-noise@1",
-    "per_round": 0.0005240841400129259,
-    "shots": 70000
+    "per_round": 0.00042610746771087893,
+    "shots": 90000
    },
    "metrics": {
     "T_jones": 25.465,
@@ -1903,27 +1903,27 @@
     "transport_instructions": 130
    },
    "reason": "",
-   "seconds": 1.142,
+   "seconds": 1.117,
    "status": "valid"
   },
   "surface3_r3_z@h2_racetrack": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 0.00013507915228710976,
+     "idle": 0.0001350791515057348,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.0,
      "ms_heating": 0.0012180000000000003,
      "reset": 0.07999999999999999,
-     "total": 0.2744330791523017
+     "total": 0.2744330791515203
     },
-    "errors": 112,
-    "hi": 0.001924683639824266,
-    "ler": 0.0016,
-    "lo": 0.0013300157319912132,
+    "errors": 106,
+    "hi": 0.0018309821447948448,
+    "ler": 0.0015142857142857143,
+    "lo": 0.0012522980627300729,
     "noise": "qccd-noise@1",
-    "per_round": 0.0005336180308873617,
+    "per_round": 0.0005050169039015895,
     "shots": 70000
    },
    "metrics": {
@@ -1935,28 +1935,28 @@
     "transport_instructions": 769
    },
    "reason": "",
-   "seconds": 1.292,
+   "seconds": 1.117,
    "status": "valid"
   },
   "surface3_r3_z@ladder_2x72": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 0.0006748290244020239,
+     "idle": 0.000674829024024548,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.07999999999999999,
-     "total": 0.2737548290244166
+     "total": 0.27375482902403914
     },
-    "errors": 105,
-    "hi": 0.0018153435315257408,
-    "ler": 0.0015,
-    "lo": 0.0012393668152840835,
+    "errors": 111,
+    "hi": 0.0016704835247337451,
+    "ler": 0.0013875,
+    "lo": 0.0011523991606800358,
     "noise": "qccd-noise@1",
-    "per_round": 0.0005002502085418303,
-    "shots": 70000
+    "per_round": 0.0004627140712887279,
+    "shots": 80000
    },
    "metrics": {
     "T_jones": 47.515,
@@ -1967,27 +1967,27 @@
     "transport_instructions": 472
    },
    "reason": "",
-   "seconds": 12.523,
+   "seconds": 10.971,
    "status": "valid"
   },
   "surface3_r3_z@ring144_24v": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 0.0012123829242465245,
+     "idle": 0.001212382923977573,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.2742923829242611
+     "total": 0.27429238292399216
     },
-    "errors": 101,
-    "hi": 0.004088760464572537,
-    "ler": 0.0033666666666666667,
-    "lo": 0.0027717430180633417,
+    "errors": 132,
+    "hi": 0.005215044003873117,
+    "ler": 0.0044,
+    "lo": 0.003711861545481218,
     "noise": "qccd-noise@1",
-    "per_round": 0.0011234839657502382,
+    "per_round": 0.0014688230515236267,
     "shots": 30000
    },
    "metrics": {
@@ -1999,28 +1999,28 @@
     "transport_instructions": 198
    },
    "reason": "",
-   "seconds": 0.848,
+   "seconds": 0.766,
    "status": "valid"
   },
   "surface3_r3_z@stationary_chain": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 9.243749086951247e-05,
+     "idle": 9.243749060339201e-05,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.04879529755640244,
      "ms_heating": 0.049374499999999814,
      "reset": 0.07999999999999999,
-     "total": 0.3713422350472863
+     "total": 0.3713422350470202
     },
-    "errors": 121,
-    "hi": 0.0036129834635893676,
-    "ler": 0.003025,
-    "lo": 0.0025324628199571595,
+    "errors": 108,
+    "hi": 0.0043442137085154585,
+    "ler": 0.0036,
+    "lo": 0.0029828966924116845,
     "noise": "qccd-noise@1",
-    "per_round": 0.0010093517815794595,
-    "shots": 40000
+    "per_round": 0.0012014428869303595,
+    "shots": 30000
    },
    "metrics": {
     "T_jones": 6.405,
@@ -2031,7 +2031,7 @@
     "transport_instructions": 95
    },
    "reason": "",
-   "seconds": 0.714,
+   "seconds": 0.566,
    "status": "valid"
   }
  }

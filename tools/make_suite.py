@@ -10,12 +10,38 @@ The suite is every pair of these circuits and these devices (docs/PLAN-boards.md
   devices    the nine reference architectures in arch/
 
 The reference compiler (qccdc + cooling) is run on every pair and its graded results are
-pinned as baseline.json, the denominator of every speedup.  Measured 2026-09-29 (Windows, 4 jobs,
-483 s, qccdc f52d3ba63b9a): 88 of the 108 pairs valid, 0 wrong, 20 refused -- the room a better
-compiler has.  The first measurement (2026-09-28) was made with a router that predated R22 and
-had 20 wrong pairs, so the reference could not pass its own board; suite@1 was re-pinned the
-day it was published, before any public submission.  A published suite is otherwise
-immutable: change it by adding suite@2.
+pinned as baseline.json, the denominator of every speedup and of every LER ratio.
+
+MEASURE THE BASELINE ON THE PLATFORM THAT GRADES IT: Linux, in the official service's image,
+never a Windows host.  The memory pairs' logical error rates come from seeded stim sampling,
+which is deterministic on one platform but differs between Windows and Linux.  With suite@1
+measured on Windows, the reference compiler graded ler_ratio 0.992 on its own board: 29 of the
+32 memory pairs had a different LER under the same seed, although every status and every
+metric matched.
+
+The current baseline was measured 2026-10-18 on Linux in the official image
+qccd-official:5b1a3f3 by the grader itself.  The reference compiler was submitted as the
+starter compiler (`qccd.bench.starter()`, whose compile.py calls qccd.bench.baseline): private
+run os_d5c2c3b0f1f13e5a.  Production's run os_c4bce259b7d0bc7a gave identical records, LERs
+included.  With qccdc 7265883d596f (the published Linux binary), 100 of the 108 public pairs
+are valid, 0 wrong and 8 refused -- the room a better compiler has.  The reference now grades
+ler_ratio 1.000 and speedup 1.0 on its own board.  This file's main() wrote those records into
+the suite, with run_suite returning them, so build_suite wrote every file.  The pair timings
+(`seconds`) are the sandbox's, and the one refusal that names its circuit file carries the
+sandbox's path.
+
+main() measures on the machine it runs on, and only when suite@1 is missing from SUITES_DIR.
+The intended in-image route is UNTESTED: run main() in the image, with this checkout's tools/,
+Compiler/examples and Compiler/bench mounted under /opt/qccd/ and an empty writable directory
+mounted over /opt/qccd/qccd/bench/suites.  Then copy baseline.json and suite.json back, after
+checking that every other file is byte-identical.
+
+History.  2026-09-28: the first measurement, with a router that predated R22 (20 wrong pairs, so
+the reference could not pass its own board).  2026-09-29: re-pinned the day it was published,
+before any public submission (Windows, qccdc f52d3ba63b9a: 88 valid, 0 wrong, 20 refused).
+2026-10-17: re-pinned for qccdc 7265883d596f (Windows: 100 / 0 / 8).  2026-10-18: the same
+programs measured on Linux; only the LERs, the timings and that refusal's path changed.  A
+published suite is otherwise immutable: change it by adding suite@2.
 """
 
 from __future__ import annotations
