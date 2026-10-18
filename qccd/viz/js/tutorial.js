@@ -1019,7 +1019,7 @@ var QCCD_TUTORIAL = {
       page: 'micro_grid9x9',
       text: [
         'The compiler takes a circuit and a device. The circuit here is `micro.qasm`: four qubits, seven statements. The compiler writes the hardware programme: where the ions start, every shuttle, every gate (as the pulses that make it), every cooling.',
-        'It also writes a **certificate**: for each instruction, which statement of the circuit it carries out. [[R10|rule:R10]] says the programme does what the circuit says, and the certificate is the evidence.',
+        'It also writes a **certificate**: for each instruction, which statement of the circuit it carries out. [[R10|rule:R10]] says the programme does what the circuit says. The certificate says where and when each statement is carried out; which gate the pulses make is checked separately, by composing them back into the circuit.',
         'On this page the [[Circuit|tab:Q]] tab shows the circuit next to the animation. The statement being carried out now is marked. Click a statement, and the animation jumps to the instruction that carries it out.'
       ],
       setup: [['seekTo', 0]],

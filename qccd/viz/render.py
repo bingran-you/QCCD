@@ -4005,11 +4005,14 @@ function ctlHTML(f){
   let h = '<br><span class="mut">control:</span> <b>'+esc(r.driver)+'</b>'
     + ' &middot; ' + esc(r.action);
   if(r.driver==='transport'){
+    // a channel with no switch elements at all (H2's conveyor) holds nothing out by a
+    // switch: the clause read "0 held out by their switch" on a machine that has none
+    const noSwitch = !sw[1] && !sw[2];
     h += ' &middot; '+ch[0]+'/'+ch[1]+' channels driven'
       + (CTLD.spec && CTLD.spec.grouping ? ' ('+esc(CTLD.spec.grouping)+')' : '')
-      + ' &middot; '+si[0]+'/'+si[2]+' sites moving, '+si[1]
-      + ' held out by their switch'
-      + ' &middot; '+fmt(sw[1])+'/'+fmt(sw[2])+' switch elements';
+      + ' &middot; '+si[0]+'/'+si[2]+' sites moving'
+      + (noSwitch ? '' : ', '+si[1]+' held out by their switch'
+                         + ' &middot; '+fmt(sw[1])+'/'+fmt(sw[2])+' switch elements');
     for(const b of (r.banks||[])) h += '<br><span class="bank">&nbsp;&nbsp;'
       + esc(b[0])+' &times;'+b[1]+' &nbsp;each drives '+b[2]+' sites &rarr; '+b[3]
       + ' follow &nbsp;<b>'+esc(b[4])+'</b>'+(b[5]?'':' <i>(not verifiable)</i>')
