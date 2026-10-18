@@ -153,9 +153,20 @@ def test_a_device_that_declares_no_channels_is_not_judged():
         c.move("b", "S5", "S4")
     out = m.run(p, check_metrics=False)
     # R11 still catches it -- shuttling is unidirectional per path -- but the
-    # DRIVABILITY check stays silent, because this device has not said how it is wired
+    # DRIVABILITY check stays silent, because this device has not said how it is wired.
+    # That check is R4d, and it reports under "R4" with a message naming the channel
+    # ("channel 'linear_h.all.0' drives 16 sites with one waveform, ..."): the declared
+    # ring with the same cycle gets 32 of them.  The test used to look for "one waveform"
+    # anywhere, which was R4d's fingerprint until R22 arrived.
     assert "R11" in out.rules_failed
-    assert not any("one waveform" in str(v) for v in out.violations)
+    drivability = [str(v) for v in out.violations if v.rule == "R4"]
+    assert not drivability, drivability
+    # R22 DOES judge this cycle, and that is not a verdict on the wiring: it asks whether
+    # one cycle is one waveform under the control MODEL (skipped only for
+    # `control.model == "direct"`), and this device still declares broadcast SIMD
+    # classes -- it is silent only about WHICH sites share a channel.
+    assert "R22" in out.rules_failed
+    assert m.arch.control.get("model", "simd_classes") != "direct"
 
 
 def test_row_wiring_lets_lines_differ_but_not_sites_within_a_line():
