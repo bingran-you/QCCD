@@ -1908,6 +1908,10 @@ def build(out: Path) -> int:
         for rel, page_, card in reproduce.studio_pages(out / ".reproduce_tmp"):
             put(rel, page_, 2, "reproduce", app=True, extra=HASH_JS + card)
         shutil.rmtree(out / ".reproduce_tmp", ignore_errors=True)
+        # the files a paper's page links to: its timed schedules, theirs and ours
+        for rel, blob in getattr(reproduce, "downloads", lambda: ())():
+            (out / rel).parent.mkdir(parents=True, exist_ok=True)
+            (out / rel).write_bytes(blob)
     put("publications/index.html", publications_page(), 1, "publications")
     lang, rules = build_examples(out, put)
     put("language/index.html", language_page(lang), 1, "language")

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 from pathlib import Path
 
 from ..repro import catalog
@@ -184,7 +185,8 @@ def _paper_section(p: dict, res: dict | None) -> str:
                        f'<td class="n">{ft}</td><td class="n">{fo}</td><td class="n">{fp}</td><td></td></tr>')
             spec = next((x for x in p["runs"] if x["id"] == r["id"]), {})
             watch = (f'<br><small class="rp-skip">{_e(spec["no_studio"])}</small>' if spec.get("no_studio")
-                     else f'<br><a class="rp-watch" href="{_e(p["key"])}/{_e(r["id"])}.html">▶ watch it in the Studio</a>')
+                     else f'<br><a class="rp-watch" href="{_e(p["key"])}/{_e(r["id"])}.html">▶ watch it in the Studio</a>'
+                     + _timed_link(p, r["id"]))
             out.append(f'<tr><td>{_e(r.get("label", r["id"]))}{watch}</td><td class="n">{t}</td>'
                        f'<td class="n">{o}</td><td class="n">{pp}</td><td>{_checks(r)}</td></tr>{fid}')
         out.append("</table>")
@@ -203,6 +205,101 @@ def _paper_section(p: dict, res: dict | None) -> str:
     for note in catalog.NOTES.get(key, []):
         out.append(f'<div class="rp-note"><b>{_e(note["title"])}</b>{_e(note["text"])}</div>')
     out.append(_ours_box(p, res))
+    note = _studio_note(p, res)
+    if note:
+        out.append(note)
+    return "\n".join(out)
+
+
+def _timed_link(p: dict, rid: str) -> str:
+    """The run's timed schedule, beside its Studio link, where the page offers one (`downloads`)."""
+    from ..repro import export
+    if p["key"] not in export.PAPERS:
+        return ""
+    return (f' · <a class="rp-watch" href="{_e(p["key"])}/{_e(rid)}.timed.json" download>'
+            "timed schedule (JSON)</a>")
+
+
+def downloads():
+    """`(site path, bytes)` for every file a paper's page offers: its timed schedules, the
+    paper's and ours, with what each event holds (`qccd.repro.export`)."""
+    from ..repro import export
+    for key in export.PAPERS:
+        for rid, doc in export.paper_timelines(key):
+            yield f"reproduce/{key}/{rid}.timed.json", export.dumps(doc).encode("utf-8")
+
+
+def _studio_note(p: dict, res: dict | None) -> str:
+    """What the Studio pages of an asynchronous schedule show, measured on the programmes the
+    pages play (thread 44: the Studio's runtime was read as the schedule's).  TISCC only."""
+    if p["key"] not in CLOCK_IN_HEADLINE:
+        return ""
+    from ..cost.models import corrected_model
+
+    model = corrected_model("local")
+    runs = {r["id"]: r for r in (res or {}).get("runs", [])}
+    ours = {o["id"]: o for o in (res or {}).get("ours", []) if o.get("ok")}
+    played = {}
+    for run in p["runs"]:
+        if run["id"] in runs:
+            m, prog, _, _ = _run_programme(p, run)
+            played[run["id"]] = (m.run(prog, model=model, check_metrics=False), prog)
+    for o in catalog.OURS.get(p["key"], {}).get("runs", []):
+        if o["id"] in ours:
+            spec = next(x for x in p["runs"] if x["id"] == o["against"])
+            m, prog, _, _ = _ours_programme(p, o, spec)
+            played[o["id"]] = (m.run(prog, model=model, check_metrics=False), prog)
+    if not played or not ours:
+        return ""
+    first = p["runs"][0]["id"]
+    mine = next(iter(ours))
+    theirs_clock = runs[first]["measured"]["makespan_us"]
+    lock = lambda rid: played[rid][0].report.result.total_us
+    ms = lambda rid: _num(lock(rid), "makespan_us")
+    gap = lock(first) - theirs_clock
+    r6b = {rid: sum(1 for v in r.violations if v.rule == "R6b") for rid, (r, _) in played.items()}
+    gates = {rid: runs[rid]["counts"].get("gate", 0) for rid in runs}
+    who = p["short"]
+    out = [
+        "<p><small><b>The Studio's runtime is not the schedule's time.</b> A Studio page plays a "
+        "schedule as a programme in our language: operations of one kind that start at the same "
+        "moment are one instruction, and each instruction starts when the one before it has "
+        "ended, so the runtime it shows is its instructions added up. "
+        f"{who}'s round runs in layers, so played this way it takes {ms(first)} at d = 5, "
+        f"against {_num(theirs_clock, 'makespan_us')} on {who}'s clock"
+        + (f" ({_num(gap, 'makespan_us')} more: where {who} turns some ions about X or Y and "
+           "others about Z at the same moment, our language writes two instructions)" if gap > 1e-9 else "")
+        + ". Ours does not wait for layers: its operations overlap in time, and the same "
+        f"addition gives {ms(mine)}, which is not a time the schedule takes. Its time is the "
+        f"checker's, {_num(ours[mine]['measured']['makespan_us'], 'makespan_us')}, under "
+        f"{who}'s rules and clock, and the timed schedules beside each run list every event "
+        "with its ions, its start and end and the zones, segments and junctions it holds, so "
+        "the time can be checked without our code.</small></p>",
+        "<p><small><b>Instructions and steps.</b> An instruction is one such batch. Its steps "
+        "are the segments the longest move in it crosses (one to a neighbouring zone, two "
+        "through a junction: zone, junction, zone), or one for any other operation; its cost "
+        "counts every segment and every junction crossing of every move. So our d = 5 round is "
+        f"{len(played[mine][1].instructions)} instructions and {played[mine][0].steps:,} steps, "
+        f"{who}'s {len(played[first][1].instructions)} and {played[first][0].steps:,}: more, "
+        "smaller instructions, which overlap in time where the Studio cannot show it.</small></p>",
+        f"<p><small><b>Rotations.</b> The programmes write {who}'s operations in our language: "
+        f"{who}'s P<sub>θ</sub>, exp(−iθP), is R(2θ, 0) about X, R(2θ, π/2) about Y and VZ(2θ) "
+        "about Z, with the angles in the programme; Prepare_Z is a reset; the ZZ keeps its name. "
+        "The Studio's list prints each rotation's angles, as R(θ, φ) or VZ(λ); the timed schedules "
+        f"name every operation as {who} does. Ion by ion, ours runs exactly {who}'s operations, "
+        "with the same partners, in the same order (checked).</small></p>",
+        f"<p><small><b>R6b.</b> On the Studio pages the rule R6b fails once for every ZZ: "
+        + ", ".join(f"{r6b[rid]} times in {runs[rid].get('label', rid).split(' (')[0]}"
+                    + ("" if r6b[rid] == gates.get(rid) else f" (of {gates.get(rid)} ZZ gates)")
+                    for rid in runs if rid in r6b)
+        + ". R6b is a rule of our language: both "
+        f"ions of a two-qubit gate stand in one zone. {who} keeps one ion in each zone and runs "
+        "a ZZ on ions in neighbouring zones of one segment; its 2,000 µs include merging the "
+        "two into one zone, cooling, the gate and the split (TISCC's gate table). Under "
+        f"{who}'s rules, the checks in the tables above, a ZZ must act on ions in the same or "
+        "neighbouring zones, which every one does, and since the merge and the split are inside "
+        "the ZZ, every zone holds one ion throughout.</small></p>",
+    ]
     return "\n".join(out)
 
 
@@ -245,7 +342,8 @@ def _ours_box(p: dict, res: dict | None) -> str:
                + "".join(f"<th>{_e(c)}</th>" for c in cols) + "<th>checks</th></tr>")
     for o in rows:
         m, t = o["measured"], o["theirs"]
-        watch = f'<br><a class="rp-watch" href="{_e(key)}/{_e(o["id"])}.html">▶ watch ours in the Studio</a>'
+        watch = (f'<br><a class="rp-watch" href="{_e(key)}/{_e(o["id"])}.html">▶ watch ours in the Studio</a>'
+                 + _timed_link(p, o["id"]))
         n = sum(1 for pr in o["profiles"].values() for v in pr["checks"].values() if v == "passed")
         names = " and ".join(books.get(k, "the paper's rules") for k in o["profiles"])
         pill = (f'<span class="rp-pill ok" title="strict durations; the circuit; same device and '
@@ -333,13 +431,34 @@ def _design_section(p: dict) -> str:
            f'<p>{_e(p["what"])}</p>',
            f'<p><small>{_e(p["artifact"]["note"])}</small></p>']
     m = Machine.load(ROOT / key / p["arch"])
-    svg = device_svg(m, labels=False)
+    # THE GATE ZONES BY NAME.  Every disc of this machine is grey in the site palette, so the
+    # caption's zone list could not be matched to the drawing (a reader asked for DG/UG
+    # labels).  Each DG and UG zone carries its site id, the id the Studio's listing uses;
+    # the bottom rail's labels sit under it, so the picture grows to hold them.
+    named = {n.id: (n.id, "#1f5fae" if n.zone_type == "dg" else "#8a5a00")
+             for n in m.arch.device.sites() if n.zone_type in ("dg", "ug")}
+    svg = device_svg(m, labels=False, marks=named or None)
+    if named:
+        svg = re.sub(r'viewBox="0 0 (\d+) (\d+)"',
+                     lambda v: f'viewBox="0 0 {v.group(1)} {int(v.group(2)) + 26}"', svg, count=1)
     zones = ", ".join(f"{k} ({v.get('capacity')})" for k, v in m.arch.zone_types.items())
+    demo = ROOT / key / "demo" / "ghz32.tsir.json"
     out.append(f'<figure class="rp-fig">{svg}<figcaption>H2 in our language: one closed loop of '
                f'{len(list(m.arch.device.sites()))} sites, no junction; zones with their capacity '
-               f'in qubits: {_e(zones)}. <a class="rp-watch" href="{_e(key)}/design.html">▶ '
-               + ("watch a 32-qubit GHZ circuit of ours run on it" if (ROOT / key / "demo" / "ghz32.tsir.json").exists()
+               f'in qubits: {_e(zones)}. '
+               + ("Drawn the way the paper's Fig. 2d is: the four DG zones, the only ones that gate, "
+                  "prepare and measure, are the labelled discs of the bottom rail, and the four UG "
+                  "zones, used only for sorting, those of the top rail; the unlabelled discs between "
+                  "and beside them are auxiliary parking. Past them, each end of the loop is a "
+                  "conveyor region of twenty wells running round the bend from one rail to the "
+                  "other; the green disc is the load hole. The Studio draws y downward, so there the "
+                  "DG rail is the top one. "
+                  if named else "")
+               + f'<a class="rp-watch" href="{_e(key)}/design.html">▶ '
+               + ("watch a 32-qubit GHZ circuit of ours run on it" if demo.exists()
                   else "open it") + ' in the Studio</a></figcaption></figure>')
+    if demo.exists():
+        out.append(_design_demo_note(m, demo))
     out.append("<p>The paper prints, for each circuit it ran, the number of two-qubit gates and "
                "the number of two-qubit gate rounds (at most four gates a round, one per gate "
                "zone; Table I). We took the same circuits from its published data, rewrote each "
@@ -366,6 +485,39 @@ def _design_section(p: dict) -> str:
                "paper's own layering with every round of four filled.</small></p>")
     out.append(_design_ours(p, res))
     return "\n".join(out)
+
+
+def _design_demo_note(m, demo: Path) -> str:
+    """What the Studio programme's runtime is and is not, and where H2's cooling went.
+
+    A reader compared the Studio's runtime for the demo with the paper's time per shot.
+    Every primitive time in h2.arch.json is a 1 us placeholder (the paper states none), so
+    the runtime is a count, not a time; the number is replayed here, under the model the
+    Studio page uses, so it is the figure the reader sees there."""
+    from ..cost.models import corrected_model
+    from ..qec import load_program
+    from ..verify.replay import replay
+
+    prog = load_program(demo)
+    res = replay(prog, m.arch, corrected_model("local"), check_rules=False, keep_cycles=False)
+    us = res.total_us
+    cools = [i for i in prog.instructions if i.type == "cool"]
+    return (
+        "<p><small>The programme in the Studio is our compiler's, for a GHZ circuit of our own "
+        "with as many two-qubit gates as the paper's, 31. The runtime the Studio shows for it, "
+        f"{us / 1000:.2f} ms, is not a time for H2: the paper states no duration for any "
+        "primitive, so every primitive of this machine is given a placeholder of 1 µs, and "
+        f"{us / 1000:.2f} ms is those placeholders added up over its {len(prog.instructions)} "
+        "instructions. It counts operations; it is not calibrated to H2 and cannot be compared "
+        "with the 0.18 s a shot the paper reports for its GHZ circuit (Table I: 2% quantum "
+        "operations, 64% transport, 34% cooling). Cooling is the other thing the programme "
+        f"leaves out. Its {'one cooling instruction is' if len(cools) == 1 else f'{len(cools)} cooling instructions are'} "
+        "the trap-wide Doppler cool at the start; the resolved sideband cooling H2 applies in "
+        "the DG zones before two-qubit gates is neither in it nor folded into any primitive. "
+        "Our description of the machine has one cooling primitive, trap-wide, and no heating "
+        "rate or n-bar limit for a gate (the paper states neither), so the compiler's cooling "
+        "pass has nothing to schedule: R7 has no limit to enforce, and R7c (a programme with "
+        "two-qubit gates must cool) is met by the opening cool.</small></p>")
 
 
 def _example_fixed(m: dict) -> bool:
@@ -671,6 +823,12 @@ def _method_page(PAGE: str, STYLE: str) -> str:
         "places (one waveform per cycle, gates and transport never in the same cycle), and under "
         "it most of these schedules would not be legal at all; that is a different question, "
         "and it is not the one asked here.</p>",
+        "<p>The same goes for the Studio pages. Each replayed run opens in the Studio as a "
+        "programme in our language, and the Studio plays it one instruction at a time (the "
+        "operations of one kind that start together), so the runtime it shows is its "
+        "instructions added up, and its rule panel judges the run by our rules. Where a "
+        "paper's operations overlap in time, that sum is longer than the schedule; the time "
+        "that is checked, and compared, is the one in the tables, on the paper's clock.</p>",
         '<h2 id="rules">The rules each paper\'s model has</h2>',
         _rules_table(papers),
         "<p>A note on a paper is written only when running its code shows it.</p>",
@@ -733,8 +891,21 @@ STUDIO_PRICING = {
     "khan2025moveless": {"one_q_us": 0.0, "measure_us": 0.0, "reset_us": 0.0},
     "bach2025": {"one_q_us": 0.0, "measure_us": 0.0, "reset_us": 0.0},
     "jones2025": {"gate_us": 40.0, "one_q_us": 5.0, "measure_us": 400.0, "reset_us": 50.0},
-    "leblond2023": {"gate_us": 2000.0, "one_q_us": 10.0, "measure_us": 120.0, "reset_us": 10.0},
+    # TISCC: X and Y turns 10 us, Z turns 3 us (a VZ), Prepare_Z (a reset) 10 us
+    "leblond2023": {"gate_us": 2000.0, "one_q_us": 10.0, "measure_us": 120.0, "reset_us": 10.0,
+                    "z_us": 3.0},
 }
+
+#: papers whose Studio headline gives the schedule's own time on the paper's clock: the
+#: Studio's runtime adds its instructions one after another, which an asynchronous
+#: schedule does not do (thread 44)
+CLOCK_IN_HEADLINE = {"leblond2023"}
+
+
+def _headline(p: dict, label: str, makespan: float | None) -> str:
+    if p["key"] not in CLOCK_IN_HEADLINE or makespan is None:
+        return label
+    return f"{_num(makespan, 'makespan_us')} on {p['short']}'s clock · {label}"
 
 
 def _layout_for(p: dict, run: dict) -> tuple[str, dict]:
@@ -892,24 +1063,36 @@ def studio_pages(tmp: Path, only: set[str] | None = None):
         for run in p.get("runs", []):
             if (only and run["id"] not in only) or run.get("no_studio"):
                 continue
-            s = named_after_qubits(_import(p, run))
-            fam, kw = _layout_for(p, run)
-            pos = layout(s.device, fam, **kw)
-            price = dict(STUDIO_PRICING.get(p["key"], {}))
-            if "gate_us" not in price:
-                cap = max(int(a["capacity"]) for a in s.device.sites.values())
-                price["gate_us"] = float(int(max(100.0, 13.33 * cap - 54)))
-            name = f"{p['key']}_{run['id']}".replace(".", "_")
-            doc = studio_arch_doc(s, pos, name=name, table=p["key"],
-                                  hop_entails=() if run["importer"] == "tiscc" else ("split", "merge"),
-                                  note=f"{p['short']} ({p['venue']}): {p['what']}", **price)
-            m = Machine(Architecture.from_json(doc))
-            prog = to_tsir(s, name=run["id"], arch=name, gate=_gate(p, run, s))
+            m, prog, s, name = _run_programme(p, run)
+            row = next((x for x in res.get("runs", []) if x["id"] == run["id"]), {})
             out = tmp / f"{name}.html"
             m.render(prog, out, model=model, kicker=f"REPRODUCED · {p['short'].upper()}",
-                     headline=run.get("label", run["id"]),
+                     headline=_headline(p, run.get("label", run["id"]),
+                                        row.get("measured", {}).get("makespan_us")),
                      source=_source(prog, _circuit_source(p, run, s, prog), s, run))
             yield studio_rel(p, run), out.read_text(encoding="utf-8"), ""
+
+
+def _run_programme(p: dict, run: dict):
+    """A paper run as its Studio page plays it: (machine, programme, schedule, name)."""
+    from ..api import Machine
+    from ..arch import Architecture
+    from ..repro.devices import layout
+    from ..repro.studio import named_after_qubits, studio_arch_doc, to_tsir
+
+    s = named_after_qubits(_import(p, run))
+    fam, kw = _layout_for(p, run)
+    pos = layout(s.device, fam, **kw)
+    price = dict(STUDIO_PRICING.get(p["key"], {}))
+    if "gate_us" not in price:
+        cap = max(int(a["capacity"]) for a in s.device.sites.values())
+        price["gate_us"] = float(int(max(100.0, 13.33 * cap - 54)))
+    name = f"{p['key']}_{run['id']}".replace(".", "_")
+    doc = studio_arch_doc(s, pos, name=name, table=p["key"],
+                          hop_entails=() if run["importer"] == "tiscc" else ("split", "merge"),
+                          note=f"{p['short']} ({p['venue']}): {p['what']}", **price)
+    m = Machine(Architecture.from_json(doc))
+    return m, to_tsir(s, name=run["id"], arch=name, gate=_gate(p, run, s)), s, name
 
 
 def _design_studio(p: dict, tmp: Path, model):
@@ -960,8 +1143,8 @@ def _design_studio(p: dict, tmp: Path, model):
     return f"reproduce/{p['key']}/design.html", out.read_text(encoding="utf-8"), ""
 
 
-def _ours_studio(p: dict, o: dict, spec: dict, row: dict, tmp: Path, model):
-    """One of our schedules as a Studio page, drawn like the paper's run it beats (or not)."""
+def _ours_programme(p: dict, o: dict, spec: dict):
+    """One of our schedules as its Studio page plays it: (machine, programme, schedule, name)."""
     from ..api import Machine
     from ..arch import Architecture
     from ..repro.__main__ import _open
@@ -977,12 +1160,19 @@ def _ours_studio(p: dict, o: dict, spec: dict, row: dict, tmp: Path, model):
         cap = max(int(a["capacity"]) for a in s.device.sites.values())
         price["gate_us"] = float(int(max(100.0, 13.33 * cap - 54)))
     name = f"{p['key']}_{o['id']}".replace(".", "_")
-    doc = studio_arch_doc(s, pos, name=name, table=p["key"], hop_entails=("split", "merge"),
+    # moved as the paper's run moves: a TISCC move is one Move, no split and no merge
+    doc = studio_arch_doc(s, pos, name=name, table=p["key"],
+                          hop_entails=() if spec["importer"] == "tiscc" else ("split", "merge"),
                           note=f"{p['short']} ({p['venue']}): our schedule", **price)
     m = Machine(Architecture.from_json(doc))
-    prog = to_tsir(s, name=o["id"], arch=name, gate=_gate(p, spec))
+    return m, to_tsir(s, name=o["id"], arch=name, gate=_gate(p, spec)), s, name
+
+
+def _ours_studio(p: dict, o: dict, spec: dict, row: dict, tmp: Path, model):
+    """One of our schedules as a Studio page, drawn like the paper's run it beats (or not)."""
+    m, prog, s, name = _ours_programme(p, o, spec)
     out = tmp / f"{name}.html"
-    label = f"{o['label']}: our schedule"
+    label = _headline(p, f"{o['label']}: our schedule", row.get("measured", {}).get("makespan_us"))
     relabel = None
     if o.get("circuit_relabel") == "checks":
         from ..repro.importers import checks_as_scheduled
