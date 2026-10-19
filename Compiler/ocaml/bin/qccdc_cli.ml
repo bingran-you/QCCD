@@ -327,7 +327,7 @@ let cmd_route_instances inp arch_path out =
     (List.length insts) out;
   0
 
-let cmd_rotate ?(sweep = Qccdc.Rotate_pipeline.Monotone) ?placement ?(dock_all = false) inp
+let cmd_rotate ?(sweep = Qccdc.Rotate_pipeline.Greedy) ?placement ?(dock_all = false) inp
     arch_path out =
   let a = Qccdc.Arch.load arch_path in
   let prog = Qccdc.Qasm.parse_file inp in
@@ -453,8 +453,8 @@ let () =
     | Some ap, Some out -> (
       let sweep =
         match arg_after "--sweep" rest with
-        | Some "greedy" -> Qccdc.Rotate_pipeline.Greedy
-        | _ -> Qccdc.Rotate_pipeline.Monotone
+        | Some "monotone" -> Qccdc.Rotate_pipeline.Monotone
+        | _ -> Qccdc.Rotate_pipeline.Greedy
       in
       let placement = placement_arg rest in
       let dock_all = List.mem "--dock-all" rest in

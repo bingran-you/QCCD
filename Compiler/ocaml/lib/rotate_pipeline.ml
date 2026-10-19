@@ -109,10 +109,17 @@ let delta_to (x : ctx) (ion : string) (d : Conveyor.dock) : int =
    turns -- which is what the shipped deck schedule does, and why its hop count is 2 672
    rather than tens of thousands.
 
-   `Greedy` jumps to whichever offset serves the most contacts.  It makes bigger batches
-   and pays for them in hops, and hops are not free: every one heats the ion, and heating
-   is what degrades the next gate (`docs/PLAN.md` §0.3).  Monotone is the default for that
-   reason, not because it looks tidier. *)
+   `Greedy` jumps to whichever offset serves the most contacts, turning the shorter way.
+   It makes bigger batches and pays for them in hops, and hops are not free: every one
+   heats the ion, and heating is what degrades the next gate (`docs/PLAN.md` §0.3).
+
+   Greedy is the default since 2026-10-19, and the reason is the order rule.  Monotone was
+   the default while this pass reordered a check's commuting CNOTs: a whole check was ready
+   at once, so one forward pass found most of its contacts lined up (BB144 on ring144_24v:
+   546 batches, 776 hops).  Keeping every qubit's order, only one contact per ancilla is
+   ready at a time, and always turning forward then laps the loop for each of them: 824
+   batches and 7 586 hops, against greedy's 788 batches and 4 956 hops -- fewer turns AND
+   fewer hops, so less heat as well.  `--sweep monotone` still selects the old rule. *)
 type sweep = Monotone | Greedy
 
 (* An externally chosen layout: which loop slot each rider starts in, and which dock each
@@ -161,7 +168,7 @@ let placement_of_json (j : Yojson.Safe.t) : placement =
 
 let placement_of_file path = placement_of_json (Yojson.Safe.from_file path)
 
-let run ?(sweep = Monotone) ?placement ?(dock_all = false) (a : Arch.t) (c : Circuit.t)
+let run ?(sweep = Greedy) ?placement ?(dock_all = false) (a : Arch.t) (c : Circuit.t)
     ~(arch_path : string) ~(qasm_path : string) : Tsir.t * Cert.t * plan * string list =
   let cv =
     match Conveyor.detect a with

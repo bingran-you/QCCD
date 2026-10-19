@@ -711,7 +711,10 @@ it. The rotation scheduler now treats a shared qubit as a dependency without exc
 (BB144 on `ring144_24v`: 824 batches, was 546); `RespectsOrder` lost the `Commutes` case
 (`Commute.lean`'s theorems stay, consulted by nothing); `check_cert.py` checks each qubit's
 order from the program itself; and `mutate_cert.py` gained `swap_commuting_gates`, which
-both must now reject for order.
+both must now reject for order. Two follow-ups the same day: the default sweep became greedy
+(in circuit order an ancilla has one contact ready at a time, and turning only forward laps
+the loop for each: BB144 788 batches / 4 956 hops greedy, 824 / 7 586 monotone), and the
+Python binder (`qccd/compile/order.py`) serves each check's CNOTs in the code's member order.
 
 What generality *did* buy is in the matrix below: 9 examples × 9 architectures, **72 of 81
 pairs fully verified and 0 defects**, on grids, ladders, racetracks, chains and a two-trap
