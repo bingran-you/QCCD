@@ -101,7 +101,29 @@ the `include snippets/qccd-official.conf;` line and `nginx -t && systemctl reloa
 The site file as it was before the include was added is
 `/root/qccd.academy.nginx.bak-20260923-000848`.
 
-**Deployed** 2026-10-18 03:23 UTC (2026-10-17 20:23 PDT), from commit `5b1a3f3` (pushed):
+**Deployed** 2026-10-19 20:30 UTC, from commit `972d8bf` (pushed): compiler `dbd13d8952f3`,
+which never changes the order of a qubit's gates, commuting or not (the user's decision of
+2026-10-19), and whose conveyor sweeps greedily; `check_cert.py`'s R10 checks each qubit's
+order from the program; and qcheck `1c067263bdc9`, whose order clause lost its commutation
+exemption. suite@1 was re-pinned in `972d8bf`, measured in a rehearsal of this image: only the
+three memory pairs on `ring144_24v` changed, and the reference still has 100 valid, 0 wrong and
+8 refused. Production also gets the R10 work of 2026-10-18 (d5717e1, 80d4d71, b26eeca, acca452)
+and the Linux-measured baseline of c6491e0, which the previous image predated.
+
+The image was derived from `qccd-official:5b1a3f3`: the Dockerfile's OCaml AND Lean stages
+verbatim, then `rm` and `COPY` of `qccd/`, `arch/`, `Compiler/bridge`, `qccdc_cli` and `qcheck`
+(the previous derived images reused e70144e's qcheck; the strict order clause needed a new
+one). Its `qccdc_cli` is the published Linux `dbd13d8952f3` byte for byte (sha256
+`9897b5f6…`), its qcheck sha256 `4c78a9d5…`; the 24 layers are identical on both machines. The
+previous deployment is in `.env.bak-5b1a3f3`, `VERSION.bak-5b1a3f3` and
+`docker-compose.prod.yml.bak-5b1a3f3`. Private smoke tests by the operator uploader
+`deploy-smoke-972d8bf` (quota 2, token deleted): GHZ `os_463dedd83cadfe37` ok in 16 s, and the
+Compiler board `os_108ea475e6c5f306` eligible in 410 s, 108 valid / 0 wrong / 8 refused of 116,
+speedup 1.0, ler_ratio 1.000, no public pair different from the baseline. The local rehearsal
+gave the same (`os_c9fdff1a1274e4c2`). `smoke_test.py` must run from the checkout: from a git
+archive it has no compiler for its local grade.
+
+**Before that** 2026-10-18 03:23 UTC (2026-10-17 20:23 PDT), from commit `5b1a3f3` (pushed):
 compiler `7265883d596f`, in which a barrier is a fence and a docked two-qubit gate is its own
 gate. Every release from `35bf68427d9c` to `c7c535380bfb` compiled a two-qubit `barrier a,b`,
 and any docked `cz`, in the conveyor as a CX. Production ran `f88a49f79af1`, which predates
