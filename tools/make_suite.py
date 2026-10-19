@@ -40,7 +40,11 @@ History.  2026-09-28: the first measurement, with a router that predated R22 (20
 the reference could not pass its own board).  2026-09-29: re-pinned the day it was published,
 before any public submission (Windows, qccdc f52d3ba63b9a: 88 valid, 0 wrong, 20 refused).
 2026-10-17: re-pinned for qccdc 7265883d596f (Windows: 100 / 0 / 8).  2026-10-18: the same
-programs measured on Linux; only the LERs, the timings and that refusal's path changed.  A
+programs measured on Linux; only the LERs, the timings and that refusal's path changed.
+2026-10-19: re-pinned for qccdc dbd13d8952f3, which keeps every qubit's gate order (commuting or
+not) and sweeps the conveyor greedily, measured the same way in a rehearsal of the image
+qccd-official:b4535df (private run os_3275b2eadbe9a312): still 100 / 0 / 8; the three memory
+pairs on ring144_24v, the rotation pass's, changed their times (and two their LERs).  A
 published suite is otherwise immutable: change it by adding suite@2.
 """
 

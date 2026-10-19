@@ -1,6 +1,6 @@
 {
  "compiler": "qccdc (reference) + insert_cooling",
- "measured": "2026-10-18",
+ "measured": "2026-10-19",
  "pairs": {
   "adder3@chain": {
    "ler": null,
@@ -13,7 +13,7 @@
     "transport_instructions": 116
    },
    "reason": "",
-   "seconds": 1.323,
+   "seconds": 1.57,
    "status": "valid"
   },
   "adder3@cyclone_base": {
@@ -27,7 +27,7 @@
     "transport_instructions": 86
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 1.407,
    "status": "valid"
   },
   "adder3@cyclone_dual_loop": {
@@ -41,7 +41,7 @@
     "transport_instructions": 261
    },
    "reason": "",
-   "seconds": 1.434,
+   "seconds": 6.813,
    "status": "valid"
   },
   "adder3@deck_unit_cell": {
@@ -55,7 +55,7 @@
     "transport_instructions": 91
    },
    "reason": "",
-   "seconds": 0.61,
+   "seconds": 1.721,
    "status": "valid"
   },
   "adder3@grid9x9": {
@@ -69,7 +69,7 @@
     "transport_instructions": 91
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 1.037,
    "status": "valid"
   },
   "adder3@h2_racetrack": {
@@ -83,7 +83,7 @@
     "transport_instructions": 165
    },
    "reason": "",
-   "seconds": 0.767,
+   "seconds": 1.269,
    "status": "valid"
   },
   "adder3@ladder_2x72": {
@@ -97,7 +97,7 @@
     "transport_instructions": 124
    },
    "reason": "",
-   "seconds": 0.566,
+   "seconds": 1.32,
    "status": "valid"
   },
   "adder3@ring144_24v": {
@@ -111,7 +111,7 @@
     "transport_instructions": 493
    },
    "reason": "",
-   "seconds": 0.603,
+   "seconds": 1.119,
    "status": "valid"
   },
   "adder3@stationary_chain": {
@@ -125,7 +125,7 @@
     "transport_instructions": 33
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 1.009,
    "status": "valid"
   },
   "bell2@chain": {
@@ -139,7 +139,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.071,
    "status": "valid"
   },
   "bell2@cyclone_base": {
@@ -153,7 +153,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.434,
+   "seconds": 3.258,
    "status": "valid"
   },
   "bell2@cyclone_dual_loop": {
@@ -167,7 +167,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.466,
+   "seconds": 2.322,
    "status": "valid"
   },
   "bell2@deck_unit_cell": {
@@ -181,7 +181,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.423,
    "status": "valid"
   },
   "bell2@grid9x9": {
@@ -195,7 +195,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.174,
    "status": "valid"
   },
   "bell2@h2_racetrack": {
@@ -209,7 +209,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 2.054,
+   "seconds": 2.407,
    "status": "valid"
   },
   "bell2@ladder_2x72": {
@@ -223,7 +223,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.717,
+   "seconds": 2.407,
    "status": "valid"
   },
   "bell2@ring144_24v": {
@@ -237,7 +237,7 @@
     "transport_instructions": 6
    },
    "reason": "",
-   "seconds": 0.567,
+   "seconds": 2.17,
    "status": "valid"
   },
   "bell2@stationary_chain": {
@@ -251,7 +251,7 @@
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 0.466,
+   "seconds": 2.07,
    "status": "valid"
   },
   "bv6@chain": {
@@ -265,7 +265,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.517,
+   "seconds": 2.37,
    "status": "valid"
   },
   "bv6@cyclone_base": {
@@ -279,7 +279,7 @@
     "transport_instructions": 5
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.17,
    "status": "valid"
   },
   "bv6@cyclone_dual_loop": {
@@ -293,7 +293,7 @@
     "transport_instructions": 6
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.421,
    "status": "valid"
   },
   "bv6@deck_unit_cell": {
@@ -307,7 +307,7 @@
     "transport_instructions": 5
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.571,
    "status": "valid"
   },
   "bv6@grid9x9": {
@@ -321,7 +321,7 @@
     "transport_instructions": 5
    },
    "reason": "",
-   "seconds": 0.466,
+   "seconds": 2.406,
    "status": "valid"
   },
   "bv6@h2_racetrack": {
@@ -335,7 +335,7 @@
     "transport_instructions": 6
    },
    "reason": "",
-   "seconds": 0.466,
+   "seconds": 2.27,
    "status": "valid"
   },
   "bv6@ladder_2x72": {
@@ -349,7 +349,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.566,
+   "seconds": 2.47,
    "status": "valid"
   },
   "bv6@ring144_24v": {
@@ -363,7 +363,7 @@
     "transport_instructions": 34
    },
    "reason": "",
-   "seconds": 0.466,
+   "seconds": 2.12,
    "status": "valid"
   },
   "bv6@stationary_chain": {
@@ -377,14 +377,14 @@
     "transport_instructions": 8
    },
    "reason": "",
-   "seconds": 0.466,
+   "seconds": 3.142,
    "status": "valid"
   },
   "clifford12@chain": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
-   "seconds": 3.288,
+   "seconds": 7.276,
    "status": "refused"
   },
   "clifford12@cyclone_base": {
@@ -398,14 +398,14 @@
     "transport_instructions": 296
    },
    "reason": "",
-   "seconds": 0.606,
+   "seconds": 3.006,
    "status": "valid"
   },
   "clifford12@cyclone_dual_loop": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has 2 closed loops; this pass drives exactly one",
-   "seconds": 1.403,
+   "seconds": 6.877,
    "status": "refused"
   },
   "clifford12@deck_unit_cell": {
@@ -419,7 +419,7 @@
     "transport_instructions": 141
    },
    "reason": "",
-   "seconds": 1.035,
+   "seconds": 4.809,
    "status": "valid"
   },
   "clifford12@grid9x9": {
@@ -433,7 +433,7 @@
     "transport_instructions": 141
    },
    "reason": "",
-   "seconds": 1.034,
+   "seconds": 4.324,
    "status": "valid"
   },
   "clifford12@h2_racetrack": {
@@ -447,7 +447,7 @@
     "transport_instructions": 462
    },
    "reason": "",
-   "seconds": 1.01,
+   "seconds": 3.774,
    "status": "valid"
   },
   "clifford12@ladder_2x72": {
@@ -461,7 +461,7 @@
     "transport_instructions": 299
    },
    "reason": "",
-   "seconds": 5.87,
+   "seconds": 27.675,
    "status": "valid"
   },
   "clifford12@ring144_24v": {
@@ -475,7 +475,7 @@
     "transport_instructions": 1329
    },
    "reason": "",
-   "seconds": 0.803,
+   "seconds": 2.797,
    "status": "valid"
   },
   "clifford12@stationary_chain": {
@@ -489,7 +489,7 @@
     "transport_instructions": 63
    },
    "reason": "",
-   "seconds": 0.566,
+   "seconds": 2.12,
    "status": "valid"
   },
   "ghz16@chain": {
@@ -503,7 +503,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 0.466,
+   "seconds": 2.52,
    "status": "valid"
   },
   "ghz16@cyclone_base": {
@@ -517,7 +517,7 @@
     "transport_instructions": 80
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.811,
    "status": "valid"
   },
   "ghz16@cyclone_dual_loop": {
@@ -531,7 +531,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.873,
    "status": "valid"
   },
   "ghz16@deck_unit_cell": {
@@ -545,7 +545,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 0.466,
+   "seconds": 2.721,
    "status": "valid"
   },
   "ghz16@grid9x9": {
@@ -559,7 +559,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.207,
    "status": "valid"
   },
   "ghz16@h2_racetrack": {
@@ -573,7 +573,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 0.517,
+   "seconds": 3.064,
    "status": "valid"
   },
   "ghz16@ladder_2x72": {
@@ -587,7 +587,7 @@
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.371,
    "status": "valid"
   },
   "ghz16@ring144_24v": {
@@ -601,7 +601,7 @@
     "transport_instructions": 90
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.214,
    "status": "valid"
   },
   "ghz16@stationary_chain": {
@@ -615,7 +615,7 @@
     "transport_instructions": 2
    },
    "reason": "",
-   "seconds": 0.466,
+   "seconds": 2.522,
    "status": "valid"
   },
   "ghz32@chain": {
@@ -629,7 +629,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.573,
+   "seconds": 2.607,
    "status": "valid"
   },
   "ghz32@cyclone_base": {
@@ -643,7 +643,7 @@
     "transport_instructions": 331
    },
    "reason": "",
-   "seconds": 0.603,
+   "seconds": 2.872,
    "status": "valid"
   },
   "ghz32@cyclone_dual_loop": {
@@ -657,7 +657,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.824,
    "status": "valid"
   },
   "ghz32@deck_unit_cell": {
@@ -671,7 +671,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.566,
+   "seconds": 2.607,
    "status": "valid"
   },
   "ghz32@grid9x9": {
@@ -685,7 +685,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.473,
    "status": "valid"
   },
   "ghz32@h2_racetrack": {
@@ -699,7 +699,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.206,
    "status": "valid"
   },
   "ghz32@ladder_2x72": {
@@ -713,7 +713,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.566,
+   "seconds": 3.492,
    "status": "valid"
   },
   "ghz32@ring144_24v": {
@@ -727,14 +727,14 @@
     "transport_instructions": 739
    },
    "reason": "",
-   "seconds": 0.803,
+   "seconds": 3.27,
    "status": "valid"
   },
   "ghz32@stationary_chain": {
    "ler": null,
    "metrics": null,
-   "reason": "qccdc cannot compile this pair: /sandbox/jobs/oj_9928df36b3f0a362/req/00072/in/circuit.qasm: stationary_chain has 2 usable traps (30 ion slots) but the circuit needs 32",
-   "seconds": 0.266,
+   "reason": "qccdc cannot compile this pair: /sandbox/jobs/oj_332baebd4037fa88/req/00072/in/circuit.qasm: stationary_chain has 2 usable traps (30 ion slots) but the circuit needs 32",
+   "seconds": 1.169,
    "status": "refused"
   },
   "ghz8@chain": {
@@ -748,7 +748,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.412,
    "status": "valid"
   },
   "ghz8@cyclone_base": {
@@ -762,7 +762,7 @@
     "transport_instructions": 19
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.321,
    "status": "valid"
   },
   "ghz8@cyclone_dual_loop": {
@@ -776,7 +776,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.808,
    "status": "valid"
   },
   "ghz8@deck_unit_cell": {
@@ -790,7 +790,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.975,
    "status": "valid"
   },
   "ghz8@grid9x9": {
@@ -804,7 +804,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.517,
+   "seconds": 2.406,
    "status": "valid"
   },
   "ghz8@h2_racetrack": {
@@ -818,7 +818,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.371,
    "status": "valid"
   },
   "ghz8@ladder_2x72": {
@@ -832,7 +832,7 @@
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 2.208,
    "status": "valid"
   },
   "ghz8@ring144_24v": {
@@ -846,7 +846,7 @@
     "transport_instructions": 42
    },
    "reason": "",
-   "seconds": 0.466,
+   "seconds": 2.607,
    "status": "valid"
   },
   "ghz8@stationary_chain": {
@@ -860,14 +860,14 @@
     "transport_instructions": 0
    },
    "reason": "",
-   "seconds": 0.466,
+   "seconds": 2.208,
    "status": "valid"
   },
   "qft6@chain": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
-   "seconds": 2.804,
+   "seconds": 9.681,
    "status": "refused"
   },
   "qft6@cyclone_base": {
@@ -881,7 +881,7 @@
     "transport_instructions": 38
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 1.921,
    "status": "valid"
   },
   "qft6@cyclone_dual_loop": {
@@ -895,7 +895,7 @@
     "transport_instructions": 114
    },
    "reason": "",
-   "seconds": 0.803,
+   "seconds": 2.922,
    "status": "valid"
   },
   "qft6@deck_unit_cell": {
@@ -909,7 +909,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 0.967,
+   "seconds": 5.078,
    "status": "valid"
   },
   "qft6@grid9x9": {
@@ -923,7 +923,7 @@
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 1.003,
+   "seconds": 4.422,
    "status": "valid"
   },
   "qft6@h2_racetrack": {
@@ -937,7 +937,7 @@
     "transport_instructions": 82
    },
    "reason": "",
-   "seconds": 0.602,
+   "seconds": 2.07,
    "status": "valid"
   },
   "qft6@ladder_2x72": {
@@ -951,7 +951,7 @@
     "transport_instructions": 64
    },
    "reason": "",
-   "seconds": 0.716,
+   "seconds": 2.671,
    "status": "valid"
   },
   "qft6@ring144_24v": {
@@ -965,7 +965,7 @@
     "transport_instructions": 255
    },
    "reason": "",
-   "seconds": 2.411,
+   "seconds": 7.728,
    "status": "valid"
   },
   "qft6@stationary_chain": {
@@ -979,7 +979,7 @@
     "transport_instructions": 12
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 1.522,
    "status": "valid"
   },
   "rep3_r3_z@chain": {
@@ -1011,7 +1011,7 @@
     "transport_instructions": 14
    },
    "reason": "",
-   "seconds": 1.119,
+   "seconds": 1.728,
    "status": "valid"
   },
   "rep3_r3_z@cyclone_base": {
@@ -1043,7 +1043,7 @@
     "transport_instructions": 17
    },
    "reason": "",
-   "seconds": 1.172,
+   "seconds": 1.775,
    "status": "valid"
   },
   "rep3_r3_z@cyclone_dual_loop": {
@@ -1075,7 +1075,7 @@
     "transport_instructions": 12
    },
    "reason": "",
-   "seconds": 0.971,
+   "seconds": 1.656,
    "status": "valid"
   },
   "rep3_r3_z@deck_unit_cell": {
@@ -1107,7 +1107,7 @@
     "transport_instructions": 14
    },
    "reason": "",
-   "seconds": 0.566,
+   "seconds": 1.838,
    "status": "valid"
   },
   "rep3_r3_z@grid9x9": {
@@ -1139,7 +1139,7 @@
     "transport_instructions": 14
    },
    "reason": "",
-   "seconds": 0.566,
+   "seconds": 3.012,
    "status": "valid"
   },
   "rep3_r3_z@h2_racetrack": {
@@ -1171,7 +1171,7 @@
     "transport_instructions": 12
    },
    "reason": "",
-   "seconds": 0.516,
+   "seconds": 1.52,
    "status": "valid"
   },
   "rep3_r3_z@ladder_2x72": {
@@ -1203,39 +1203,39 @@
     "transport_instructions": 19
    },
    "reason": "",
-   "seconds": 0.606,
+   "seconds": 1.521,
    "status": "valid"
   },
   "rep3_r3_z@ring144_24v": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 6.49166423855041e-05,
+     "idle": 8.210412746595397e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.02,
-     "total": 0.057744916642387886
+     "total": 0.057762104127468336
     },
-    "errors": 4,
-    "hi": 0.0001028547142286384,
-    "ler": 4e-05,
-    "lo": 1.5555325305394583e-05,
+    "errors": 1,
+    "hi": 5.664709659040966e-05,
+    "ler": 1e-05,
+    "lo": 1.7652477303783126e-06,
     "noise": "qccd-noise@1",
-    "per_round": 1.333351111509895e-05,
+    "per_round": 3.333344444467201e-06,
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 15.46,
-    "T_transport": 14.544,
+    "T_jones": 19.585,
+    "T_transport": 19.824,
     "dacs": 46,
-    "instructions": 115,
-    "ions_per_instruction": 1.4516129032258065,
-    "transport_instructions": 31
+    "instructions": 119,
+    "ions_per_instruction": 1.6285714285714286,
+    "transport_instructions": 35
    },
    "reason": "",
-   "seconds": 0.717,
+   "seconds": 1.721,
    "status": "valid"
   },
   "rep3_r3_z@stationary_chain": {
@@ -1267,7 +1267,7 @@
     "transport_instructions": 13
    },
    "reason": "",
-   "seconds": 0.567,
+   "seconds": 1.32,
    "status": "valid"
   },
   "rep5_r5_z@chain": {
@@ -1299,7 +1299,7 @@
     "transport_instructions": 24
    },
    "reason": "",
-   "seconds": 0.634,
+   "seconds": 1.606,
    "status": "valid"
   },
   "rep5_r5_z@cyclone_base": {
@@ -1331,7 +1331,7 @@
     "transport_instructions": 39
    },
    "reason": "",
-   "seconds": 0.603,
+   "seconds": 1.607,
    "status": "valid"
   },
   "rep5_r5_z@cyclone_dual_loop": {
@@ -1363,7 +1363,7 @@
     "transport_instructions": 20
    },
    "reason": "",
-   "seconds": 0.603,
+   "seconds": 1.622,
    "status": "valid"
   },
   "rep5_r5_z@deck_unit_cell": {
@@ -1395,7 +1395,7 @@
     "transport_instructions": 43
    },
    "reason": "",
-   "seconds": 1.321,
+   "seconds": 2.808,
    "status": "valid"
   },
   "rep5_r5_z@grid9x9": {
@@ -1427,7 +1427,7 @@
     "transport_instructions": 43
    },
    "reason": "",
-   "seconds": 0.603,
+   "seconds": 2.772,
    "status": "valid"
   },
   "rep5_r5_z@h2_racetrack": {
@@ -1459,7 +1459,7 @@
     "transport_instructions": 20
    },
    "reason": "",
-   "seconds": 0.567,
+   "seconds": 2.474,
    "status": "valid"
   },
   "rep5_r5_z@ladder_2x72": {
@@ -1491,20 +1491,20 @@
     "transport_instructions": 43
    },
    "reason": "",
-   "seconds": 0.602,
+   "seconds": 2.737,
    "status": "valid"
   },
   "rep5_r5_z@ring144_24v": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 0.00041722476549005405,
+     "idle": 0.0007259241239701009,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.19801722476549777
+     "total": 0.19832592412397781
     },
     "errors": 0,
     "hi": 3.841311258303963e-05,
@@ -1515,15 +1515,15 @@
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 55.51,
-    "T_transport": 49.204,
+    "T_jones": 96.67,
+    "T_transport": 93.108,
     "dacs": 46,
-    "instructions": 381,
-    "ions_per_instruction": 1.8932038834951457,
-    "transport_instructions": 103
+    "instructions": 397,
+    "ions_per_instruction": 2.310924369747899,
+    "transport_instructions": 119
    },
    "reason": "",
-   "seconds": 0.666,
+   "seconds": 2.721,
    "status": "valid"
   },
   "rep5_r5_z@stationary_chain": {
@@ -1555,14 +1555,14 @@
     "transport_instructions": 42
    },
    "reason": "",
-   "seconds": 0.567,
+   "seconds": 2.922,
    "status": "valid"
   },
   "steane_r3_z@chain": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
-   "seconds": 3.925,
+   "seconds": 9.047,
    "status": "refused"
   },
   "steane_r3_z@cyclone_base": {
@@ -1594,14 +1594,14 @@
     "transport_instructions": 825
    },
    "reason": "",
-   "seconds": 1.267,
+   "seconds": 5.641,
    "status": "valid"
   },
   "steane_r3_z@cyclone_dual_loop": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has 2 closed loops; this pass drives exactly one",
-   "seconds": 2.204,
+   "seconds": 9.079,
    "status": "refused"
   },
   "steane_r3_z@deck_unit_cell": {
@@ -1633,7 +1633,7 @@
     "transport_instructions": 187
    },
    "reason": "",
-   "seconds": 2.436,
+   "seconds": 8.663,
    "status": "valid"
   },
   "steane_r3_z@grid9x9": {
@@ -1665,7 +1665,7 @@
     "transport_instructions": 187
    },
    "reason": "",
-   "seconds": 2.405,
+   "seconds": 9.329,
    "status": "valid"
   },
   "steane_r3_z@h2_racetrack": {
@@ -1697,7 +1697,7 @@
     "transport_instructions": 912
    },
    "reason": "",
-   "seconds": 1.167,
+   "seconds": 4.96,
    "status": "valid"
   },
   "steane_r3_z@ladder_2x72": {
@@ -1729,7 +1729,7 @@
     "transport_instructions": 489
    },
    "reason": "",
-   "seconds": 22.665,
+   "seconds": 92.077,
    "status": "valid"
   },
   "steane_r3_z@ring144_24v": {
@@ -1761,7 +1761,7 @@
     "transport_instructions": 2095
    },
    "reason": "",
-   "seconds": 3.968,
+   "seconds": 18.866,
    "status": "valid"
   },
   "steane_r3_z@stationary_chain": {
@@ -1793,14 +1793,14 @@
     "transport_instructions": 103
    },
    "reason": "",
-   "seconds": 0.566,
+   "seconds": 2.324,
    "status": "valid"
   },
   "surface3_r3_z@chain": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
-   "seconds": 1.717,
+   "seconds": 7.871,
    "status": "refused"
   },
   "surface3_r3_z@cyclone_base": {
@@ -1832,14 +1832,14 @@
     "transport_instructions": 278
    },
    "reason": "",
-   "seconds": 0.603,
+   "seconds": 2.722,
    "status": "valid"
   },
   "surface3_r3_z@cyclone_dual_loop": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has 2 closed loops; this pass drives exactly one",
-   "seconds": 2.007,
+   "seconds": 7.177,
    "status": "refused"
   },
   "surface3_r3_z@deck_unit_cell": {
@@ -1871,7 +1871,7 @@
     "transport_instructions": 130
    },
    "reason": "",
-   "seconds": 1.067,
+   "seconds": 4.899,
    "status": "valid"
   },
   "surface3_r3_z@grid9x9": {
@@ -1903,7 +1903,7 @@
     "transport_instructions": 130
    },
    "reason": "",
-   "seconds": 1.117,
+   "seconds": 3.973,
    "status": "valid"
   },
   "surface3_r3_z@h2_racetrack": {
@@ -1935,7 +1935,7 @@
     "transport_instructions": 769
    },
    "reason": "",
-   "seconds": 1.117,
+   "seconds": 4.877,
    "status": "valid"
   },
   "surface3_r3_z@ladder_2x72": {
@@ -1967,39 +1967,39 @@
     "transport_instructions": 472
    },
    "reason": "",
-   "seconds": 10.971,
+   "seconds": 50.617,
    "status": "valid"
   },
   "surface3_r3_z@ring144_24v": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 0.001212382923977573,
+     "idle": 0.0016635906253359978,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.27429238292399216
+     "total": 0.2747435906253506
     },
-    "errors": 132,
-    "hi": 0.005215044003873117,
-    "ler": 0.0044,
-    "lo": 0.003711861545481218,
+    "errors": 106,
+    "hi": 0.0016021441469673875,
+    "ler": 0.001325,
+    "lo": 0.0010957445404375956,
     "noise": "qccd-noise@1",
-    "per_round": 0.0014688230515236267,
-    "shots": 30000
+    "per_round": 0.00044186187983086267,
+    "shots": 80000
    },
    "metrics": {
-    "T_jones": 85.46,
-    "T_transport": 74.738,
+    "T_jones": 117.31,
+    "T_transport": 107.734,
     "dacs": 46,
-    "instructions": 678,
-    "ions_per_instruction": 3.727272727272727,
-    "transport_instructions": 198
+    "instructions": 714,
+    "ions_per_instruction": 3.6857142857142855,
+    "transport_instructions": 210
    },
    "reason": "",
-   "seconds": 0.766,
+   "seconds": 3.572,
    "status": "valid"
   },
   "surface3_r3_z@stationary_chain": {
@@ -2031,7 +2031,7 @@
     "transport_instructions": 95
    },
    "reason": "",
-   "seconds": 0.566,
+   "seconds": 2.273,
    "status": "valid"
   }
  }
