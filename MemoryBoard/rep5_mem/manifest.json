@@ -1,6 +1,111 @@
 [
  {
-  "key": "01_ladder_2x72",
+  "key": "01_stationary_chain",
+  "family": "line",
+  "title": "Repetition code memory, distance 5 on stationary_chain \u2014 no transport at all",
+  "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\arch\\stationary_chain.arch.json",
+  "claim": "one trap holding everything: no heating from transport, one long chain. LER per round 0.00e+00, 95% interval 0.0e+00 to 3.8e-06 (0 errors in 200,000 shots)",
+  "kicker": "REP-5 MEMORY \u00b7 LOGICAL ERROR RATE",
+  "short": "stationary_chain",
+  "answer": false,
+  "prefix": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\work\\stationary_chain\\prog",
+  "qasm": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\work\\stationary_chain\\circuit.qasm",
+  "numbers": {
+   "T_jones": 2.81,
+   "p_eff_vs_threshold": 0.415,
+   "T_transport": 3.104,
+   "ions_per_instruction": 1.0,
+   "transport_instructions": 42,
+   "us_per_ion": 5.0,
+   "dacs": 48,
+   "area_mm2": 0.114,
+   "pads_per_trap": 4.5,
+   "buildable": true,
+   "drc_clean": true,
+   "drc": {
+    "min_width": 0,
+    "min_gap": 0,
+    "rf_dc_clearance": 0,
+    "overlap": 0,
+    "dc_pairs_per_site": 0
+   },
+   "ler_round_1e4": 0.0,
+   "ler_round_lo_1e4": 0.0,
+   "ler_round_hi_1e4": 0.0384,
+   "ler_shot_1e4": 0.0,
+   "ler_per_round": 0.0,
+   "ler": 0.0,
+   "shots": 200000,
+   "errors": 0,
+   "noise_total": 0.23274,
+   "noise_ms": 0.10872,
+   "noise_heating": 0.03123,
+   "noise_chain": 0.00388,
+   "noise_idle": 2e-05,
+   "nbar_max": 0.981,
+   "chain_max": 7,
+   "two_qubit_gates": 40,
+   "r10": true,
+   "T_source": "replay"
+  },
+  "r10": true,
+  "status": "ok",
+  "page": "01_stationary_chain.html",
+  "instructions": 160,
+  "rules_failed": [],
+  "rules_passed": 25,
+  "disqualified": false,
+  "marks": [
+   {
+    "frame": 1,
+    "step": 2,
+    "id": 1,
+    "label": "cool",
+    "note": "the lattice cools too; 13% of its round.",
+    "kind": "note"
+   },
+   {
+    "frame": 2,
+    "step": 3,
+    "id": 2,
+    "label": "the busiest shuttle (1 ions) / a typical shuttle / 1 directions at once",
+    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 1.0. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.  ALSO: a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.  ALSO: ions moving 1 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 1 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
+    "kind": "note"
+   }
+  ],
+  "bytes": 1638145,
+  "sites": 2,
+  "junctions": 0,
+  "loops": 0,
+  "ler": {
+   "ler": 0.0,
+   "lo": 0.0,
+   "hi": 1.920692519040967e-05,
+   "shots": 200000,
+   "errors": 0,
+   "per_round": 0.0,
+   "per_round_lo": 0.0,
+   "per_round_hi": 3.841414550898037e-06,
+   "rounds": 5,
+   "decoder": "pymatching",
+   "seconds": 0.097,
+   "seed": 20260928,
+   "stim_version": "1.15.0",
+   "stopped": "max_shots"
+  },
+  "budget": {
+   "ms_base": 0.07359999999999811,
+   "ms_heating": 0.031232999999999945,
+   "ms_chain": 0.003882528282968054,
+   "gate_1q": 0.004000000000008441,
+   "measure": 0.040000000000001146,
+   "reset": 0.08,
+   "idle": 2.1974997644058636e-05,
+   "total": 0.23273750328061976
+  }
+ },
+ {
+  "key": "02_ladder_2x72",
   "family": "rails + highways",
   "title": "Repetition code memory, distance 5 on ladder_2x72 \u2014 rails and highways",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\arch\\ladder_2x72.arch.json",
@@ -50,7 +155,7 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "01_ladder_2x72.html",
+  "page": "02_ladder_2x72.html",
   "instructions": 119,
   "rules_failed": [],
   "rules_passed": 25,
@@ -73,7 +178,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1733350,
+  "bytes": 1797044,
   "sites": 288,
   "junctions": 46,
   "loops": 0,
@@ -88,7 +193,7 @@
    "per_round_hi": 3.841414550898037e-06,
    "rounds": 5,
    "decoder": "pymatching",
-   "seconds": 0.058,
+   "seconds": 0.066,
    "seed": 20260928,
    "stim_version": "1.15.0",
    "stopped": "max_shots"
@@ -105,7 +210,7 @@
   }
  },
  {
-  "key": "02_grid5x5",
+  "key": "03_grid5x5",
   "family": "lattice",
   "title": "Repetition code memory, distance 5 on grid5x5 \u2014 a small planar lattice",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\grid5x5.arch.json",
@@ -155,7 +260,7 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "02_grid5x5.html",
+  "page": "03_grid5x5.html",
   "instructions": 138,
   "rules_failed": [],
   "rules_passed": 25,
@@ -178,7 +283,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1632484,
+  "bytes": 1696178,
   "sites": 40,
   "junctions": 21,
   "loops": 0,
@@ -193,7 +298,7 @@
    "per_round_hi": 3.841414550898037e-06,
    "rounds": 5,
    "decoder": "pymatching",
-   "seconds": 0.065,
+   "seconds": 0.109,
    "seed": 20260928,
    "stim_version": "1.15.0",
    "stopped": "max_shots"
@@ -210,7 +315,7 @@
   }
  },
  {
-  "key": "03_cylinder6x4",
+  "key": "04_cylinder6x4",
   "family": "torus",
   "title": "Repetition code memory, distance 5 on cylinder 6x4 \u2014 four concentric rings with spokes",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\cylinder6x4.arch.json",
@@ -260,7 +365,7 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "03_cylinder6x4.html",
+  "page": "04_cylinder6x4.html",
   "instructions": 145,
   "rules_failed": [],
   "rules_passed": 25,
@@ -291,7 +396,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1636951,
+  "bytes": 1700645,
   "sites": 42,
   "junctions": 24,
   "loops": 0,
@@ -306,7 +411,7 @@
    "per_round_hi": 3.841414550898037e-06,
    "rounds": 5,
    "decoder": "pymatching",
-   "seconds": 0.071,
+   "seconds": 0.1,
    "seed": 20260928,
    "stim_version": "1.15.0",
    "stopped": "max_shots"
@@ -323,7 +428,7 @@
   }
  },
  {
-  "key": "04_ring16",
+  "key": "05_ring16",
   "family": "ring + docks",
   "title": "Repetition code memory, distance 5 on ring16 \u2014 the board's starter (ring: height 2, verticals 8, width 8)",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\ring16.arch.json",
@@ -334,12 +439,12 @@
   "prefix": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\work\\ring16\\prog",
   "qasm": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\work\\ring16\\circuit.qasm",
   "numbers": {
-   "T_jones": 38.8,
+   "T_jones": 47.4,
    "p_eff_vs_threshold": 0.35,
-   "T_transport": 31.08,
-   "ions_per_instruction": 1.89,
-   "transport_instructions": 103,
-   "us_per_ion": 70.49,
+   "T_transport": 39.68,
+   "ions_per_instruction": 2.31,
+   "transport_instructions": 119,
+   "us_per_ion": 40.95,
    "dacs": 34,
    "area_mm2": 1.471,
    "pads_per_trap": 0.0,
@@ -360,11 +465,11 @@
    "ler": 0.0,
    "shots": 200000,
    "errors": 0,
-   "noise_total": 0.19789,
+   "noise_total": 0.19796,
    "noise_ms": 0.0736,
    "noise_heating": 0.0,
    "noise_chain": 0.0,
-   "noise_idle": 0.00029,
+   "noise_idle": 0.00036,
    "nbar_max": 0.0,
    "chain_max": 2,
    "two_qubit_gates": 40,
@@ -373,8 +478,8 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "04_ring16.html",
-  "instructions": 386,
+  "page": "05_ring16.html",
+  "instructions": 404,
   "rules_failed": [],
   "rules_passed": 25,
   "disqualified": false,
@@ -390,7 +495,7 @@
    {
     "frame": 4,
     "step": 5,
-    "id": 341,
+    "id": 357,
     "label": "forced cool",
     "note": "300 us, once per batch: an ion that has crossed a junction carries 3 quanta against a 1-quantum gate budget, so the cool is structural, not a policy. It is about a quarter of the round.",
     "kind": "note"
@@ -420,7 +525,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1706344,
+  "bytes": 1779017,
   "sites": 24,
   "junctions": 8,
   "loops": 1,
@@ -435,7 +540,7 @@
    "per_round_hi": 3.841414550898037e-06,
    "rounds": 5,
    "decoder": "pymatching",
-   "seconds": 1.994,
+   "seconds": 5.63,
    "seed": 20260928,
    "stim_version": "1.15.0",
    "stopped": "max_shots"
@@ -447,12 +552,12 @@
    "gate_1q": 0.004000000000008441,
    "measure": 0.040000000000001146,
    "reset": 0.08,
-   "idle": 0.00029189994136663566,
-   "total": 0.19789189994137435
+   "idle": 0.00035639991536146054,
+   "total": 0.19795639991536917
   }
  },
  {
-  "key": "05_ring24_8",
+  "key": "06_ring24_8",
   "family": "ring + docks",
   "title": "Repetition code memory, distance 5 on ring(12, 2, 8) \u2014 a small ring with 8 docks",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\ring24_8.arch.json",
@@ -463,12 +568,12 @@
   "prefix": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\work\\ring24_8\\prog",
   "qasm": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\work\\ring24_8\\circuit.qasm",
   "numbers": {
-   "T_jones": 41.1,
+   "T_jones": 50.7,
    "p_eff_vs_threshold": 0.35,
-   "T_transport": 33.38,
-   "ions_per_instruction": 1.89,
-   "transport_instructions": 103,
-   "us_per_ion": 56.67,
+   "T_transport": 42.98,
+   "ions_per_instruction": 2.31,
+   "transport_instructions": 119,
+   "us_per_ion": 37.11,
    "dacs": 35,
    "area_mm2": 2.2,
    "pads_per_trap": 1.69,
@@ -489,11 +594,11 @@
    "ler": 0.0,
    "shots": 200000,
    "errors": 0,
-   "noise_total": 0.19791,
+   "noise_total": 0.19798,
    "noise_ms": 0.0736,
    "noise_heating": 0.0,
    "noise_chain": 0.0,
-   "noise_idle": 0.00031,
+   "noise_idle": 0.00038,
    "nbar_max": 0.0,
    "chain_max": 2,
    "two_qubit_gates": 40,
@@ -502,8 +607,8 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "05_ring24_8.html",
-  "instructions": 386,
+  "page": "06_ring24_8.html",
+  "instructions": 404,
   "rules_failed": [],
   "rules_passed": 25,
   "disqualified": false,
@@ -519,7 +624,7 @@
    {
     "frame": 4,
     "step": 5,
-    "id": 341,
+    "id": 357,
     "label": "forced cool",
     "note": "300 us, once per batch: an ion that has crossed a junction carries 3 quanta against a 1-quantum gate budget, so the cool is structural, not a policy. It is about a quarter of the round.",
     "kind": "note"
@@ -549,7 +654,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1712082,
+  "bytes": 1784723,
   "sites": 32,
   "junctions": 8,
   "loops": 1,
@@ -564,7 +669,7 @@
    "per_round_hi": 3.841414550898037e-06,
    "rounds": 5,
    "decoder": "pymatching",
-   "seconds": 0.048,
+   "seconds": 0.057,
    "seed": 20260928,
    "stim_version": "1.15.0",
    "stopped": "max_shots"
@@ -576,12 +681,12 @@
    "gate_1q": 0.004000000000008441,
    "measure": 0.040000000000001146,
    "reset": 0.08,
-   "idle": 0.00030914991967939676,
-   "total": 0.1979091499196871
+   "idle": 0.00038114989768156526,
+   "total": 0.19798114989768928
   }
  },
  {
-  "key": "06_ring144_24v",
+  "key": "07_ring144_24v",
   "family": "ring + docks",
   "title": "Repetition code memory, distance 5 on ring144_24v \u2014 the shipped ring, 24 docks",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\arch\\ring144_24v.arch.json",
@@ -592,12 +697,12 @@
   "prefix": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\work\\ring144_24v\\prog",
   "qasm": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\work\\ring144_24v\\circuit.qasm",
   "numbers": {
-   "T_jones": 55.51,
-   "p_eff_vs_threshold": 0.35,
-   "T_transport": 49.204,
-   "ions_per_instruction": 1.89,
-   "transport_instructions": 103,
-   "us_per_ion": 18.2,
+   "T_jones": 96.67,
+   "p_eff_vs_threshold": 0.352,
+   "T_transport": 93.108,
+   "ions_per_instruction": 2.31,
+   "transport_instructions": 119,
+   "us_per_ion": 13.18,
    "dacs": 46,
    "area_mm2": 13.135,
    "pads_per_trap": 5.04,
@@ -618,11 +723,11 @@
    "ler": 0.0,
    "shots": 200000,
    "errors": 0,
-   "noise_total": 0.19802,
+   "noise_total": 0.19833,
    "noise_ms": 0.0736,
    "noise_heating": 0.0,
    "noise_chain": 0.0,
-   "noise_idle": 0.00042,
+   "noise_idle": 0.00073,
    "nbar_max": 0.0,
    "chain_max": 2,
    "two_qubit_gates": 40,
@@ -631,8 +736,8 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "06_ring144_24v.html",
-  "instructions": 388,
+  "page": "07_ring144_24v.html",
+  "instructions": 404,
   "rules_failed": [],
   "rules_passed": 25,
   "disqualified": false,
@@ -648,7 +753,7 @@
    {
     "frame": 4,
     "step": 5,
-    "id": 341,
+    "id": 357,
     "label": "forced cool",
     "note": "300 us, once per batch: an ion that has crossed a junction carries 3 quanta against a 1-quantum gate budget, so the cool is structural, not a policy. It is about a quarter of the round.",
     "kind": "note"
@@ -678,7 +783,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1782118,
+  "bytes": 1854664,
   "sites": 168,
   "junctions": 24,
   "loops": 1,
@@ -705,12 +810,12 @@
    "gate_1q": 0.004000000000008441,
    "measure": 0.040000000000001146,
    "reset": 0.08,
-   "idle": 0.0004172247655699901,
-   "total": 0.1980172247655777
+   "idle": 0.0007259241240500369,
+   "total": 0.19832592412405775
   }
  },
  {
-  "key": "07_h2_racetrack",
+  "key": "08_h2_racetrack",
   "family": "junction-free loop",
   "title": "Repetition code memory, distance 5 on h2_racetrack \u2014 Quantinuum's H2 loop",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\arch\\h2_racetrack.arch.json",
@@ -760,7 +865,7 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "07_h2_racetrack.html",
+  "page": "08_h2_racetrack.html",
   "instructions": 87,
   "rules_failed": [],
   "rules_passed": 25,
@@ -783,7 +888,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1567788,
+  "bytes": 1631482,
   "sites": 40,
   "junctions": 0,
   "loops": 1,
@@ -798,7 +903,7 @@
    "per_round_hi": 5.664886141731884e-06,
    "rounds": 5,
    "decoder": "pymatching",
-   "seconds": 0.059,
+   "seconds": 0.068,
    "seed": 20260928,
    "stim_version": "1.15.0",
    "stopped": "max_shots"
@@ -815,7 +920,7 @@
   }
  },
  {
-  "key": "08_cyclone_dual_loop",
+  "key": "09_cyclone_dual_loop",
   "family": "two loops",
   "title": "Repetition code memory, distance 5 on cyclone_dual_loop \u2014 data loop and ancilla loop",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\arch\\cyclone_dual_loop.arch.json",
@@ -865,7 +970,7 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "08_cyclone_dual_loop.html",
+  "page": "09_cyclone_dual_loop.html",
   "instructions": 87,
   "rules_failed": [],
   "rules_passed": 25,
@@ -888,7 +993,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1629241,
+  "bytes": 1692935,
   "sites": 144,
   "junctions": 0,
   "loops": 2,
@@ -903,7 +1008,7 @@
    "per_round_hi": 5.664886141731884e-06,
    "rounds": 5,
    "decoder": "pymatching",
-   "seconds": 0.069,
+   "seconds": 0.07,
    "seed": 20260928,
    "stim_version": "1.15.0",
    "stopped": "max_shots"
@@ -920,7 +1025,7 @@
   }
  },
  {
-  "key": "09_cyclone_base",
+  "key": "10_cyclone_base",
   "family": "junction-free loop",
   "title": "Repetition code memory, distance 5 on cyclone_base \u2014 a loop with no junctions",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\arch\\cyclone_base.arch.json",
@@ -970,7 +1075,7 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "09_cyclone_base.html",
+  "page": "10_cyclone_base.html",
   "instructions": 110,
   "rules_failed": [],
   "rules_passed": 25,
@@ -993,7 +1098,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1595946,
+  "bytes": 1659640,
   "sites": 72,
   "junctions": 0,
   "loops": 1,
@@ -1008,7 +1113,7 @@
    "per_round_hi": 5.664886141731884e-06,
    "rounds": 5,
    "decoder": "pymatching",
-   "seconds": 0.084,
+   "seconds": 0.065,
    "seed": 20260928,
    "stim_version": "1.15.0",
    "stopped": "max_shots"
@@ -1025,7 +1130,7 @@
   }
  },
  {
-  "key": "10_chain",
+  "key": "11_chain",
   "family": "line",
   "title": "Repetition code memory, distance 5 on chain \u2014 a line of traps",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\arch\\chain.arch.json",
@@ -1075,7 +1180,7 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "10_chain.html",
+  "page": "11_chain.html",
   "instructions": 91,
   "rules_failed": [],
   "rules_passed": 25,
@@ -1098,7 +1203,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1583102,
+  "bytes": 1646796,
   "sites": 72,
   "junctions": 0,
   "loops": 0,
@@ -1113,7 +1218,7 @@
    "per_round_hi": 7.292941588632473e-06,
    "rounds": 5,
    "decoder": "pymatching",
-   "seconds": 0.079,
+   "seconds": 0.086,
    "seed": 20260928,
    "stim_version": "1.15.0",
    "stopped": "max_shots"
@@ -1130,7 +1235,7 @@
   }
  },
  {
-  "key": "11_grid9x9",
+  "key": "12_grid9x9",
   "family": "lattice",
   "title": "Repetition code memory, distance 5 on grid9x9 \u2014 the baseline lattice",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\arch\\grid9x9.arch.json",
@@ -1180,7 +1285,7 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "11_grid9x9.html",
+  "page": "12_grid9x9.html",
   "instructions": 119,
   "rules_failed": [],
   "rules_passed": 25,
@@ -1211,7 +1316,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1688995,
+  "bytes": 1752689,
   "sites": 144,
   "junctions": 77,
   "loops": 0,
@@ -1226,7 +1331,7 @@
    "per_round_hi": 7.292941588632473e-06,
    "rounds": 5,
    "decoder": "pymatching",
-   "seconds": 0.075,
+   "seconds": 0.086,
    "seed": 20260928,
    "stim_version": "1.15.0",
    "stopped": "max_shots"
@@ -1243,7 +1348,7 @@
   }
  },
  {
-  "key": "12_deck_unit_cell",
+  "key": "13_deck_unit_cell",
   "family": "lattice",
   "title": "Repetition code memory, distance 5 on deck_unit_cell \u2014 the same lattice, broadcast-wired",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\arch\\deck_unit_cell.arch.json",
@@ -1293,7 +1398,7 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "12_deck_unit_cell.html",
+  "page": "13_deck_unit_cell.html",
   "instructions": 119,
   "rules_failed": [],
   "rules_passed": 25,
@@ -1324,7 +1429,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1694536,
+  "bytes": 1758230,
   "sites": 144,
   "junctions": 77,
   "loops": 0,
@@ -1339,7 +1444,7 @@
    "per_round_hi": 7.292941588632473e-06,
    "rounds": 5,
    "decoder": "pymatching",
-   "seconds": 0.075,
+   "seconds": 0.071,
    "seed": 20260928,
    "stim_version": "1.15.0",
    "stopped": "max_shots"
@@ -1356,7 +1461,7 @@
   }
  },
  {
-  "key": "13_torus4x4",
+  "key": "14_torus4x4",
   "family": "torus",
   "title": "Repetition code memory, distance 5 on torus 4x4 \u2014 a periodic lattice",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\torus4x4.arch.json",
@@ -1406,7 +1511,7 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "13_torus4x4.html",
+  "page": "14_torus4x4.html",
   "instructions": 134,
   "rules_failed": [
    "R20",
@@ -1440,7 +1545,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1616270,
+  "bytes": 1679964,
   "sites": 32,
   "junctions": 16,
   "loops": 0,
@@ -1455,7 +1560,7 @@
    "per_round_hi": 3.841414550898037e-06,
    "rounds": 5,
    "decoder": "pymatching",
-   "seconds": 0.067,
+   "seconds": 0.078,
    "seed": 20260928,
    "stim_version": "1.15.0",
    "stopped": "max_shots"
@@ -1472,7 +1577,7 @@
   }
  },
  {
-  "key": "14_random16",
+  "key": "15_random16",
   "family": "random graph",
   "title": "Repetition code memory, distance 5 on random 4-regular graph, 16 junctions",
   "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\MemoryBoard\\rep5_mem\\random16.arch.json",
@@ -1511,7 +1616,7 @@
   },
   "r10": true,
   "status": "ok",
-  "page": "14_random16.html",
+  "page": "15_random16.html",
   "instructions": 145,
   "rules_failed": [
    "R20",
@@ -1545,7 +1650,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1663278,
+  "bytes": 1726972,
   "sites": 32,
   "junctions": 16,
   "loops": 0,
@@ -1560,7 +1665,7 @@
    "per_round_hi": 3.841414550898037e-06,
    "rounds": 5,
    "decoder": "pymatching",
-   "seconds": 0.052,
+   "seconds": 0.076,
    "seed": 20260928,
    "stim_version": "1.15.0",
    "stopped": "max_shots"
@@ -1575,30 +1680,5 @@
    "idle": 9.971248642570707e-05,
    "total": 0.19769971248643342
   }
- },
- {
-  "key": "15_stationary_chain",
-  "family": "line",
-  "title": "Repetition code memory, distance 5 on stationary_chain \u2014 no transport at all",
-  "arch": "C:\\Users\\yezhu\\Documents\\QCCD\\arch\\stationary_chain.arch.json",
-  "claim": "one trap holding everything: no heating from transport, one long chain",
-  "kicker": "REP-5 MEMORY \u00b7 LOGICAL ERROR RATE",
-  "short": "stationary_chain",
-  "answer": false,
-  "refusal": "circuit: 9 qubits, 25 clbits, 76 ops (40 two-qubit), 107 edges, Clifford -> stationary_chain (free regime) / 20 circuit op(s) left unrealised",
-  "status": "ok",
-  "page": "15_stationary_chain.html",
-  "instructions": 0,
-  "rules_failed": [],
-  "rules_passed": 25,
-  "disqualified": false,
-  "marks": [],
-  "numbers": {
-   "r10": false
-  },
-  "bytes": 1457861,
-  "sites": 2,
-  "junctions": 0,
-  "loops": 0
  }
 ]

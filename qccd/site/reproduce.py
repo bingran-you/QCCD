@@ -335,8 +335,12 @@ def _ours_box(p: dict, res: dict | None) -> str:
     moves_first = key == "saki2022"
     tm = "last_start_us" if _metric_of(p) == "last_start_us" else "makespan_us"
     fid = any("fidelity" in o["measured"] and "fidelity" in o["theirs"] for o in rows) and not moves_first
+    # a paper whose own runs include one that keeps the circuit's order (Moveless's
+    # ancilla-only MAO) gets it beside ours: ours keep the order too, so that is the like-for-like
+    in_order = not moves_first and any(o.get("also") for o in rows)
     cols = (["shuttles: QCCDSim", "Muzzle", "ours", "time: QCCDSim", "Muzzle", "ours"] if moves_first
             else [("start of the last step: " if tm == "last_start_us" else "") + "their code", "ours", ""]
+            + (["their run in the circuit's order", ""] if in_order else [])
             + (["fidelity: theirs", "ours"] if fid else []))
     out.append('<table class="rp"><tr><th>configuration</th>'
                + "".join(f"<th>{_e(c)}</th>" for c in cols) + "<th>checks</th></tr>")
@@ -358,6 +362,10 @@ def _ours_box(p: dict, res: dict | None) -> str:
         else:
             cells = [_num(t[tm], "makespan_us"), f"<b>{_num(m[tm], 'makespan_us')}</b>",
                      _ratio(t[tm], m[tm])]
+            if in_order:
+                al = (o.get("also") or {}).get("measured", {})
+                cells += ([_num(al[tm], "makespan_us"), _ratio(al[tm], m[tm])] if tm in al
+                          else ["–", ""])
             if fid:
                 cells += [_num(t["fidelity"], "fidelity"),
                           f"<b>{_num(m['fidelity'], 'fidelity')}</b> "
@@ -1283,15 +1291,17 @@ def _model_section(p: dict) -> str:
                    "<li>Two gates in one trap at once are allowed (the paper's figures run them). "
                    "Forbidding it slows VQE-60 by 31%; it stays 6.7× faster than the paper.</li>"
                    "<li>Where the two gate zones sit in a trap is not stated; we space them evenly. "
-                   "Next to the trap ends they cost up to 52% on QAOA.</li>"
+                   "Next to the trap ends they cost up to 23% (RCA; 5% on QAOA).</li>"
                    "<li>A swap needs one of its ions in a gate zone: not stated, but every swap the "
                    "paper draws has one. Kept on; off, RCA is 6% faster.</li>"
                    "<li>The two-qubit gate is 141 µs, as the worked examples need. With Table 1's "
-                   "25 µs, ours would be 7–24% faster still.</li>"
+                   "25 µs, ours would be 10–24% faster still.</li>"
                    "<li>QAOA is run on the complete graph, which matches the gate counts the "
-                   "paper plots; its text says 3-regular graphs, which we also ran (97.7 ms at L = 8).</li>"
-                   "<li>Our VQE schedule is also legal in strict program order, so it does not rely "
-                   "on gates commuting.</li></ul>")
+                   "paper plots; its text says 3-regular graphs, which we also ran (128.5 ms at L = 8).</li>"
+                   "<li>Every schedule of ours runs each qubit's gates in the circuit's order, even "
+                   "where two commute: the order is the circuit's, not ours to change. An earlier "
+                   "version let QAOA's commuting gates run in any order; keeping the order costs it "
+                   "up to 41% (QAOA-60 at L = 8: 101.3 ms then, 143.3 ms now).</li></ul>")
         out.append("<p>Where ours is fast, it is because all-to-all circuits (VQE, QAOA) are "
                    "run as a line of ions swept by an odd-even swap network laid along a trail of "
                    "traps that needs only five broadcast classes.</p></div>")

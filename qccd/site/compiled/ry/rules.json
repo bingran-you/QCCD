@@ -5,7 +5,7 @@
  "model": "corrected",
  "total_cost": 0.0,
  "total_steps": 3,
- "runtime_us": 305.0,
+ "runtime_us": 320.0,
  "contacts": 0,
  "templates": {},
  "passed": [
@@ -23,6 +23,7 @@
   "R20",
   "R21",
   "R22",
+  "R23",
   "R3",
   "R4",
   "R4b",
