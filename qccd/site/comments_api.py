@@ -53,6 +53,15 @@ it imports nothing outside the standard library and needs no install.
     DELETE /api/admin/invites/<id>                 (admin: withdraw an unused invitation)
     POST   /api/admin/users/<id>/access  {allow}   (admin: let an account in, or close it)
     POST   /api/leaderboard/grant  {purpose, code}  (signed in: a 5-minute grant for the official leaderboard)
+    GET    /api/progress                    -> {"user": {...} | null, "progress": {...} | null}
+    POST   /api/progress  {stars: {A1: 1, B2: 2, ...}}   (signed in: record what the course awarded)
+
+The course keeps a reader's stars per lesson in their browser (localStorage).  A signed-in
+reader's stars are also kept here, so their progress follows the account rather than the
+browser: `progress` has one row per (reader, lesson) with the most stars ever recorded for
+it, when the lesson was first done, and when it last went up.  A record only ever raises a
+count, so a stale browser can never take a star away.  The GET answers 200 when nobody is
+signed in, because the Learn page asks on every visit and a 401 would be a console error.
 
 The official leaderboard (a separate service, /official/) credits each submission to a person.
 A workspace signs in there with a code the person approves on /connect/; this service vouches
@@ -106,6 +115,9 @@ ATTEMPTS, ATTEMPT_WINDOW = 30, 15 * 60          # sign-in, registration, invite 
 DEFAULT_SITE = "https://qccd.academy"
 GRANT_TTL = 300                                  # seconds a leaderboard grant is good for
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+LESSON_RE = re.compile(r"^[A-Z][0-9]{1,2}$")          # A1, B8, R9, C4, D4: the course's lesson ids
+MAX_LESSONS = 100
+MAX_STARS = 3                                    # done, the boundary, the challenge
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users(
@@ -130,6 +142,10 @@ CREATE TABLE IF NOT EXISTS credits(
   id INTEGER PRIMARY KEY, comment_id INTEGER NOT NULL UNIQUE, thread_id INTEGER NOT NULL,
   user_id INTEGER NOT NULL, name TEXT NOT NULL, page TEXT NOT NULL, text TEXT NOT NULL,
   created REAL NOT NULL, removed REAL);
+CREATE TABLE IF NOT EXISTS progress(
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, lesson TEXT NOT NULL,
+  stars INTEGER NOT NULL, first_done REAL NOT NULL, updated REAL NOT NULL,
+  PRIMARY KEY(user_id, lesson));
 CREATE INDEX IF NOT EXISTS threads_page ON threads(page);
 CREATE INDEX IF NOT EXISTS credits_user ON credits(user_id);
 CREATE INDEX IF NOT EXISTS comments_thread ON comments(thread_id);
@@ -526,6 +542,34 @@ class Store:
                 c.execute("DELETE FROM threads WHERE id=?", (r["thread_id"],))
             return {"thread": r["thread_id"], "gone": left == 0}
 
+    # -- the course
+    def progress(self, user_id: int) -> dict:
+        """One reader's course: stars per lesson, when each was first done, the last change."""
+        with self.connect() as c:
+            rows = c.execute("SELECT lesson, stars, first_done, updated FROM progress WHERE user_id=? "
+                             "ORDER BY first_done", (user_id,)).fetchall()
+        return {"stars": {r["lesson"]: r["stars"] for r in rows},
+                "done": {r["lesson"]: r["first_done"] for r in rows},
+                "updated": max((r["updated"] for r in rows), default=None)}
+
+    def record_progress(self, user_id: int, stars: dict) -> dict:
+        """Raises each lesson to the stars given, never lowers one: two browsers, or one
+        that is out of date, can only add to what the account has."""
+        now = time.time()
+        with self.lock, self.connect() as c:
+            for lesson, n in stars.items():
+                c.execute("INSERT INTO progress(user_id,lesson,stars,first_done,updated) VALUES(?,?,?,?,?) "
+                          "ON CONFLICT(user_id,lesson) DO UPDATE SET stars=excluded.stars, updated=excluded.updated "
+                          "WHERE excluded.stars > progress.stars", (user_id, lesson, n, now, now))
+        return self.progress(user_id)
+
+    def learners(self) -> list[dict]:
+        """Everybody who has done at least one lesson, furthest first (the `progress` CLI)."""
+        with self.connect() as c:
+            return [dict(r) for r in c.execute(
+                "SELECT u.id, u.email, u.name, COUNT(*) AS lessons, SUM(p.stars) AS stars, MAX(p.updated) AS updated "
+                "FROM progress p JOIN users u ON u.id=p.user_id GROUP BY u.id ORDER BY lessons DESC, stars DESC")]
+
 
 # ------------------------------------------------------------------------- the mail
 
@@ -652,6 +696,23 @@ def norm_anchor(anchor) -> dict:
     return anchor
 
 
+def norm_stars(stars) -> dict:
+    """{lesson id: stars 0..3}; a zero is dropped, since it records nothing."""
+    if not isinstance(stars, dict):
+        raise HttpError(400, "stars must be an object")
+    if len(stars) > MAX_LESSONS:
+        raise HttpError(400, f"at most {MAX_LESSONS} lessons")
+    out = {}
+    for k, v in stars.items():
+        if not isinstance(k, str) or not LESSON_RE.match(k):
+            raise HttpError(400, "a lesson is a letter and a number, like B2")
+        if isinstance(v, bool) or not isinstance(v, int) or not 0 <= v <= MAX_STARS:
+            raise HttpError(400, f"stars are a whole number from 0 to {MAX_STARS}")
+        if v:
+            out[k] = v
+    return out
+
+
 # ------------------------------------------------------------------------- the server
 
 class RateLimit:
@@ -698,6 +759,8 @@ class App:
             ("DELETE", re.compile(r"^/api/admin/invites/(\d+)$"), self.admin_invite_delete),
             ("POST", re.compile(r"^/api/admin/users/(\d+)/access$"), self.admin_access),
             ("POST", re.compile(r"^/api/leaderboard/grant$"), self.leaderboard_grant),
+            ("GET", re.compile(r"^/api/progress$"), self.progress),
+            ("POST", re.compile(r"^/api/progress$"), self.progress_record),
         ]
 
     # each handler: (req, *groups) -> (status, body dict, extra headers list)
@@ -748,6 +811,18 @@ class App:
         """Open to anyone signed in: the site is by invitation, so that is the collaborators."""
         req.require_user()
         return 200, self.store.credit(), []
+
+    def progress(self, req):
+        """The reader's own course.  Nobody signed in is an answer, not an error."""
+        if not req.user:
+            return 200, {"user": None, "progress": None}, []
+        return 200, {"user": self.store.user_json(req.user, me=True),
+                     "progress": self.store.progress(req.user["id"])}, []
+
+    def progress_record(self, req):
+        u = req.require_user()
+        stars = norm_stars(req.json().get("stars"))
+        return 200, {"progress": self.store.record_progress(u["id"], stars)}, []
 
     def threads(self, req):
         req.require_user()
@@ -1062,6 +1137,9 @@ def main(argv=None) -> int:
     v.add_argument("--db", required=True)
     t = sub.add_parser("threads", help="list every thread")
     t.add_argument("--db", required=True)
+    r = sub.add_parser("progress", help="who has done which lessons of the course")
+    r.add_argument("--db", required=True)
+    r.add_argument("email", nargs="?", help="one reader's lessons, one per line")
     a = ap.parse_args(argv)
     try:
         return dispatch(a)
@@ -1119,6 +1197,22 @@ def dispatch(a) -> int:
         for th in store.all_threads(10000):
             first = th["comments"][0]["text"] if th["comments"] else ""
             print(f"{th['id']:4d}  {th['page']:40s} {th['user']['name']:20s} {len(th['comments'])} msg  {first[:60]!r}")
+        return 0
+    if a.cmd == "progress":
+        stamp = lambda t: time.strftime("%Y-%m-%d %H:%M", time.gmtime(t)) if t else "-"
+        if a.email:
+            email = norm_email(a.email)
+            with store.connect() as c:
+                row = c.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+            if row is None:
+                print(f"no account for {email}", file=sys.stderr)
+                return 1
+            p = store.progress(row["id"])
+            for lesson, n in p["stars"].items():
+                print(f"{lesson:4s} {'*' * n:3s}  first done {stamp(p['done'][lesson])}")
+            return 0
+        for x in store.learners():
+            print(f"{x['id']:4d}  {x['email']:40s} {x['lessons']:3d} lessons {x['stars']:3d} stars  {stamp(x['updated'])}  {x['name']}")
         return 0
     return 2
 

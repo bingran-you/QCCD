@@ -625,3 +625,50 @@ is CSS inside `<main>`, and everything new is appended to `<body>`.
 they are not documents with an application embedded, they are the application, and their
 drawing was deliberately aligned to the studio's palette and geometry. A document frame
 around a studio canvas would say two things at once. Same line as `studio.html`.
+
+### The course on the Learn page, and progress on the account — 2026-10-19
+
+Asked for: on `/learn/`, one box per lesson with a picture, never two lessons on one line (the
+part cards listed their lessons in two CSS columns, so A1 sat beside A4); and for a signed-in
+reader, keep which exercises they have completed, show it clearly on the page, and give them a
+reason to finish.
+
+**The page.** `qccd/site/progress.py::course_section` writes a progress panel and then, per
+part, its header and one card per lesson, stacked. A card is a diagram of what the lesson
+teaches, the title, the lesson's own first line (`story` in `tutorial.js`), and its state:
+done (with the date and the stars), next up / in progress, or not started. The diagrams are
+drawn in the studio's own vocabulary -- zone-coloured site bars with a ring per ion, pink rails,
+gold-edged junction squares, orange moves, a magenta gate beam, blue measurement, a snowflake
+for cooling, a red cross where a rule fails -- one per lesson, from the lesson's actual device
+and exercise (the tee for A1, d1's trip to d0 for B2, two ions at one junction for R2, the
+d0 c0 d1 c1 d2 line for C1). A first try drew a cartoon ion holding a prop; the user wanted
+diagrams, not faces. The panel: a ring with the share of the course done, exercises, stars and
+badges counted, a level (Newcomer, Apprentice, then one per part at the number of lessons up
+to it -- Map reader, Ion programmer, Rule keeper, Circuit scheduler, QCCD architect) with what
+the next one takes, a Continue button to the next lesson, seven badges (a part each, course
+complete, every star), and "new since your last visit". A lesson still holding a boundary or
+challenge star says "Bonus".
+
+**The account.** The course keeps its stars in the browser (`localStorage`, written by
+`editor.js`), and that stays its record. `comments_api.py` gained a `progress` table (reader,
+lesson, most stars, first done, last raised) behind `GET /api/progress` (200 with `user: null`
+when nobody is signed in, since the page asks every visit) and `POST /api/progress {stars}`,
+which only ever raises a count. `SYNC_JS` runs on the Learn page and, through `with_nav`, on
+every app page that carries the course: it sends up whatever the browser has beyond the
+account, writes the account's stars back into the browser, and asks the studio to redraw its
+Learn tab (`EDITOR.lessonsReady`). The browser remembers which account it last matched
+(`qccd.course.account`), so a second reader on the same machine starts from their own stars
+rather than inheriting the first one's. A sign-in through the bar's dialog is noticed within
+two seconds; nothing is sent when nobody is signed in. `comments_api.py progress [EMAIL]`
+lists who has done what.
+
+**Tests.** `tests/test_site_progress.py` (diagrams well-formed and one per lesson, the course
+read out of `tutorial.js`, the sync on exactly the pages that carry the course) and
+`tests/progress.mjs` (real API, headless Chrome: never two cards on one line, sign in from the
+page, a fresh browser, a stale browser, a star from the studio, a second reader, signed out);
+two tests in `tests/test_comments_api.py`. `tests/site.mjs` answers `/api/progress` signed out.
+
+**Deployed** 2026-10-19 without a rebuild: the Learn page rendered alone with the live search
+index and proven identical outside the course section; the sync block inserted before
+`</body>` of every live page carrying the course (330); the API file swapped and the unit
+restarted. Backups in `/root/qccd-site-backups/progress-*`.

@@ -578,3 +578,57 @@ def test_a_note_can_be_marked_addressed_without_deleting_it(srv):
     assert adm.post("/api/threads/9999/resolve", {"resolved": True})[0] == 404
     assert adm.post("/api/threads/%d/resolve" % th["id"], {"resolved": "yes"})[0] == 400
     assert Client(srv[0], srv[1]).post("/api/threads/%d/resolve" % th["id"], {"resolved": True})[0] == 401
+
+
+def test_a_readers_course_progress_follows_the_account(srv):
+    # nobody signed in: an answer, not an error (the Learn page asks on every visit)
+    anon = Client(srv[0], srv[1])
+    assert anon.get("/api/progress") == (200, {"user": None, "progress": None})
+    assert anon.post("/api/progress", {"stars": {"A1": 1}})[0] == 401
+
+    ada = reader(srv)
+    st, d = ada.get("/api/progress")
+    assert st == 200 and d["user"]["name"] == "Ada Reader"
+    assert d["progress"] == {"stars": {}, "done": {}, "updated": None}
+
+    # the course awarded stars in her browser; the page records them on her account
+    st, d = ada.post("/api/progress", {"stars": {"A1": 1, "A2": 1, "B1": 2, "A3": 0}})
+    assert st == 200 and d["progress"]["stars"] == {"A1": 1, "A2": 1, "B1": 2}
+    first = d["progress"]["done"]["A1"]
+    assert first > 0 and d["progress"]["updated"] >= first
+
+    # a stale browser never takes a star away; a better one raises it and keeps the first date
+    d = ada.post("/api/progress", {"stars": {"A1": 1, "B1": 1}})[1]
+    assert d["progress"]["stars"]["B1"] == 2
+    d = ada.post("/api/progress", {"stars": {"A1": 3}})[1]
+    assert d["progress"]["stars"]["A1"] == 3 and d["progress"]["done"]["A1"] == first
+
+    # another browser, the same account: the same course
+    other = Client(srv[0], srv[1])
+    assert other.post("/api/login", {"email": "ada@example.org", "password": "reader-pass-123"})[0] == 200
+    assert other.get("/api/progress")[1]["progress"]["stars"] == {"A1": 3, "A2": 1, "B1": 2}
+
+    # it is hers alone: another reader starts empty
+    bob = reader(srv, "bob@example.org", "Bob Reader")
+    assert bob.get("/api/progress")[1]["progress"]["stars"] == {}
+
+    # what is refused, and why
+    for bad in ({"stars": []}, {"stars": {"a1": 1}}, {"stars": {"A1": 4}}, {"stars": {"A1": -1}},
+                {"stars": {"A1": True}}, {"stars": {"A1": 1.5}}, {"stars": {"<script>": 1}},
+                {"stars": {f"Z{i}": 1 for i in range(101)}}, {}):
+        assert ada.post("/api/progress", bad)[0] == 400, bad
+    assert ada.call("POST", "/api/progress", {"stars": {"A1": 1}}, origin="https://evil.example")[0] == 403
+    assert ada.get("/api/progress")[1]["progress"]["stars"] == {"A1": 3, "A2": 1, "B1": 2}
+
+
+def test_the_command_line_lists_who_is_learning(srv, capsys):
+    ada = reader(srv)
+    ada.post("/api/progress", {"stars": {"A1": 1, "A2": 2}})
+    db = srv[2].store.path
+    assert capi.main(["progress", "--db", db]) == 0
+    out = capsys.readouterr().out
+    assert "ada@example.org" in out and "2 lessons" in out and "3 stars" in out
+    assert capi.main(["progress", "--db", db, "ada@example.org"]) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith("A1") and "**" in out[1]
+    assert capi.main(["progress", "--db", db, "nobody@example.org"]) == 1

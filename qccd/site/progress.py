@@ -1,0 +1,832 @@
+"""The course on the Learn page: one card per lesson, and how far the reader has got.
+
+The course itself lives in the studio (`qccd/viz/js/tutorial.js`, run by `editor.js`), and it
+records what it awards in the browser: `localStorage['qccd.studio.tutorial'].stars`, one to
+three stars per lesson (done, the boundary exercise, the challenge).  This module adds two
+things around it and touches neither file:
+
+* **The Learn page's course section** (`course_section`): a progress panel at the top (the
+  share of exercises done as a ring, the stars, the level the reader has reached and what the
+  next one takes, a Continue button to the next lesson, the seven badges), then each part with
+  one card per lesson on its own line -- a small diagram of what the lesson is about (drawn
+  the way the studio draws a device), the title, the lesson's own first line, and its state
+  (done with its stars, next up, or not started).  The cards are
+  written by the build; the page's script (`LEARN_JS`) only sets their state.
+
+* **The account** (`SYNC_JS`): on the Learn page and on the studio pages a signed-in reader's
+  stars are also kept by the accounts service (`comments_api.py`, `/api/progress`), so the
+  progress follows the account and not the browser.  On every visit the page asks the
+  account, sends up any star this browser has that the account lacks, and writes the
+  account's stars back into this browser, so the studio's own Learn tab shows them too.  A
+  count only ever goes up, on both sides.  Stars that another account left in this browser
+  are not given to the reader who signs in next: the browser remembers which account it last
+  matched (`qccd.course.account`), and on a change it takes the new account's stars instead.
+
+Nothing here runs inside an iframe, under `#embed`, on file:// or under the test shim, and a
+page served without the accounts service shows the browser's own progress.
+"""
+
+from __future__ import annotations
+
+import html
+import json
+import re
+from pathlib import Path
+
+TUTORIAL_JS = Path(__file__).resolve().parents[2] / "qccd" / "viz" / "js" / "tutorial.js"
+
+#: What finishing each part makes the reader.  The levels are these names, reached at the
+#: number of lessons the parts before have in all; a lesson done out of order still counts.
+BADGES = {"A": "Map reader", "B": "Ion programmer", "R": "Rule keeper",
+          "C": "Circuit scheduler", "D": "QCCD architect"}
+
+#: The pictures are drawn in the studio's own vocabulary (qccd/viz/theme.py): a site is a
+#: rounded bar coloured by its zone with one ring per ion it holds, a rail is a pink line, a
+#: junction a white square with a gold edge; moves are orange arrows, a two-qubit gate a
+#: magenta beam, a measurement blue, cooling a snowflake; a broken rule a red cross.
+ZONE = {"trap": ("#d3eeea", "#0f766e"), "data": ("#e6e9ef", "#667085"), "load": ("#fdf0c8", "#c9971a")}
+D0, D1, D2, CHK, DATA = "#2a78d6", "#e8890c", "#1baf7a", "#7c5bfa", "#475467"
+ARROW, GATE, MEAS, COOL, BAD, GOOD = "#ed7d31", "#c2308a", "#2a78d6", "#0e9aa7", "#d92d20", "#12a150"
+MUTED, NAVY = "#667085", "#1e2761"
+SANS = "ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif"
+MONO = "ui-monospace,'Cascadia Mono',Menlo,Consolas,monospace"
+
+
+def _n(v: float) -> str:
+    return f"{v:g}"
+
+
+def rail(x1, y1, x2, y2) -> str:
+    return f'<path d="M{_n(x1)} {_n(y1)}L{_n(x2)} {_n(y2)}" stroke="#f2b8b5" stroke-width="4.5" stroke-linecap="round"/>'
+
+
+def curve(d: str) -> str:
+    """A rail that bends (the end of a loop)."""
+    return f'<path d="{d}" stroke="#f2b8b5" stroke-width="4.5" fill="none" stroke-linecap="round"/>'
+
+
+def slots(x, y, n=1, v=False, gap=9.0) -> list[tuple[float, float]]:
+    """Where the rings of a site are: along its long axis, centred on it."""
+    return [(x, y + (i - (n - 1) / 2) * gap) if v else (x + (i - (n - 1) / 2) * gap, y) for i in range(n)]
+
+
+def site(x, y, zone="trap", n=1, v=False, gap=9.0) -> str:
+    f, s = ZONE[zone]
+    length = 8 + gap * n
+    w, h = (11, length) if v else (length, 11)
+    out = (f'<rect x="{_n(x - w / 2)}" y="{_n(y - h / 2)}" width="{_n(w)}" height="{_n(h)}" rx="5.5" '
+           f'fill="{f}" stroke="{s}" stroke-width="1.5"/>')
+    return out + "".join(f'<circle cx="{_n(a)}" cy="{_n(b)}" r="2.5" fill="#fff" stroke="{s}" stroke-width="1"/>'
+                         for a, b in slots(x, y, n, v, gap))
+
+
+def junction(x, y) -> str:
+    return (f'<rect x="{_n(x - 6)}" y="{_n(y - 6)}" width="12" height="12" rx="1.5" fill="#fff" '
+            f'stroke="#e8b84b" stroke-width="2.3"/>')
+
+
+def ion(x, y, c=DATA, ghost=False, hot=False) -> str:
+    glow = (f'<circle cx="{_n(x)}" cy="{_n(y)}" r="7.5" fill="{BAD}" opacity=".22"/>' if hot else "")
+    if ghost:
+        return (f'<circle cx="{_n(x)}" cy="{_n(y)}" r="4.2" fill="#fff" stroke="{c}" stroke-width="1.3" '
+                f'stroke-dasharray="2 1.6" opacity=".9"/>')
+    return glow + f'<circle cx="{_n(x)}" cy="{_n(y)}" r="4.2" fill="{c}" stroke="#fff" stroke-width="1.3"/>'
+
+
+def arrow(d: str, c=ARROW, dash=False, w=2.0) -> str:
+    mk = {ARROW: "o", BAD: "r", GOOD: "g", CHK: "p", MUTED: "m"}.get(c, "o")
+    return (f'<path d="{d}" stroke="{c}" stroke-width="{w}" fill="none" stroke-linecap="round" '
+            + ('stroke-dasharray="3 2.4" ' if dash else "") + f'marker-end="url(#@-{mk})"/>')
+
+
+def text(x, y, s, size=7.5, c=MUTED, anchor="middle", weight=600, mono=False) -> str:
+    return (f'<text x="{_n(x)}" y="{_n(y)}" font-size="{size}" font-weight="{weight}" fill="{c}" text-anchor="{anchor}" '
+            f'font-family="{MONO if mono else SANS}">{html.escape(s)}</text>')
+
+
+def bad(x, y, r=6) -> str:
+    k = r * .45
+    return (f'<circle cx="{_n(x)}" cy="{_n(y)}" r="{r}" fill="{BAD}" stroke="#fff" stroke-width="1.2"/>'
+            f'<path d="M{_n(x - k)} {_n(y - k)}l{_n(2 * k)} {_n(2 * k)}M{_n(x + k)} {_n(y - k)}l{_n(-2 * k)} {_n(2 * k)}" '
+            f'stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>')
+
+
+def good(x, y, r=6) -> str:
+    return (f'<circle cx="{_n(x)}" cy="{_n(y)}" r="{r}" fill="{GOOD}" stroke="#fff" stroke-width="1.2"/>'
+            f'<path d="M{_n(x - r * .45)} {_n(y + r * .02)}l{_n(r * .32)} {_n(r * .34)} {_n(r * .58)}-{_n(r * .66)}" '
+            f'stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>')
+
+
+def beam(x, y1, y2, c=GATE) -> str:
+    """A laser beam onto a site, from above (y1 < y2)."""
+    return (f'<path d="M{_n(x)} {_n(y1)}V{_n(y2)}" stroke="{c}" stroke-width="6" opacity=".2" stroke-linecap="round"/>'
+            f'<path d="M{_n(x)} {_n(y1)}V{_n(y2)}" stroke="{c}" stroke-width="2" stroke-linecap="round"/>')
+
+
+def snow(x, y, r=5.0, c=COOL) -> str:
+    import math
+    arms = "".join(f'M{_n(x - r * math.cos(a))} {_n(y - r * math.sin(a))}L{_n(x + r * math.cos(a))} {_n(y + r * math.sin(a))}'
+                   for a in (math.pi / 2, math.pi / 6, -math.pi / 6))
+    return f'<path d="{arms}" stroke="{c}" stroke-width="1.8" stroke-linecap="round"/><circle cx="{_n(x)}" cy="{_n(y)}" r="1.4" fill="{c}"/>'
+
+
+def heat(x, y) -> str:
+    return (f'<path d="M{_n(x - 3)} {_n(y)}q-2.2-2.6 0-5.2t0-5.2M{_n(x + 3)} {_n(y)}q-2.2-2.6 0-5.2t0-5.2" '
+            f'stroke="{BAD}" stroke-width="1.5" fill="none" stroke-linecap="round"/>')
+
+
+def pill(x, y, s, c, w=19) -> str:
+    return (f'<rect x="{_n(x - w / 2)}" y="{_n(y - 5.5)}" width="{w}" height="11" rx="5.5" fill="{c}"/>'
+            + text(x, y + 2.6, s, 7, "#fff", weight=700))
+
+
+def ring6(top=22, bot=58, zone="trap", xs=(30, 60, 90)) -> tuple[str, list[tuple[float, float]]]:
+    """A racetrack of six one-ion sites, S0..S5 clockwise from the top left; the sites'
+    centres come back so the ions can be put in them."""
+    mid = (top + bot) / 2
+    r = (bot - top) / 2
+    left, right = xs[0] - 8.5, xs[-1] + 8.5
+    g = (rail(xs[0], top, xs[-1], top) + rail(xs[0], bot, xs[-1], bot)
+         + curve(f"M{_n(right)} {_n(top)}A{_n(r)} {_n(r)} 0 0 1 {_n(right)} {_n(bot)}")
+         + curve(f"M{_n(left)} {_n(bot)}A{_n(r)} {_n(r)} 0 0 1 {_n(left)} {_n(top)}"))
+    pos = [(xs[0], top), (xs[1], top), (xs[2], top), (xs[2], bot), (xs[1], bot), (xs[0], bot)]
+    return g + "".join(site(a, b, zone) for a, b in pos), pos
+
+
+def _line5(y=46, zone="trap") -> tuple[str, list[float]]:
+    xs = [13, 36.5, 60, 83.5, 107]
+    return "".join(rail(xs[i], y, xs[i + 1], y) for i in range(4)) + "".join(site(x, y, zone) for x in xs), xs
+
+
+def _cross(cx=60, cy=40, arm=36, n=1) -> tuple[str, dict]:
+    """A junction with a site on each of its four arms (C3, R2)."""
+    pos = {"L": (cx - arm, cy), "R": (cx + arm, cy), "U": (cx, cy - arm * .78), "D": (cx, cy + arm * .78)}
+    g = "".join(rail(cx, cy, *p) for p in pos.values()) + junction(cx, cy)
+    g += site(*pos["L"], n=n) + site(*pos["R"], n=n) + site(*pos["U"], n=n, v=True) + site(*pos["D"], n=n, v=True)
+    return g, pos
+
+
+def _diagrams() -> dict[str, str]:
+    d = {}
+    # ---- A: the map --------------------------------------------------------------------
+    d["A1"] = (rail(14, 30, 44, 30) + rail(44, 30, 74, 30) + rail(74, 30, 104, 30) + rail(44, 30, 44, 60)
+               + junction(44, 30) + site(14, 30) + site(74, 30) + site(104, 30) + site(44, 61, v=True)
+               + ion(74, 30, D0) + ion(44, 61, D1)
+               + text(14, 18, "site") + text(44, 18, "junction") + text(89, 45, "rail") + text(62, 64, "spur", anchor="start"))
+    d["A2"] = (rail(22, 38, 58, 38) + rail(58, 38, 96, 38)
+               + site(22, 38, "trap", 2) + site(58, 38, "data", 2) + site(96, 38, "load", 4, gap=5.5)
+               + ion(17.5, 38, D0) + ion(62.5, 38, D1)
+               + beam(22, 9, 30) + snow(58, 20) + arrow("M96 10V27", MUTED)
+               + text(22, 60, "trap · 2", 7.5, ZONE["trap"][1]) + text(58, 60, "data · 2", 7.5, ZONE["data"][1])
+               + text(96, 60, "load · 8", 7.5, ZONE["load"][1]) + text(22, 71, "gate", 6.5) + text(58, 71, "cool", 6.5)
+               + text(96, 71, "new ions", 6.5))
+    d["A3"] = (f'<rect x="12" y="10" width="96" height="60" rx="14" fill="none" stroke="#2e8b57" stroke-width="1.6" stroke-dasharray="4 3"/>'
+               + rail(30, 24, 90, 24) + rail(30, 56, 90, 56) + rail(30, 24, 30, 56) + rail(90, 24, 90, 56)
+               + site(30, 24) + site(90, 24) + site(30, 56) + site(90, 56)
+               + text(60, 43, "loop", 8, "#2e8b57")
+               + '<path d="M97 60l0 13 3.4-3.2 2.4 5.2 2.2-1-2.4-5.1 4.6-.2z" fill="#fff" stroke="#182230" stroke-width="1.2" stroke-linejoin="round"/>')
+    d["A4"] = (rail(22, 50, 98, 50) + site(22, 50) + site(98, 50)
+               + ion(22, 50, D0, ghost=True) + ion(98, 50, D0, hot=True)
+               + arrow("M30 38Q60 26 88 38") + heat(98, 37)
+               + f'<circle cx="38" cy="15" r="6" fill="#fff" stroke="#182230" stroke-width="1.4"/>'
+               + f'<path d="M38 15v-3.4M38 15l2.4 1.4" stroke="{BAD}" stroke-width="1.4" stroke-linecap="round"/>'
+               + text(47, 18, "2 µs", 8, "#182230", "start") + text(98, 24, "+0.2 n̄", 7.5, BAD) + text(60, 70, "one push = time + heat", 7))
+    els = "".join(f'<rect x="{_n(x - 3)}" y="31" width="6" height="5" rx="1" fill="#c3cbd8"/>'
+                  f'<path d="M{_n(x)} 36L60 56" stroke="#98a2b3" stroke-width=".9"/>' for x in range(18, 106, 12))
+    d["A5"] = (rail(10, 22, 110, 22) + site(22, 22) + site(98, 22) + els
+               + f'<rect x="42" y="56" width="36" height="14" rx="3" fill="{NAVY}"/>' + text(60, 65.6, "1 DAC", 7.5, "#fff", weight=700)
+               + text(4, 53, "8 electrodes", 6.5, anchor="start") + text(116, 53, "one channel", 6.5, anchor="end"))
+    d["A6"] = ('<rect x="8" y="9" width="104" height="62" rx="5" fill="#fff" stroke="#d0d5dd" stroke-width="1.2"/>'
+               '<path d="M8 19h104" stroke="#d0d5dd"/><rect x="8" y="9" width="104" height="10" rx="5" fill="#eef2f6"/>'
+               + "".join(f'<rect x="{x}" y="11.5" width="11" height="5" rx="1.5" fill="{c}"/>'
+                         for x, c in ((62, "#182230"), (75, "#c3cbd8"), (88, "#c3cbd8"), (101, "#c3cbd8")))
+               + '<rect x="8" y="19" width="16" height="52" fill="#f7f8fb"/>'
+               + "".join(f'<rect x="11" y="{y}" width="10" height="5" rx="1.5" fill="#e4e7ec"/>' for y in (23, 31, 39, 47))
+               + '<rect x="86" y="19" width="26" height="52" fill="#f7f8fb"/>'
+               + "".join(f'<rect x="89" y="{y}" width="{w}" height="3" rx="1.5" fill="#d0d5dd"/>'
+                         for y, w in ((24, 18), (30, 20), (36, 14), (42, 19), (48, 12)))
+               + rail(40, 34, 70, 34) + rail(40, 56, 70, 56) + rail(40, 34, 40, 56) + rail(70, 34, 70, 56)
+               + site(40, 34) + site(70, 34) + site(40, 56) + site(70, 56) + ion(70, 34, D0) + ion(40, 56, D1))
+    # ---- B: programming by hand -----------------------------------------------------------
+    d["B1"] = (rail(20, 24, 100, 24) + site(20, 24) + site(60, 24) + site(100, 24)
+               + ion(20, 24, D0, ghost=True) + ion(100, 24, D0) + arrow("M26 14Q60 2 92 14")
+               + '<rect x="6" y="38" width="108" height="34" rx="5" fill="#fff" stroke="#d0d5dd" stroke-width="1.2"/>'
+               + text(12, 52, 'p.init({"d0": "S0"})', 7, "#182230", "start", 500, True)
+               + text(12, 64, 'p.shuttle("d0", […])', 7, "#182230", "start", 500, True))
+    d["B2"] = (rail(18, 36, 102, 36) + site(18, 36, n=2) + site(60, 36, n=2) + site(102, 36, n=2)
+               + ion(13.5, 36, D0) + ion(22.5, 36, D1) + ion(102, 36, D1, ghost=True)
+               + arrow("M98 47Q60 72 27 47") + beam(18, 6, 28) + text(28, 13, "CX", 8, GATE, "start", 700))
+    d["B3"] = (f'<path d="M22 28H110M22 54H110" stroke="#182230" stroke-width="1.4"/>'
+               + text(14, 31, "d0", 7, anchor="middle") + text(14, 57, "d1", 7, anchor="middle")
+               + f'<rect x="31" y="20" width="16" height="16" rx="2.5" fill="{D1}"/>' + text(39, 31, "H", 9, "#fff", weight=800)
+               + f'<path d="M64 28V60" stroke="{GATE}" stroke-width="1.8"/><circle cx="64" cy="28" r="3.6" fill="{GATE}"/>'
+               + f'<circle cx="64" cy="54" r="6.5" fill="#fff" stroke="{GATE}" stroke-width="1.8"/><path d="M57.5 54h13" stroke="{GATE}" stroke-width="1.8"/>'
+               + "".join(f'<rect x="84" y="{y - 8}" width="18" height="16" rx="2.5" fill="#fff" stroke="{MEAS}" stroke-width="1.6"/>'
+                         f'<path d="M87.5 {y + 3.5}a5.5 5.5 0 0 1 11 0M93 {y + 3.5}l3.4-6" stroke="{MEAS}" stroke-width="1.4" fill="none" stroke-linecap="round"/>'
+                         for y in (28, 54)) + text(64, 75, "a Bell pair", 7))
+    d["B4"] = (rail(20, 30, 100, 30) + site(20, 30) + site(60, 30, "data", 2) + site(100, 30)
+               + ion(55.5, 30, D0) + ion(64.5, 30, D1) + beam(60, 4, 22) + bad(74, 12)
+               + text(60, 47, "data: no gates", 6.5)
+               + pill(24, 63, "R1", GOOD) + pill(47, 63, "R6", BAD) + pill(70, 63, "R7", GOOD) + pill(95, 63, "R11", GOOD, 22))
+    g, pos = ring6()
+    d["B5"] = (g + "".join(ion(a, b, c) for (a, b), c in zip(pos, (D0, D1, D2, CHK, DATA, "#c2308a")))
+               + arrow("M50.5 34.5A11 11 0 1 1 50.5 45.5", ARROW, w=2.2) + text(60, 43, "+2", 8, ARROW, weight=800))
+    g, pos = ring6()
+    d["B6"] = (g + ion(*pos[0], D0) + ion(*pos[2], D1) + ion(*pos[4], D2)
+               + arrow("M34 12H54") + arrow("M110 32Q114 40 110 48") + arrow("M56 68H36")
+               + text(60, 39, "p.simd", 7, "#182230", weight=700, mono=True) + text(60, 48, "1 step", 7, ARROW, weight=700))
+    g, pos = ring6()
+    d["B7"] = (g + ion(*pos[0], D0) + ion(*pos[3], D1) + arrow("M34 12H54") + arrow("M110 50Q114 42 110 34", BAD)
+               + bad(60, 40) + text(60, 76, "one channel, one direction", 6.5))
+    g, pos = ring6(32, 52, "data")
+    d["B8"] = (g + rail(30, 32, 30, 12) + rail(90, 52, 90, 70) + site(30, 11, "trap") + site(90, 71, "trap")
+               + ion(30, 11, D0) + ion(*pos[2], D1) + arrow("M66 36A8 8 0 1 1 54 36", ARROW, w=1.8)
+               + text(42, 14, "dock", 7, ZONE["trap"][1], "start") + text(78, 74, "dock", 7, ZONE["trap"][1], "end"))
+    # ---- R: the rules ------------------------------------------------------------------------
+    d["R1"] = (rail(36, 46, 92, 46) + site(36, 46, n=2) + site(92, 46, n=2)
+               + ion(31.5, 46, D0) + ion(40.5, 46, D1) + ion(36, 24, D2) + arrow("M36 30V36", BAD, w=1.6) + bad(22, 22)
+               + ion(87.5, 46, D2, ghost=True) + arrow("M44 22Q72 10 86 36", GOOD, dash=True, w=1.6) + good(104, 30)
+               + text(36, 64, "holds 2", 7) + text(92, 64, "room", 7))
+    g, pos = _cross()
+    d["R2"] = (g + ion(38, 40, D0) + ion(60, 24, D1) + arrow("M38 32H50") + arrow("M70 22V30") + bad(74, 54)
+               + text(4, 74, "one at a time", 6.5, anchor="start"))
+    d["R3"] = (rail(22, 36, 98, 36) + site(22, 36, n=2) + site(98, 36, n=2)
+               + ion(48, 36, D0) + ion(72, 36, D1) + arrow("M44 26Q60 16 76 26") + arrow("M76 46Q60 56 44 46")
+               + bad(60, 36) + text(60, 70, "no passing on one rail", 7))
+    d["R4"] = ('<rect x="6" y="12" width="108" height="42" rx="7" fill="none" stroke="#98a2b3" stroke-width="1.3" stroke-dasharray="4 3"/>'
+               + text(12, 9, "one step", 7, anchor="start")
+               + rail(18, 38, 102, 38) + site(18, 38) + site(46, 38) + site(74, 38) + site(102, 38)
+               + ion(18, 38, D0) + ion(74, 38, D1) + arrow("M23 28H40") + arrow("M79 28H96")
+               + pill(32, 47, "shuttle", GOOD, 30) + pill(88, 47, "shuttle", GOOD, 30)
+               + pill(60, 68, "teleport", BAD, 38) + f'<path d="M40 68h40" stroke="#fff" stroke-width="1.4"/>'
+               + bad(87, 68, 5))
+    g, pos = ring6(16, 44)
+    d["R5"] = (g + "".join(f'<path d="M{_n(a)} {_n(b + 5)}L60 64" stroke="#98a2b3" stroke-width=".8"/>' for a, b in pos)
+               + f'<rect x="42" y="62" width="36" height="13" rx="3" fill="{NAVY}"/>' + text(60, 70.8, "1 channel", 7, "#fff", weight=700)
+               + ion(*pos[0], D0) + ion(*pos[3], D1) + arrow("M36 7H54") + arrow("M110 38Q114 30 110 22", BAD) + bad(60, 30))
+    d["R6"] = (rail(20, 48, 100, 48) + site(20, 48) + site(60, 48, "data") + site(100, 48)
+               + ion(60, 48, D0) + ion(100, 48, D1)
+               + "".join(f'<rect x="{x - 7}" y="8" width="14" height="10" rx="2.5" fill="{MEAS}"/><circle cx="{x}" cy="13" r="3" fill="#fff"/>'
+                         f'<path d="M{x} 19V40" stroke="{MEAS}" stroke-width="1.5" stroke-dasharray="2.5 2"/>' for x in (60, 100))
+               + bad(73, 24) + good(113, 24) + text(60, 66, "data", 7, ZONE["data"][1]) + text(100, 66, "trap", 7, ZONE["trap"][1])
+               + text(20, 66, "trap", 7, ZONE["trap"][1]))
+    d["R7"] = (rail(12, 22, 44, 22) + rail(44, 22, 78, 22) + junction(44, 22) + site(12, 22) + site(78, 22)
+               + ion(12, 22, D0, ghost=True) + ion(78, 22, D0, hot=True) + arrow("M18 12Q44 2 70 12") + heat(78, 10)
+               + text(96, 25, "3.2 q", 8, BAD, "start", 700)
+               + snow(26, 58, 6) + arrow("M36 58H54") + site(76, 58, n=2) + ion(71.5, 58, D0) + ion(80.5, 58, D1)
+               + beam(76, 38, 50) + good(98, 58))
+    d["R8"] = (rail(42, 44, 98, 44) + site(42, 44, "data", 3) + site(98, 44)
+               + ion(33, 44, D0) + ion(42, 44, D1) + ion(51, 44, D2)
+               + arrow("M42 37V20", BAD) + bad(54, 18) + arrow("M58 34Q78 26 92 36", GOOD) + good(106, 26)
+               + text(42, 64, "a chain of three", 7) + text(42, 74, "only an end ion splits", 6.5))
+    card = '<rect x="{x}" y="12" width="46" height="54" rx="5" fill="#fff" stroke="#d0d5dd" stroke-width="1.2"/>'
+    d["R9"] = (card.format(x=6) + card.format(x=68)
+               + text(29, 26, "claim", 7.5, MUTED) + text(29, 42, "cost 2", 8, "#182230") + text(29, 56, "steps 3", 8, "#182230")
+               + text(91, 26, "replay", 7.5, MUTED) + text(91, 42, "cost 3", 8, BAD, weight=800) + text(91, 56, "steps 3", 8, "#182230")
+               + text(60, 46, "≠", 14, BAD, weight=800) + text(60, 76, "every claim is checked", 6.5))
+    # ---- C: circuits by hand -------------------------------------------------------------------
+    g, xs = _line5()
+    arcs = ((0, 1, 20), (2, 1, 26), (2, 3, 20), (4, 3, 26))
+    d["C1"] = (g + "".join(ion(x, 46, c) for x, c in zip(xs, (DATA, CHK, DATA, CHK, DATA)))
+               + "".join(f'<path d="M{_n(xs[a])} 39Q{_n((xs[a] + xs[b]) / 2)} {h} {_n(xs[b])} 39" stroke="{GATE}" stroke-width="1.5" fill="none"/>'
+                         for a, b, h in arcs)
+               + "".join(text(x, 64, s, 7, c) for x, s, c in zip(xs, ("d0", "c0", "d1", "c1", "d2"), (DATA, CHK, DATA, CHK, DATA)))
+               + f'<path d="M36.5 70v5M83.5 70v5" stroke="{MEAS}" stroke-width="2" stroke-linecap="round"/>'
+               + text(60, 76, "measure", 6.5, MEAS))
+    g, xs = _line5(50)
+    d["C2"] = (g + "".join(ion(x, 50, c) for x, c in zip(xs, (DATA, CHK, DATA, CHK, DATA)))
+               + arrow("M37 38Q48 30 57 38", ARROW) + arrow("M84 38Q95 30 104 38", ARROW)
+               + beam(13, 8, 42) + beam(60, 8, 42) + text(36.5, 16, "same", 7, GATE, weight=700) + text(84, 16, "step", 7, GATE, weight=700)
+               + text(60, 72, "two traps, one instruction", 6.5))
+    g, pos = _cross(60, 40, 38)
+    d["C3"] = (g + ion(pos["L"][0], 40, DATA) + ion(pos["R"][0], 40, DATA) + ion(60, pos["U"][1], DATA) + ion(60, pos["D"][1], DATA)
+               + ion(pos["L"][0] + 9, 31, CHK)
+               + arrow("M32 28Q38 12 52 12", CHK, dash=True, w=1.6) + arrow("M68 12Q84 14 88 28", CHK, dash=True, w=1.6)
+               + arrow("M88 52Q84 66 70 68", CHK, dash=True, w=1.6)
+               + text(4, 66, "a0 visits", 6.5, CHK, "start") + text(4, 75, "all four", 6.5, CHK, "start"))
+    g, pos = _cross(36, 40, 26)
+    d["C4"] = (g + ion(pos["L"][0], 40, DATA) + ion(pos["R"][0], 40, DATA) + ion(36, pos["U"][1], DATA) + ion(36, pos["D"][1], DATA)
+               + snow(50, 26, 4) + snow(50, 54, 4) + snow(22, 26, 4)
+               + text(92, 26, "× 2", 13, "#182230", weight=800)
+               + f'<circle cx="74" cy="50" r="6.5" fill="#fff" stroke="#182230" stroke-width="1.4"/>'
+               + f'<path d="M74 50v-3.6M74 50l2.8 1.5" stroke="{BAD}" stroke-width="1.4" stroke-linecap="round"/>'
+               + text(83, 53, "< 3.5 ms", 7.5, "#182230", "start", 700) + text(88, 70, "reset, round again", 6.5))
+    # ---- D: the compiler ------------------------------------------------------------------------
+    gear = "".join(f'<rect x="58" y="29.5" width="4" height="5" rx="1" transform="rotate({k * 45} 60 40)" fill="#8a8985"/>' for k in range(8))
+    d["D1"] = ('<rect x="2" y="12" width="50" height="56" rx="5" fill="#fff" stroke="#d0d5dd" stroke-width="1.2"/>'
+               '<rect x="68" y="12" width="50" height="56" rx="5" fill="#fff" stroke="#d0d5dd" stroke-width="1.2"/>'
+               + text(27, 9, "circuit", 6.5) + text(93, 9, "programme", 6.5)
+               + f'<rect x="4" y="31" width="46" height="10" rx="2" fill="{GATE}" opacity=".15"/>'
+               + text(6, 26, "h q[0]", 6, "#182230", "start", 500, True) + text(6, 38.5, "cx q[0],q[1]", 6, GATE, "start", 700, True)
+               + text(6, 51, "measure", 6, "#182230", "start", 500, True)
+               + f'<rect x="70" y="44" width="46" height="10" rx="2" fill="{GATE}" opacity=".15"/>'
+               + "".join(text(73, y, s, 6, GATE if s == "gate CX" else "#182230", "start", 700 if s == "gate CX" else 500, True)
+                         for y, s in ((26, "shuttle"), (38.5, "cool"), (51.5, "gate CX"), (63, "measure")))
+               + gear + '<circle cx="60" cy="40" r="6" fill="#8a8985"/><circle cx="60" cy="40" r="2.4" fill="#fff"/>'
+               + arrow("M50 39Q60 60 67.5 50.5", GATE, dash=True, w=1.3) + text(60, 76, "certificate", 6.5, GATE))
+    def ring_glyph(x, y):
+        return (f'<rect x="{x - 9}" y="{y - 6}" width="18" height="12" rx="6" fill="none" stroke="#f2b8b5" stroke-width="2.6"/>'
+                + "".join(f'<circle cx="{x + dx}" cy="{y + dy}" r="1.8" fill="{ZONE["trap"][1]}"/>' for dx, dy in ((-4, -6), (4, -6), (-4, 6), (4, 6))))
+
+    def grid_glyph(x, y):
+        return (f'<path d="M{x - 8} {y - 6}h16M{x - 8} {y}h16M{x - 8} {y + 6}h16M{x - 8} {y - 6}v12M{x} {y - 6}v12M{x + 8} {y - 6}v12" stroke="#f2b8b5" stroke-width="2"/>'
+                + "".join(f'<rect x="{x + dx - 1.8}" y="{y + dy - 1.8}" width="3.6" height="3.6" fill="#fff" stroke="#e8b84b" stroke-width="1"/>'
+                          for dx in (-8, 0, 8) for dy in (-6, 6)))
+
+    def ladder_glyph(x, y):
+        return (f'<path d="M{x - 9} {y - 5}h18M{x - 9} {y + 5}h18M{x - 6} {y - 5}v10M{x} {y - 5}v10M{x + 6} {y - 5}v10" stroke="#f2b8b5" stroke-width="2"/>'
+                + "".join(f'<circle cx="{x + dx}" cy="{y + dy}" r="1.6" fill="{ZONE["trap"][1]}"/>' for dx in (-6, 0, 6) for dy in (-5, 5)))
+    d["D2"] = ('<path d="M6 32H26M6 48H26" stroke="#182230" stroke-width="1.2"/>'
+               + f'<path d="M16 32V51" stroke="{GATE}" stroke-width="1.4"/><circle cx="16" cy="32" r="2.6" fill="{GATE}"/>'
+               + f'<circle cx="16" cy="48" r="4.4" fill="#fff" stroke="{GATE}" stroke-width="1.4"/><path d="M11.6 48h8.8" stroke="{GATE}" stroke-width="1.4"/>'
+               + arrow("M30 36L40 18", MUTED, w=1.2) + arrow("M30 40H40", MUTED, w=1.2) + arrow("M30 44L40 62", MUTED, w=1.2)
+               + ring_glyph(52, 14) + grid_glyph(52, 40) + ladder_glyph(52, 66)
+               + f'<rect x="68" y="10" width="44" height="8" rx="2" fill="{BAD}" opacity=".75"/>'
+               + f'<rect x="68" y="36" width="16" height="8" rx="2" fill="{GOOD}" opacity=".85"/>'
+               + f'<rect x="68" y="62" width="27" height="8" rx="2" fill="{D1}" opacity=".85"/>' + text(90, 50, "cost", 6.5))
+    left = "".join(f'<rect x="{x - 2.5}" y="12" width="5" height="6" rx="1" fill="#c3cbd8"/><path d="M{x} 18V40" stroke="#98a2b3" stroke-width=".9"/>'
+                   f'<rect x="{x - 2.6}" y="40" width="5.2" height="8" rx="1" fill="{NAVY}"/>' for x in range(11, 56, 8))
+    right = "".join(f'<rect x="{x - 2.5}" y="12" width="5" height="6" rx="1" fill="#c3cbd8"/><path d="M{x} 18L91 40" stroke="#98a2b3" stroke-width=".9"/>'
+                    for x in range(71, 116, 8))
+    d["D3"] = (left + right + f'<rect x="81" y="40" width="20" height="9" rx="2" fill="{NAVY}"/>'
+               + '<path d="M60 8V72" stroke="#e4e7ec" stroke-width="1.2"/>'
+               + text(31, 62, "direct", 7.5, "#182230") + text(91, 62, "broadcast", 7.5, "#182230")
+               + text(31, 73, "5,000+ DACs", 6.8, BAD, weight=700) + text(91, 73, "44 DACs", 6.8, GOOD, weight=700))
+    d["D4"] = ('<rect x="5" y="9" width="110" height="62" rx="6" fill="#1f2430"/>'
+               '<circle cx="13" cy="16" r="2" fill="#ff5f57"/><circle cx="20" cy="16" r="2" fill="#febc2e"/><circle cx="27" cy="16" r="2" fill="#28c840"/>'
+               + text(11, 32, "$ python -m qccd studio", 6.6, "#7ee787", "start", 600, True)
+               + text(11, 43, "   --tsir x.tsir.json", 6.6, "#e6edf3", "start", 500, True)
+               + text(11, 54, "   --qasm x.qasm -o x.html", 6.6, "#e6edf3", "start", 500, True)
+               + '<rect x="11" y="59" width="5" height="8" fill="#7ee787"/>')
+    return d
+
+
+DIAGRAMS = _diagrams()
+
+
+def diagram(lid: str, part: str) -> str:
+    """The lesson's picture: what its exercise is about, drawn the way the studio draws it.
+    A lesson with no picture of its own gets the part's pictogram's colour and its id."""
+    body = DIAGRAMS.get(lid)
+    if body is None:
+        body = text(60, 46, lid, 18, "#98a2b3", weight=800)
+    marks = "".join(f'<marker id="{lid}-{k}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4.2" markerHeight="4.2" orient="auto">'
+                    f'<path d="M0 0L10 5L0 10z" fill="{c}"/></marker>'
+                    for k, c in (("o", ARROW), ("r", BAD), ("g", GOOD), ("p", CHK), ("m", MUTED)))
+    return (f'<svg class="dg" viewBox="0 0 120 80" role="img" aria-label="{lid}">'
+            f'<defs>{marks}</defs><rect x=".5" y=".5" width="119" height="79" rx="9" fill="#f7f8fb" stroke="#e3e7ee"/>'
+            + body.replace("url(#@-", f"url(#{lid}-") + "</svg>")
+
+
+def badge_svg(kind: str, colour: str, glyph: str) -> str:
+    """A medal on a ribbon; `glyph` is a letter, or 'trophy' / 'star'."""
+    if glyph == "trophy":
+        mark = ('<path d="M17 13h14v6a7 7 0 0 1-14 0z" fill="#fff"/><path d="M17 15h-3.5a3.5 3.5 0 0 0 3.5 5M31 15h3.5a3.5 3.5 0 0 1-3.5 5" '
+                'stroke="#fff" stroke-width="2" fill="none"/><path d="M24 26v3M19.5 31h9" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>')
+    elif glyph == "star":
+        mark = '<path d="M24 11.5l3.6 7.4 8.1 1.2-5.9 5.7 1.4 8.1-7.2-3.8-7.2 3.8 1.4-8.1-5.9-5.7 8.1-1.2z" fill="#fff"/>'
+    else:
+        mark = (f'<text x="24" y="28.6" text-anchor="middle" font-size="15" font-weight="800" fill="#fff" '
+                f'font-family="ui-sans-serif,system-ui,sans-serif">{html.escape(glyph)}</text>')
+    return (f'<svg viewBox="0 0 48 56" aria-hidden="true">'
+            f'<path d="M14 34l-5 20 8-4 5 6 4-18zM34 34l5 20-8-4-5 6-4-18z" fill="{colour}" opacity=".75"/>'
+            f'<circle cx="24" cy="23" r="19" fill="{colour}"/>'
+            f'<circle cx="24" cy="23" r="15" fill="none" stroke="#fff" stroke-width="1.6" opacity=".55"/>'
+            f'{mark}</svg>')
+
+
+# ------------------------------------------------------------------------- the data
+
+def plain(s: str) -> str:
+    """A lesson's line as text: the course's marks (**b**, `c`, [[term|key]]) taken off."""
+    s = s.replace("\\'", "'").replace('\\"', '"')
+    s = re.sub(r"\[\[([^|\]]+)\|[^\]]*\]\]", r"\1", s)
+    return s.replace("**", "").replace("`", "")
+
+
+def lesson_meta(src: str) -> dict[str, dict]:
+    """Per lesson, read out of `tutorial.js`: its first line (`story`) and the most stars it
+    awards (one, plus one for a `boundary` exercise and one for a `challenge`; editor.js's
+    `starsMax`).  Only the lesson's own keys count, at the lesson's indentation."""
+    heads = list(re.finditer(r"\{ id: '([A-Z]\d+)', part: '([A-Z])', title: ", src))
+    out = {}
+    for k, m in enumerate(heads):
+        body = src[m.start(): heads[k + 1].start() if k + 1 < len(heads) else len(src)]
+        story = re.search(r"\n {6}story: '((?:[^'\\]|\\.)*)'", body)
+        extra = len(re.findall(r"\n {6}(?:boundary|challenge): \{", body))
+        out[m.group(1)] = {"story": plain(story.group(1)) if story else "", "max": 1 + extra}
+    return out
+
+
+def milestones(src: str) -> dict[str, str]:
+    """What the course says when a part is finished (the part's `milestone`)."""
+    return {a: plain(b) for a, b in
+            re.findall(r"\{ id: '([A-Z])', title: '(?:[^'\\]|\\.)*',\s*milestone: '((?:[^'\\]|\\.)*)'", src)}
+
+
+# ------------------------------------------------------------------------- the page
+
+def course_section(parts: list[dict], less: list[dict], part_art: dict, part_color: dict) -> str:
+    """The Learn page's course: the progress panel, then each part and its lesson cards."""
+    src = TUTORIAL_JS.read_text(encoding="utf-8") if TUTORIAL_JS.exists() else ""
+    meta, ms = lesson_meta(src), milestones(src)
+    lessons = [dict(L, **meta.get(L["id"], {"story": "", "max": 1})) for L in less]
+    total, stars = len(lessons), sum(L["max"] for L in lessons)
+    # the ladder: Apprentice at the first lesson, then a part's badge at the number of
+    # lessons up to and including that part
+    levels, upto = [[0, "Newcomer"], [1, "Apprentice"]], 0
+    for p in parts:
+        upto += sum(1 for L in lessons if L["part"] == p["id"])
+        if p["id"] in BADGES and upto > 1:
+            levels.append([upto, BADGES[p["id"]]])
+    badges = [{"id": p["id"], "name": BADGES.get(p["id"], f"Part {p['id']}"), "colour": part_color.get(p["id"], "#2a78d6"),
+               "need": f"Finish Part {p['id']}"} for p in parts]
+    badges += [{"id": "all", "name": "Course complete", "colour": "#0b7a4b", "need": f"Finish all {total} lessons"},
+               {"id": "stars", "name": "Every star", "colour": "#d59a00", "need": f"Earn all {stars} stars"}]
+    first = lessons[0] if lessons else None
+
+    out = ['<section class="you" id="you" data-state="local">',
+           '<div class="you-ring"><svg viewBox="0 0 120 120" aria-hidden="true">'
+           '<circle cx="60" cy="60" r="52" fill="none" stroke="#e9e7f1" stroke-width="12"/>'
+           '<circle id="you-arc" cx="60" cy="60" r="52" fill="none" stroke="url(#you-grad)" stroke-width="12" stroke-linecap="round" '
+           'stroke-dasharray="326.73" stroke-dashoffset="326.73" transform="rotate(-90 60 60)"/>'
+           '<defs><linearGradient id="you-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a78d6"/>'
+           '<stop offset="1" stop-color="#1baf7a"/></linearGradient></defs></svg>'
+           '<div class="you-pct"><b id="you-pct">0%</b><span>of the course</span></div></div>',
+           '<div class="you-main">',
+           '<div class="you-who"><span class="you-face" id="you-face" hidden></span><span id="you-who">Your progress</span></div>',
+           '<div class="you-level">Level <b id="you-lvn">1</b> &middot; <span id="you-lv">Newcomer</span></div>',
+           f'<div class="you-nums"><span><b id="you-done">0</b> of {total} exercises</span>'
+           f'<span><b id="you-stars">0</b> of {stars} stars</span>'
+           f'<span><b id="you-badges">0</b> of {len(badges)} badges</span></div>',
+           '<div class="you-goal"><div class="you-gbar"><span id="you-gfill"></span></div><span id="you-goal">'
+           'Finish your first exercise to become an Apprentice.</span></div>',
+           '<div class="you-acts">'
+           + (f'<a class="you-go" id="you-go" href="../studio.html#learn={first["id"]}">Start with {first["id"]}: '
+              f'{html.escape(first["title"])} &rarr;</a>' if first else "")
+           + '<button type="button" class="you-sign" id="you-signin" data-hint="learn:signin" hidden>Sign in to save your progress</button></div>',
+           '<div class="you-acct" id="you-acct">Your progress is kept in this browser.</div>',
+           '<div class="you-new" id="you-new" hidden></div>',
+           '</div>',
+           '<div class="you-bdg" id="you-bdg">']
+    for b in badges:
+        glyph = "trophy" if b["id"] == "all" else "star" if b["id"] == "stars" else b["id"]
+        out.append(f'<div class="bdg" data-badge="{b["id"]}" title="{html.escape(b["need"])}">'
+                   f'{badge_svg(b["id"], b["colour"], glyph)}<b>{html.escape(b["name"])}</b>'
+                   f'<small data-need="{html.escape(b["need"])}">{html.escape(b["need"])}</small></div>')
+    out.append('</div></section>')
+
+    for p in parts:
+        mine = [L for L in lessons if L["part"] == p["id"]]
+        blurb, art = part_art.get(p["id"], ("", ""))
+        colour = part_color.get(p["id"], "#2a78d6")
+        out.append(f'<section class="part" id="part-{p["id"]}" style="--pc:{colour}">'
+                   f'<div class="ph">{art}<div class="phx"><div class="kick">Part {p["id"]} &middot; {len(mine)} lessons</div>'
+                   f'<h3>{html.escape(p["title"])}</h3><p class="sum">{blurb}</p>'
+                   f'<div class="pmeta"><span class="pbar"><span class="pfill" data-part="{p["id"]}"></span></span>'
+                   f'<span class="prog" data-part="{p["id"]}" data-n="{len(mine)}">0 of {len(mine)} done</span>'
+                   f'<span class="pbadge" data-part="{p["id"]}">Badge: {html.escape(BADGES.get(p["id"], "Part " + p["id"]))}</span></div></div></div>'
+                   + (f'<p class="pdone" data-part="{p["id"]}" hidden>{html.escape(ms[p["id"]])}</p>' if p["id"] in ms else "")
+                   + '<div class="cards2">')
+        for L in mine:
+            out.append(
+                f'<a class="lesson" id="lesson-{L["id"]}" data-lesson="{L["id"]}" data-max="{L["max"]}" '
+                f'href="../studio.html#learn={L["id"]}">'
+                f'<span class="av">{diagram(L["id"], L["part"])}</span>'
+                f'<span class="lx"><span class="lh"><span class="lid">{L["id"]}</span>'
+                f'<span class="lt">{html.escape(L["title"])}</span></span>'
+                f'<span class="ls">{html.escape(L["story"])}</span></span>'
+                f'<span class="lr"><span class="lst">Not started</span>'
+                f'<span class="lstars" title="{L["max"]} star{"s" if L["max"] > 1 else ""} to earn">{"&#9734;" * L["max"]}</span>'
+                f'<span class="lgo">Start</span></span></a>')
+        out.append("</div></section>")
+
+    course = {"lessons": [{"id": L["id"], "part": L["part"], "title": L["title"], "max": L["max"]} for L in lessons],
+              "parts": [{"id": p["id"], "n": sum(1 for L in lessons if L["part"] == p["id"])} for p in parts],
+              "levels": levels, "badges": [b["id"] for b in badges], "total": total, "stars": stars}
+    hints = {"learn:signin": {"t": "Sign in to save your progress",
+                              "d": "Opens the site's sign-in dialog. Signed in, the lessons you finish are kept on "
+                                   "your account and shown here on any device."}}
+    out.append("<script>window.QCCD_HINTS = Object.assign(window.QCCD_HINTS || {}, "
+               + json.dumps(hints) + ");</script>")
+    out.append(sync_script())
+    out.append("<script>" + LEARN_JS.replace("__COURSE__", json.dumps(course, separators=(",", ":"))) + "</script>")
+    return "\n".join(out)
+
+
+def sync_script() -> str:
+    """The account sync, for the Learn page and every page the course runs on."""
+    return "<script>" + SYNC_JS + "</script>"
+
+
+LEARN_CSS = r"""
+/* learn: the progress panel */
+.you{display:grid;grid-template-columns:136px 1fr;gap:6px 26px;align-items:center;margin:14px 0 30px;padding:24px 26px 20px;
+ border-radius:18px;font-family:var(--sans);background:linear-gradient(135deg,#f3f7ff 0%,#f5fbf6 100%);border:1px solid #dfe7f3;
+ box-shadow:0 1px 2px rgba(18,16,28,.04),0 10px 26px rgba(31,91,181,.07)}
+.you-ring{position:relative;width:136px;height:136px}
+.you-ring svg{width:136px;height:136px;display:block;background:transparent}
+#you-arc{transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)}
+.you-pct{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
+.you-pct b{font-size:30px;color:var(--head);font-variant-numeric:tabular-nums}
+.you-pct span{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.07em;margin-top:3px}
+.you-who{font-size:20px;font-weight:700;color:var(--head);display:flex;align-items:center;gap:10px;line-height:1.25}
+.you-face{width:30px;height:30px;border-radius:50%;color:#fff;font-size:12.5px;font-weight:700;display:inline-flex;
+ align-items:center;justify-content:center;flex:0 0 auto}
+.you-face[hidden]{display:none}
+.you-level{font-size:13.5px;color:var(--ink2);margin:3px 0 8px} .you-level b{color:var(--head)}
+.you-level #you-lv{display:inline-block;padding:1px 10px;border-radius:999px;background:#1c2a4a;color:#fff;font-weight:600;font-size:12.5px}
+.you-nums{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13.5px;color:var(--ink2)}
+.you-nums b{font-size:17px;color:var(--head);font-variant-numeric:tabular-nums}
+.you-goal{margin:10px 0 4px;font-size:13px;color:var(--ink2)}
+.you-gbar{height:8px;border-radius:5px;background:#e3e6ef;overflow:hidden;margin:0 0 5px;max-width:420px}
+.you-gbar span{display:block;height:100%;width:0;border-radius:5px;background:linear-gradient(90deg,#f4b400,#eb6834);transition:width .9s ease}
+.you-acts{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 6px;align-items:center}
+.you-go{display:inline-block;background:var(--accent);color:#fff;font-weight:600;font-size:14px;padding:9px 16px;border-radius:10px;
+ box-shadow:0 2px 6px rgba(31,91,181,.25)}
+.you-go:hover{background:#174a96;text-decoration:none}
+.you-sign{font:600 13.5px var(--sans);background:#fff;color:var(--accent);border:1px solid #b9cbe8;border-radius:10px;padding:8px 14px;cursor:pointer}
+.you-sign:hover{border-color:var(--accent)}
+.you-sign[hidden]{display:none}
+.you-acct{font-size:12.5px;color:var(--ink3)} .you-acct.ok{color:#0b7a4b}
+.you-new{margin-top:8px;font-size:13px;background:#fff7dc;border:1px solid #f1dc95;color:#6d5300;border-radius:9px;padding:7px 11px}
+.you-new[hidden]{display:none}
+.you-bdg{grid-column:1/-1;display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:14px;padding-top:14px;border-top:1px dashed #d5dcea}
+.bdg{text-align:center;font-size:11.5px;line-height:1.25;color:var(--ink2)}
+.bdg svg{width:42px;height:49px;display:block;margin:0 auto 3px;background:transparent;transition:transform .3s}
+.bdg b{display:block;color:var(--head);font-size:11.5px} .bdg small{display:block;color:var(--ink3);font-size:10.5px}
+.bdg:not(.on) svg{filter:grayscale(1);opacity:.32} .bdg:not(.on) b{color:var(--ink3)}
+.bdg.on svg{filter:drop-shadow(0 2px 4px rgba(0,0,0,.18))} .bdg.on:hover svg{transform:scale(1.08) rotate(-4deg)}
+.bdg.fresh svg{animation:bdgpop 1s ease 2}
+@keyframes bdgpop{0%,100%{transform:scale(1)}40%{transform:scale(1.25) rotate(-8deg)}}
+/* learn: a part, then one card per lesson, each on its own line */
+.part{margin:30px 0 0}
+.ph{display:grid;grid-template-columns:64px 1fr;gap:18px;align-items:start;font-family:var(--sans)}
+.ph .ic{width:56px;height:56px;display:block;margin-top:4px}
+.ph h3{margin:0 0 2px;font-size:19px}
+.ph .kick{font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:var(--pc)}
+.ph .sum{color:var(--ink2);margin:0 0 8px;font-size:13.5px;line-height:1.5}
+.pmeta{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--ink3);flex-wrap:wrap}
+.pbar{width:160px;height:7px;border-radius:4px;background:#ebe9e3;overflow:hidden;display:inline-block}
+.pfill{display:block;height:100%;width:0;background:var(--pc);border-radius:4px;transition:width .8s ease}
+.pbadge{padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink3)}
+.pbadge.on{border-color:var(--pc);color:#fff;background:var(--pc);font-weight:600}
+.pdone{margin:10px 0 0 82px;font:13px/1.5 var(--sans);color:#0b5e3b;background:#eaf7f0;border:1px solid #bfe5cf;border-radius:9px;padding:8px 12px}
+.pdone[hidden]{display:none}
+.cards2{display:flex;flex-direction:column;gap:10px;margin:14px 0 0 82px}
+.lesson{display:grid;grid-template-columns:144px 1fr auto;gap:16px;align-items:center;padding:12px 16px 12px 12px;
+ background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:14px;color:inherit;
+ font-family:var(--sans);transition:border-color .2s,box-shadow .2s,transform .2s}
+.lesson:hover{text-decoration:none;border-color:var(--pc);box-shadow:0 4px 14px rgba(18,16,28,.08);transform:translateY(-1px)}
+.lesson .av{width:144px;height:96px;display:block;position:relative}
+.lesson .dg{width:144px;height:96px;display:block;background:transparent}
+.lesson.done .av::after{content:"\2713";position:absolute;right:-6px;top:-6px;width:20px;height:20px;border-radius:50%;
+ background:#12a150;color:#fff;font:700 12px/20px var(--sans);text-align:center;box-shadow:0 0 0 2px #fff}
+.lesson .lx{min-width:0}
+.lesson .lh{display:flex;gap:8px;align-items:baseline}
+.lesson .lid{font-size:12px;font-weight:700;color:var(--pc);font-variant-numeric:tabular-nums;flex:0 0 auto}
+.lesson .lt{font-size:15.5px;font-weight:600;color:var(--head);line-height:1.3}
+.lesson .ls{display:block;font-size:13px;color:var(--ink2);line-height:1.45;margin-top:3px}
+.lesson .lr{display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:104px}
+.lesson .lst{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);white-space:nowrap}
+.lesson .lstars{font-size:16px;letter-spacing:1px;color:#cfccc4;white-space:nowrap;line-height:1}
+.lesson .lstars i{font-style:normal;color:#f0a500}
+.lesson .lgo{font-size:12.5px;font-weight:600;color:var(--accent);border:1px solid #c6d4ec;border-radius:8px;padding:3px 11px;background:#fff;white-space:nowrap}
+.lesson.done{border-left-color:#1baf7a;background:linear-gradient(90deg,#f1faf5,var(--card) 40%)}
+.lesson.done .lst{color:#0b7a4b}
+.lesson.done .lgo{color:#0b7a4b;border-color:#bfe5cf}
+.lesson.next{border-color:#9fbbe6;border-left-color:var(--accent);background:#f5f8ff;box-shadow:0 0 0 3px rgba(31,91,181,.09)}
+.lesson.next .lst{color:var(--accent)}
+.lesson.next .lgo{background:var(--accent);color:#fff;border-color:var(--accent)}
+.lesson.next .dg rect:first-of-type{stroke:#9fbbe6}
+.lesson.new{position:relative}
+.lesson.new::after{content:"New";position:absolute;top:-8px;right:14px;background:#f4b400;color:#3b2b00;font-size:10.5px;font-weight:800;
+ letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+@media (prefers-reduced-motion:reduce){.bdg.fresh svg{animation:none}#you-arc,.pfill,.you-gbar span{transition:none}}
+@media (max-width:760px){.you{grid-template-columns:1fr;justify-items:start}.you-bdg{grid-template-columns:repeat(4,1fr)}
+ .cards2,.pdone{margin-left:0}.lesson{grid-template-columns:90px 1fr;gap:12px}.lesson .av,.lesson .dg{width:90px;height:60px}
+ .lesson .lr{grid-column:2;flex-direction:row;align-items:center;justify-content:flex-start;gap:10px;min-width:0}}
+"""
+
+
+# The account sync.  window.QCCDPROGRESS = {state(), sync(), subscribe(fn)}.
+SYNC_JS = r"""
+(function(){
+  if(typeof window === 'undefined' || typeof location === 'undefined' || typeof document === 'undefined') return;
+  if(window.QCCDPROGRESS) return;
+  var KEY = 'qccd.studio.tutorial', OWNER = 'qccd.course.account';
+  var live = /^https?:$/.test(location.protocol) && !!window.fetch;
+  try { if(window.top !== window.self) live = false; } catch(e){ live = false; }
+  if(/(^|&)embed(&|$)/.test((location.hash || '').replace(/^#/, ''))) live = false;
+  var S = { status: live ? 'loading' : 'local', user: null, stars: {}, done: {}, updated: null, synced: null };
+  var subs = [], busy = false, again = false;
+  function has(o, k){ return Object.prototype.hasOwnProperty.call(o, k); }
+  function course(){ var p = null; try { p = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e){ p = null; }
+                     return (p && typeof p === 'object') ? p : {}; }
+  function clean(s){ var o = {}, k, n; s = (s && typeof s === 'object') ? s : {};
+    for(k in s) if(has(s, k) && /^[A-Z][0-9]{1,2}$/.test(k)){ n = Math.floor(+s[k]); if(n > 0) o[k] = Math.min(n, 3); }
+    return o; }
+  function localStars(){ return clean(course().stars); }
+  function save(p){ try { localStorage.setItem(KEY, JSON.stringify(p)); } catch(e){} }
+  function owner(){ try { return localStorage.getItem(OWNER); } catch(e){ return null; } }
+  function setOwner(id){ try { localStorage.setItem(OWNER, String(id)); } catch(e){} }
+  function snapshot(){ var p = course();
+    return { status: S.status, user: S.user, stars: S.user ? S.stars : localStars(), done: S.user ? S.done : {},
+             updated: S.updated, synced: S.synced, current: p.current || null }; }
+  function emit(){ var s = snapshot(); for(var i = 0; i < subs.length; i++){ try { subs[i](s); } catch(e){} } }
+  function api(method, body){
+    var o = { method: method, credentials: 'same-origin', headers: {} };
+    if(body){ o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(body); }
+    return fetch('/api/progress', o).then(function(r){ return r.json().then(function(d){
+      if(!r.ok){ var e = new Error((d && d.error) || ('HTTP ' + r.status)); e.status = r.status; throw e; } return d; }); });
+  }
+  function take(p){ p = p || {}; S.stars = clean(p.stars); S.done = p.done || {}; S.updated = p.updated || null; S.synced = Date.now(); }
+  // the studio's own Learn tab reads the stars again when this browser's copy changed
+  function refreshStudio(){ try { if(window.EDITOR && EDITOR.lessonsReady && window.QCCD_TUTORIAL) EDITOR.lessonsReady(window.QCCD_TUTORIAL); } catch(e){} }
+  // what this browser holds beyond the account goes up; the account only ever raises a count
+  function push(){
+    var loc = localStars(), up = {}, any = false, k;
+    for(k in loc) if(has(loc, k) && loc[k] > (S.stars[k] || 0)){ up[k] = loc[k]; any = true; }
+    if(!any) return Promise.resolve(false);
+    return api('POST', { stars: up }).then(function(d){ take(d.progress); return true; });
+  }
+  // and the account's stars come down into this browser, lesson by lesson, the higher count kept
+  function adopt(replace){
+    var p = course(), st = replace ? {} : ((p.stars && typeof p.stars === 'object') ? p.stars : {}), changed = !!replace, k;
+    for(k in S.stars) if(has(S.stars, k) && (st[k] || 0) < S.stars[k]){ st[k] = S.stars[k]; changed = true; }
+    // another account's open lesson and best prices go with its stars
+    if(replace){ delete p.current; p.best = {}; }
+    if(changed){ p.stars = st; if(!p.best) p.best = {}; save(p); refreshStudio(); }
+  }
+  function sync(){
+    if(!live){ S.status = 'local'; emit(); return Promise.resolve(); }
+    if(busy){ again = true; return Promise.resolve(); }
+    busy = true;
+    return api('GET').then(function(d){
+      if(!d || !d.user){ S.user = null; S.stars = {}; S.done = {}; S.updated = null; S.status = 'anon'; return; }
+      S.user = d.user; take(d.progress);
+      var o = owner();
+      if(o !== null && o !== String(d.user.id)){
+        // this browser's stars were another account's: this reader gets their own
+        setOwner(d.user.id); adopt(true); S.status = 'synced'; return;
+      }
+      setOwner(d.user.id);
+      return push().then(function(){ adopt(false); S.status = 'synced'; });
+    }).catch(function(e){ S.status = (e && e.status) ? 'error' : 'offline'; })
+      .then(function(){ busy = false; emit(); if(again){ again = false; sync(); } });
+  }
+  function tick(){
+    if(!live || busy) return;
+    // a sign-in or sign-out through the site bar's dialog: the bar's layer knows who is
+    // signed in once it shows its Sign in control or the reader's name; until then, nobody
+    var me;
+    try { var q = window.QCCOMMENTS && QCCOMMENTS.state();
+          if(q && q.me) me = q.me.id; else if(q && document.getElementById('qc-signin')) me = null; } catch(e){}
+    if(me !== undefined && (S.status === 'anon' || S.status === 'synced') && me !== (S.user ? S.user.id : null)){ sync(); return; }
+    // a star the course has just awarded in this browser
+    if(S.user && S.status === 'synced'){
+      var loc = localStars(), k;
+      for(k in loc) if(has(loc, k) && loc[k] > (S.stars[k] || 0)){
+        busy = true;
+        push().catch(function(){}).then(function(){ busy = false; emit(); });
+        return;
+      }
+    }
+  }
+  window.QCCDPROGRESS = { state: snapshot, sync: sync, subscribe: function(f){ subs.push(f); } };
+  function start(){
+    sync();
+    if(!live) return;
+    setInterval(tick, 2000);
+    window.addEventListener('storage', function(ev){ if(!ev || ev.key === KEY) emit(); });
+    document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') sync(); });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+"""
+
+
+# The Learn page: the cards' states, the panel and the badges, from QCCDPROGRESS.
+LEARN_JS = r"""
+(function(){
+  var C = __COURSE__, SEEN = 'qccd.course.seen';
+  function $(id){ return document.getElementById(id); }
+  function stateNow(){
+    if(window.QCCDPROGRESS) return QCCDPROGRESS.state();
+    var p = null; try { p = JSON.parse(localStorage.getItem('qccd.studio.tutorial') || 'null'); } catch(e){}
+    return { status: 'local', user: null, stars: (p && p.stars) || {}, done: {}, current: (p && p.current) || null };
+  }
+  function day(t){ try { return new Date(t * 1000).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); } catch(e){ return ''; } }
+  function starsHTML(n, max){ var s = ''; for(var i = 1; i <= max; i++) s += i <= n ? '<i>★</i>' : '☆'; return s; }
+  function initials(name){ var w = String(name || '?').trim().split(/\s+/); return ((w[0] || '?').charAt(0) + (w.length > 1 ? w[w.length - 1].charAt(0) : '')).toUpperCase(); }
+  var COLOURS = ['#2a78d6','#d64545','#1baf7a','#eb6834','#4a3aa7','#c2308a','#0e9aa7','#8a6d1e','#5b8c1e','#b5471b','#6b4fbb','#2f7f6e'];
+  var celebrated = false, FRESH = {};
+  function render(st){
+    st = st || stateNow();
+    var stars = st.stars || {}, done = 0, got = 0, next = null, bonus = null, parts = {}, doneIds = [], i, L;
+    for(i = 0; i < C.lessons.length; i++){
+      L = C.lessons[i]; var n = Math.min(stars[L.id] || 0, L.max), p = parts[L.part] || (parts[L.part] = { done: 0, n: 0 });
+      p.n++; got += n;
+      if(n){ done++; p.done++; doneIds.push(L.id); if(n < L.max && !bonus) bonus = L; }
+      else if(!next) next = L;
+    }
+    // where the reader is: the lesson they left open, if it is not done, else the first one not done
+    var cur = null;
+    for(i = 0; i < C.lessons.length; i++) if(C.lessons[i].id === st.current && !(stars[st.current] > 0)) cur = C.lessons[i];
+    var go = cur || next;
+    // what is new since this page last saw this reader's progress (kept for the whole visit)
+    var who = st.user ? 'u' + st.user.id : 'local', seen = null, fresh = FRESH;
+    try { seen = JSON.parse(localStorage.getItem(SEEN) || 'null'); } catch(e){ seen = null; }
+    if(seen && seen.who === who && seen.ids && st.status !== 'loading')
+      for(i = 0; i < doneIds.length; i++) if(seen.ids.indexOf(doneIds[i]) < 0) fresh[doneIds[i]] = 1;
+    // the cards
+    var cards = document.querySelectorAll('.lesson[data-lesson]');
+    for(i = 0; i < cards.length; i++){
+      var c = cards[i], id = c.getAttribute('data-lesson'), max = +c.getAttribute('data-max') || 1, k = Math.min(stars[id] || 0, max);
+      var isNext = !k && go && go.id === id;
+      c.classList.toggle('done', !!k); c.classList.toggle('next', !!isNext); c.classList.toggle('new', !!fresh[id]);
+      var when = k && st.done && st.done[id] ? ' · ' + day(st.done[id]) : '';
+      c.querySelector('.lst').textContent = k ? 'Done' + when : isNext ? (cur && cur.id === id ? 'In progress' : 'Next up') : 'Not started';
+      c.querySelector('.lstars').innerHTML = starsHTML(k, max);
+      c.querySelector('.lstars').title = k >= max ? 'Every star earned' : k ? (max - k) + ' bonus star' + (max - k > 1 ? 's' : '') + ' still to earn' : max + ' star' + (max > 1 ? 's' : '') + ' to earn';
+      c.querySelector('.lgo').textContent = k ? (k < max ? 'Bonus ★' : 'Again') : isNext ? (cur && cur.id === id ? 'Continue' : 'Start') : 'Start';
+    }
+    // the parts
+    var badges = 0, on = {};
+    for(i = 0; i < C.parts.length; i++){
+      var P = C.parts[i], pp = parts[P.id] || { done: 0, n: P.n }, full = pp.n > 0 && pp.done >= pp.n;
+      var f = document.querySelector('.pfill[data-part="' + P.id + '"]'); if(f) f.style.width = (pp.n ? 100 * pp.done / pp.n : 0) + '%';
+      var g = document.querySelector('.prog[data-part="' + P.id + '"]'); if(g) g.textContent = full ? 'All ' + pp.n + ' done' : pp.done + ' of ' + pp.n + ' done';
+      var b = document.querySelector('.pbadge[data-part="' + P.id + '"]'); if(b) b.classList.toggle('on', full);
+      var m = document.querySelector('.pdone[data-part="' + P.id + '"]'); if(m) m.hidden = !full;
+      if(full){ badges++; on[P.id] = 1; }
+    }
+    if(done >= C.total && C.total){ badges++; on.all = 1; }
+    if(got >= C.stars && C.stars){ badges++; on.stars = 1; }
+    var bs = document.querySelectorAll('.bdg[data-badge]');
+    for(i = 0; i < bs.length; i++){
+      var bid = bs[i].getAttribute('data-badge'), sm = bs[i].querySelector('small');
+      bs[i].classList.toggle('on', !!on[bid]);
+      if(sm) sm.textContent = on[bid] ? 'Earned' : sm.getAttribute('data-need');
+    }
+    // the ring, the numbers, the level
+    var pct = C.total ? Math.round(100 * done / C.total) : 0;
+    $('you-pct').textContent = pct + '%';
+    $('you-arc').setAttribute('stroke-dashoffset', String(326.73 * (1 - (C.total ? done / C.total : 0))));
+    $('you-done').textContent = done; $('you-stars').textContent = got; $('you-badges').textContent = badges;
+    var lv = 0; for(i = 0; i < C.levels.length; i++) if(done >= C.levels[i][0]) lv = i;
+    $('you-lvn').textContent = lv + 1; $('you-lv').textContent = C.levels[lv][1];
+    var goal, gfill;
+    if(lv + 1 < C.levels.length){
+      var nx = C.levels[lv + 1], base = C.levels[lv][0], left = nx[0] - done;
+      goal = !done ? 'Finish your first exercise to become an ' + nx[1] + '.'
+           : left + ' more exercise' + (left > 1 ? 's' : '') + ' to reach level ' + (lv + 2) + ': ' + nx[1] + '.';
+      gfill = 100 * (done - base) / Math.max(1, nx[0] - base);
+    } else if(got < C.stars){
+      goal = 'Course complete! ' + (C.stars - got) + ' bonus star' + (C.stars - got > 1 ? 's' : '') + ' left: the boundary and challenge exercises.';
+      gfill = 100 * got / C.stars;
+    } else { goal = 'Every exercise and every star. Nothing left but the leaderboard.'; gfill = 100; }
+    $('you-goal').textContent = goal; $('you-gfill').style.width = gfill + '%';
+    var a = $('you-go'), target = go || bonus;
+    if(a){
+      if(target){ a.href = '../studio.html#learn=' + target.id;
+        a.textContent = (go ? (done || cur ? 'Continue with ' : 'Start with ') : 'Earn a bonus star in ') + target.id + ': ' + target.title + ' →'; }
+      else { a.href = '../board/'; a.textContent = 'On to the leaderboard →'; }
+    }
+    // who is reading, and where the progress is kept
+    var face = $('you-face'), acct = $('you-acct'), sign = $('you-signin');
+    var canSign = !!document.getElementById('qc-signin');
+    if(st.user){
+      face.hidden = false; face.textContent = initials(st.user.name);
+      face.style.background = COLOURS[(st.user.color || 0) % COLOURS.length];
+      $('you-who').textContent = (done ? 'Welcome back, ' : 'Welcome, ') + st.user.name;
+    } else { face.hidden = true; $('you-who').textContent = done ? 'Your progress' : 'Start the course'; }
+    acct.className = 'you-acct';
+    if(st.user && st.status === 'synced'){
+      acct.className = 'you-acct ok';
+      acct.textContent = '✓ Saved to your account' + (st.updated ? ': last exercise finished ' + day(st.updated) + '.' : '. Finish a lesson and it is kept here, on every device.');
+    } else if(st.user){ acct.textContent = 'Your account could not be reached just now; your progress is kept in this browser and saved next time.'; }
+    else if(st.status === 'anon'){ acct.textContent = 'Kept in this browser only. Sign in and every exercise you finish is saved to your account, on any device.'; }
+    else if(st.status === 'loading'){ acct.textContent = 'Checking your account…'; }
+    else { acct.textContent = 'Your progress is kept in this browser.'; }
+    sign.hidden = !(st.status === 'anon' && canSign);
+    // celebrate what is new, once per visit, then remember it
+    var newIds = Object.keys(fresh);
+    if(newIds.length && !celebrated){
+      celebrated = true;
+      var nb = $('you-new'); nb.hidden = false;
+      nb.textContent = '✨ New since your last visit: ' + newIds.join(', ') + '. ' + (lv + 1 < C.levels.length ? 'Keep going!' : 'Well done!');
+      for(i = 0; i < bs.length; i++) if(on[bs[i].getAttribute('data-badge')] && seen && seen.badges && seen.badges.indexOf(bs[i].getAttribute('data-badge')) < 0) bs[i].classList.add('fresh');
+    }
+    if(st.status !== 'loading'){
+      try { localStorage.setItem(SEEN, JSON.stringify({ who: who, ids: doneIds, badges: Object.keys(on) })); } catch(e){}
+    }
+  }
+  if(window.QCCDPROGRESS) QCCDPROGRESS.subscribe(render);
+  var sb = $('you-signin');
+  if(sb) sb.addEventListener('click', function(){ var s = document.getElementById('qc-signin'); if(s) s.click(); });
+  render();
+  // the comment layer puts its Sign in control in the bar once it has asked the account
+  setTimeout(function(){ render(); }, 1500);
+})();
+"""

@@ -655,8 +655,13 @@ def with_nav(page: str, depth: int, active: str | None, index_json: str,
     i = page.index("<body", page.index("</head>"))
     i = page.index(">", i) + 1
     # a document page also gets the contents rail and the code blocks; an app page is its
-    # own thing and gets neither
+    # own thing and gets neither.  Every studio page carries the course (tutorial.js), so a
+    # lesson can be done on any of them: each sends the stars it awards to a signed-in
+    # reader's account (qccd/site/progress.py)
     tail = extra + ("" if app else READING_JS)
+    if app and "var QCCD_TUTORIAL" in page:
+        from . import progress
+        tail += progress.sync_script()
     if tail:
         j = page.rindex("</body>")
         page = page[:j] + tail + page[j:]
@@ -718,27 +723,20 @@ def landing(ts: list[dict]) -> str:
 
 
 def learn_page(parts: list[dict], less: list[dict], docs: dict, ts: list[dict]) -> str:
+    from . import progress
     body = ["<h1>Learn</h1>",
             "<p class=\"sub\">One path: the course inside the design tool, then the reference, "
             "then a real design stepped instruction by instruction. Every lesson opens the studio on "
-            "its exercise and checks your work against the page's own verdicts; progress is kept in "
-            "this browser by the course itself. <a href=\"../studio.html#learn\">Open the course</a>.</p>",
+            "its exercise and checks your work against the page's own verdicts. Your progress is kept "
+            "in this browser, and on your account when you are signed in. "
+            "<a href=\"../studio.html#learn\">Open the course</a>.</p>",
             "<h2>The course</h2>"]
     if not parts:
         body.append('<p class="note">This build carries no course: the lessons were not in the tree it was '
                     'built from.</p>')
-    body.append('<div class="path">')
-    for p in parts:
-        mine = [L for L in less if L["part"] == p["id"]]
-        blurb, art = PART_ART.get(p["id"], ("", ""))
-        items = "".join(
-            f'<li><span class="id">{L["id"]}</span><a href="../studio.html#learn={L["id"]}">{html.escape(L["title"])}</a>'
-            f'<span class="stars" data-lesson="{L["id"]}"></span></li>' for L in mine)
-        body.append(f'<div class="pt">{art}<div><div class="kick" style="color:{PART_COLOR.get(p["id"], "#2a78d6")}">Part {p["id"]} &middot; {len(mine)} lessons'
-                    f'<span class="prog" data-part="{p["id"]}"></span></div>'
-                    f'<h3>{html.escape(p["title"])}</h3><p class="sum">{blurb}</p>'
-                    f'<ul class="lessons">{items}</ul></div></div>')
-    body.append("</div>")
+    else:
+        # one card per lesson, and the reader's progress over them (qccd/site/progress.py)
+        body.append(progress.course_section(parts, less, PART_ART, PART_COLOR))
     body.append("<h2>The reference</h2><div class=\"docs\">")
     body.append('<a class="doc" href="../physics/"><span class="tag">background</span><b>The physics, from one trapped ion to the noise model</b>'
                 '<span>Traps, qubits, gates, transport, the control system, where the noise comes from and how this website simulates it.</span></a>')
@@ -765,15 +763,7 @@ def learn_page(parts: list[dict], less: list[dict], docs: dict, ts: list[dict]) 
                         f'<span style="color:#0b7a4b;font-weight:600">{_t(b):.2f} ms</span> '
                         f'<span style="color:var(--ink3)">&middot; {b.get("instructions")} instructions</span></li>')
     body.append("</ul>")
-    body.append("""<script>
-(function(){ var p = null; try { p = JSON.parse(localStorage.getItem('qccd.studio.tutorial') || 'null'); } catch(e){}
-  var stars = (p && p.stars) || {}, els = document.querySelectorAll('.stars[data-lesson]'), done = {}, all = {};
-  for(var i = 0; i < els.length; i++){ var id = els[i].getAttribute('data-lesson'), n = stars[id] || 0, part = id.charAt(0);
-    els[i].textContent = n ? new Array(n + 1).join('\\u2605') : ''; all[part] = (all[part] || 0) + 1; if(n) done[part] = (done[part] || 0) + 1; }
-  var ps = document.querySelectorAll('.prog[data-part]');
-  for(var j = 0; j < ps.length; j++){ var k = ps[j].getAttribute('data-part'); if(done[k]) ps[j].textContent = done[k] + ' of ' + all[k] + ' done'; } })();
-</script>""")
-    return PAGE.format(title="Learn - QCCD studio", style=STYLE, extra_css="", body="\n".join(body))
+    return PAGE.format(title="Learn - QCCD studio", style=STYLE, extra_css=progress.LEARN_CSS, body="\n".join(body))
 
 
 def board_index(ts: list[dict]) -> str:
