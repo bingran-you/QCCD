@@ -185,10 +185,14 @@ measure the individual-ion router rather than the pair of them.
 Two of those results are ones the checker found rather than testing: the first rotation
 compiler emitted the ancilla Hadamards as pulses but never *witnessed* them (invisible to a
 tableau, which composes from what was emitted), and its scheduler reordered commuting `cx`
-gates, which the order rule rejected outright. The fix for the second was not to relax the
-rule but to prove the exemption — [`Cert/Commute.lean`](lean/QCCDC/Cert/Commute.lean) proves
-two `cx` gates commute when they share a control with distinct targets, or a target with
-distinct controls, and exhibits a state where a control/target chain does not.
+gates, which the order rule rejected outright. For a while the checker admitted that second
+reordering through a proved exemption — [`Cert/Commute.lean`](lean/QCCDC/Cert/Commute.lean)
+proves two `cx` gates commute when they share a control with distinct targets, or a target
+with distinct controls. Since 2026-10-19 it does not: the order of a qubit's gates is the
+circuit author's, not the compiler's (a syndrome round's CNOT order is chosen on purpose), and
+a reorder of commuting gates is invisible to the tableau, so the order rule is the only place
+to catch it. The scheduler now keeps each qubit's order, and both the order rule and
+`check_cert.py` reject a reorder, commuting or not.
 
 ## Build and run
 

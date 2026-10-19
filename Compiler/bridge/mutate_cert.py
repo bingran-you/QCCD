@@ -134,29 +134,42 @@ def reorder_gates(d):
 def swap_dependent_gates(d):
     """Exchange which circuit op two witnesses realise, leaving everything else alone.
 
-    This is the mutation that aims squarely at `RespectsOrder`, and it is the one worth
-    having now that the rule admits commuting reorderings. Nothing about co-location is
-    disturbed -- each witness keeps its ions, its trap and its cycle -- so `GatesLegal`
-    still passes, and two ops which do not commute are realised back to front. If the
-    commutation exemption were too generous, this is what would slip through.
+    This is the mutation that aims squarely at `RespectsOrder`. Nothing about co-location
+    is disturbed -- each witness keeps its ions, its trap and its cycle -- so `GatesLegal`
+    still passes, and two ops which do not commute are realised back to front.
 
     Each witness now also names the other op's ions, which `OwnIons` refuses as well, so a
     rejection alone no longer shows the order check fired: the suite requires its reason.
     """
+    return _swap_pair(d, commuting=False)
+
+
+def swap_commuting_gates(d):
+    """The same exchange, for two CNOTs that COMMUTE (a shared control or a shared target).
+
+    The order clause used to admit exactly these, and the rotation compiler relied on it
+    to batch a check's CNOTs by offset.  Since 2026-10-19 the compiler may not reorder a
+    qubit's ops even where they commute -- the order is the circuit author's -- so this
+    must be rejected for order too, not only for the ions it borrows.
+    """
+    return _swap_pair(d, commuting=True)
+
+
+def _commutes(x, y):
+    if x["name"] != "cx" or y["name"] != "cx":
+        return False
+    (c1, t1), (c2, t2) = x["qubits"], y["qubits"]
+    return (c1 == c2 and t1 != t2) or (t1 == t2 and c1 != c2)
+
+
+def _swap_pair(d, *, commuting: bool):
     ops = {o["i"]: o for o in d["circuit_ops"]}
-
-    def commutes(x, y):
-        if x["name"] != "cx" or y["name"] != "cx":
-            return False
-        (c1, t1), (c2, t2) = x["qubits"], y["qubits"]
-        return (c1 == c2 and t1 != t2) or (t1 == t2 and c1 != c2)
-
     for i, ga in enumerate(d["gates"]):
         for gb in d["gates"][i + 1:]:
             oa, ob = ops.get(ga["dag"]), ops.get(gb["dag"])
             if oa is None or ob is None or ga["t"] == gb["t"]:
                 continue
-            if not set(oa["qubits"]) & set(ob["qubits"]) or commutes(oa, ob):
+            if not set(oa["qubits"]) & set(ob["qubits"]) or _commutes(oa, ob) != commuting:
                 continue
             ga["dag"], gb["dag"] = gb["dag"], ga["dag"]
             return d
@@ -231,6 +244,7 @@ MUTATIONS = [
     ("unsort_moves", unsort_moves, "lean"),
     ("reorder_gates", reorder_gates, "lean"),
     ("swap_dependent_gates", swap_dependent_gates, "lean", "out of order"),
+    ("swap_commuting_gates", swap_commuting_gates, "lean", "out of order"),
     ("foreign_ions", foreign_ions, "lean", "other ions than"),
     ("swap_operands", swap_operands, "tableau"),
 ]

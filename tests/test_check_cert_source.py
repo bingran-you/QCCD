@@ -345,9 +345,10 @@ def test_the_honest_midcircuit_program_passes(cc, midcircuit):
     assert v.get("readout", "ok").startswith("ok"), v
 
 
-def test_a_measurement_moved_past_a_gate_it_commutes_with_still_passes(cc, midcircuit, tmp_path):
-    """Measuring a CNOT's control before the CNOT instead of after it is the same
-    experiment: the check compares readouts by what they mean, not by where they stand."""
+def test_a_measurement_moved_past_a_gate_it_commutes_with_fails_on_order(cc, midcircuit, tmp_path):
+    """Measuring a CNOT's control before the CNOT instead of after it means the same, and
+    the semantic half still says so.  But it is not the circuit's order, and the compiler
+    may not reorder a qubit's ops even where they commute (2026-10-19): R10 fails on it."""
     def edit(t, c, ex):
         ins, q0 = t["instructions"], c["map"]["0"]
         m = ins.pop(_at(t, "measure", q0))
@@ -357,7 +358,45 @@ def test_a_measurement_moved_past_a_gate_it_commutes_with_still_passes(cc, midci
         ins.insert(cx_start, m)
     prefix, _ = _planted(midcircuit, tmp_path, edit)
     rc, v = r10(cc, prefix, midcircuit["qasm"], midcircuit["arch"])
-    assert rc == 0 and v["o2_semantics"] == "ok", v
+    assert v["o2_semantics"] == "ok", v
+    assert rc == 1 and v["R10"] == "FAILED" and v["order"] != "ok", v
+
+
+COMMUTING = "cx q[0],q[1];\ncx q[0],q[2];\nmeasure q -> c;"
+
+
+@pytest.fixture(scope="module")
+def commuting(tmp_path_factory):
+    """Two CNOTs sharing their control: either order is the same unitary."""
+    from qccd.api import Machine
+    return _compile(tmp_path_factory.mktemp("comm"), COMMUTING, 3, Machine.chain(n=4, name="chain4"))
+
+
+def _ops_of(t, i):
+    return [k for k, ins in enumerate(t["instructions"]) if i in ((ins.get("meta") or {}).get("op") or [])]
+
+
+def test_the_honest_commuting_program_keeps_the_order(cc, commuting):
+    rc, v = r10(cc, commuting["prefix"], commuting["qasm"], commuting["arch"])
+    assert rc == 0 and v["order"] == "ok" and v["o2_semantics"] == "ok", v
+
+
+def test_two_commuting_cnots_swapped_fail_r10_on_order(cc, commuting, tmp_path):
+    """The second CNOT's pulses moved ahead of the first's: the same tableau, so the
+    semantic half cannot tell -- and the order check must."""
+    def edit(t, c, ex):
+        ins = t["instructions"]
+        second = [ins[k] for k in _ops_of(t, 1)]
+        assert second and _ops_of(t, 0), "the compiler no longer labels its pulses"
+        for k in reversed(_ops_of(t, 1)):
+            ins.pop(k)
+        first = _ops_of(t, 0)[0]
+        ins[first:first] = second
+    prefix, _ = _planted(commuting, tmp_path, edit)
+    rc, v = r10(cc, prefix, commuting["qasm"], commuting["arch"])
+    assert v["o2_semantics"] == "ok", v
+    assert rc == 1 and v["R10"] == "FAILED" and v["order"] != "ok", v
+    assert "op 1" in v["order"][0], v
 
 
 @pytest.mark.parametrize("fault", list(READOUT_FAULTS))

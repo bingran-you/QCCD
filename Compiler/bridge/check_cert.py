@@ -246,6 +246,110 @@ def check_witnesses(cert: dict, prog: TSIR) -> list[str]:
     return problems
 
 
+def check_program_order(cert: dict, prog: TSIR) -> list[str]:
+    """Does every qubit run its own ops in the circuit's order?  The problems, empty if so.
+
+    STRICT: two ops on one qubit must run in their source order even when they commute.
+    The order of a qubit's gates is the circuit author's to choose -- in a syndrome round
+    it is the hook structure -- and the semantic checks cannot see a reorder, since a
+    tableau or a unitary is the same either way.  A compiler that batched a check's CNOTs
+    by rotation offset passed every one of them with 726 adjacent pairs out of order on a
+    BB144 round.
+
+    Read from the program: every gate pulse, measurement and reset instruction lists the
+    ops it performs (`meta.op`), and a gate's witness names its last pulse.  For each
+    qubit, every instruction of an op that touches that qubit must come after every
+    instruction of the qubit's previous op that touches it; pulses on OTHER qubits may
+    overlap, which is parallelism, not reordering.  A barrier is a fence across its wires:
+    nothing after it on any of them starts before everything before it on all of them has
+    ended.  A label that names an op whose ions the instruction does not touch is itself
+    a problem, so the positions cannot be borrowed from another op.
+    """
+    qmap = {int(q): str(ion) for q, ion in cert.get("map", {}).items()}
+    ops = cert.get("circuit_ops", [])
+    if not ops:
+        return ["the certificate carries no copy of the circuit (circuit_ops), so no "
+                "qubit's order can be read"]
+    by_op = {o.get("i"): o for o in ops}
+    pos_of_id = {ins.id: k for k, ins in enumerate(prog.instructions)}
+    problems: list[str] = []
+    # (op, ion) -> positions of the instructions that perform the op and touch the ion
+    where: dict[tuple[int, str], list[int]] = {}
+
+    def note(i: int, k: int, on: set[str], why: str) -> None:
+        op = by_op.get(i)
+        if op is None:
+            problems.append(f"{why} names op {i}, which the certificate does not have")
+            return
+        mine = {qmap.get(q) for q in op["qubits"]} & on
+        if not mine:
+            problems.append(f"{why} names op {i} ({op['name']} {op['qubits']}) but touches "
+                            f"none of its ions")
+        for ion in mine:
+            where.setdefault((i, ion), []).append(k)
+
+    # Programs from before 2026-09 label no measurement or reset with its op.  Such an
+    # instruction stands for its ion's next unlabelled readout of that kind in the
+    # circuit's order -- the pairing `readout_plan` makes -- so the readouts keep their
+    # order among themselves and are still checked against the gates around them.
+    ion_qubit = {ion: q for q, ion in qmap.items()}
+    labelled = {int(i) for ins in prog.instructions if ins.type in ("measure", "reset")
+                for i in (ins.meta or {}).get("op", []) or []}
+    pending: dict[tuple[int, str], list[int]] = {}
+    for o in ops:
+        if o["name"] in ("measure", "reset") and o["i"] not in labelled:
+            pending.setdefault((o["qubits"][0], o["name"]), []).append(o["i"])
+    for k, ins in enumerate(prog.instructions):
+        if ins.type not in ("gate", "measure", "reset"):
+            continue
+        on = set(ins.ions) | {x for p in ins.pairs for x in p}
+        label = (ins.meta or {}).get("op")
+        if label is None and ins.type in ("measure", "reset"):
+            label = [pending[(ion_qubit[ion], ins.type)].pop(0) for ion in ins.ions
+                     if pending.get((ion_qubit.get(ion), ins.type))]
+        for i in label or []:
+            note(int(i), k, on, f"instruction {ins.id}")
+    for g in cert.get("gates", []):
+        if g.get("instr") in pos_of_id:
+            note(int(g["dag"]), pos_of_id[g["instr"]], set(map(str, g.get("ions", []))),
+                 f"the witness for op {g['dag']}")
+    if problems:
+        return problems[:6]
+
+    unrealised = set(cert.get("unrealised", []))
+    free_after: dict[str, int] = {}      # ion -> the position its next op must come after
+    last: dict[str, dict] = {}           # ion -> its previous op, to say what was overtaken
+    swaps = 0
+    for o in ops:
+        ions = [qmap.get(q) for q in o["qubits"]]
+        if o["name"] == "barrier":
+            fence = max((free_after.get(ion, -1) for ion in ions), default=-1)
+            for ion in ions:
+                free_after[ion] = fence
+            continue
+        if o["i"] in unrealised:
+            continue
+        for ion in ions:
+            ks = where.get((o["i"], ion))
+            if not ks:
+                problems.append(f"op {o['i']} ({o['name']} {o['qubits']}): no instruction "
+                                f"performs it on {ion}")
+                continue
+            if min(ks) <= free_after.get(ion, -1):
+                swaps += 1
+                if len(problems) < 6:
+                    prev = last.get(ion)
+                    after = (f"op {prev['i']} ({prev['name']} {prev['qubits']})" if prev
+                             else "a barrier before it")
+                    problems.append(f"{ion}: op {o['i']} ({o['name']} {o['qubits']}) starts "
+                                    f"before {after} has finished")
+            free_after[ion] = max(free_after.get(ion, -1), max(ks))
+            last[ion] = o
+    if swaps > 6:
+        problems.append(f"... {swaps} ops in all start before an earlier op on one of their qubits")
+    return problems
+
+
 # ------------------------------------------------------------------ O2 / O3
 
 
@@ -784,6 +888,10 @@ def main(argv: list[str] | None = None) -> int:
     o1_all = [f"certificate vs QASM: {b}" for b in binding] + o1
     verdict["o1_transport"] = "ok" if not o1_all else o1_all[:6]
 
+    # each qubit's ops in the circuit's own order, commuting or not
+    order = check_program_order(cert, prog)
+    verdict["order"] = "ok" if not order else order[:6]
+
     # The proved checker.  Until C6 this did not exist and R10 was capped at `partial`
     # by decision D3; now that it does, its verdict is what lifts the cap.
     lean_ok: bool | None = None
@@ -895,6 +1003,10 @@ def main(argv: list[str] | None = None) -> int:
         verdict["R10"] = "FAILED"
         verdict["R10_reason"] = ("transport, co-location, coverage or the witnesses' "
                                  "instructions did not check out")
+    elif order:
+        verdict["R10"] = "FAILED"
+        verdict["R10_reason"] = ("a qubit runs its ops out of the circuit's order; the "
+                                 "compiler may not reorder them, even where they commute")
     elif same is False:
         verdict["R10"] = "FAILED"
         verdict["R10_reason"] = "the compiled program does not implement the circuit"

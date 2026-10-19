@@ -101,7 +101,14 @@ theorem rejects_invented_gate {inp : Input} {g : GateW} (hg : g ∈ inp.gates)
     have := himp.2.2.2.2.2.2.2.2.2.1 g hg
     rw [h] at this; exact Bool.noConfusion this
 
-/-- Two ops sharing a qubit, realised out of program order, are never accepted.
+/-- Two ops sharing a qubit, realised out of program order, are never accepted -- whether
+or not they commute.
+
+Until 2026-10-19 this lemma also asked that the pair NOT commute (`Commutes ... = false`),
+because the order rule exempted two `cx` sharing a control or a target.  The rule is now
+strict (`RespectsOrder` says why), and the hypothesis is gone: swapping two commuting
+CNOTs, which leaves the unitary and so the semantic half of R10 unchanged, is refused here
+like any other reorder.
 
 Stated over `witnessQubits` -- each witness paired with the qubits of the op it realises,
 joined here from the circuit's own op list.  With `Covered` and `Grounded` that is the same
@@ -110,13 +117,9 @@ procedure can actually run: quantifying over ops AND their witnesses separately 
 nested quantifiers, which on a BB round is 10^10 pairs. -/
 theorem rejects_reordering {inp : Input} {a b : WQ}
     (ha : a ∈ witnessQubits inp) (hb : b ∈ witnessQubits inp) (hlt : a.idx < b.idx)
-    (hsh : (a.qubits.any (fun q => b.qubits.contains q)) = true)
-    (hnc : Commutes a.name a.qubits b.name b.qubits = false) (h : ¬ a.t < b.t) :
+    (hsh : (a.qubits.any (fun q => b.qubits.contains q)) = true) (h : ¬ a.t < b.t) :
     check inp = false :=
-  decide_eq_false fun himp =>
-    match himp.2.2.2.2.2.2.2.2.2.2 a ha b hb hlt hsh with
-    | .inl hc => by rw [hnc] at hc; exact Bool.noConfusion hc
-    | .inr hlt => h hlt
+  decide_eq_false fun himp => h (himp.2.2.2.2.2.2.2.2.2.2 a ha b hb hlt hsh)
 
 /-- A rotation of a loop the architecture does not declare is never accepted.  The loop
 inventory reaches the checker from the architecture document, so this is the conjunct that

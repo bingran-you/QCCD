@@ -523,31 +523,22 @@ let run ?(sweep = Monotone) ?placement ?(dock_all = false) (a : Arch.t) (c : Cir
      structure, and the reason its batch utilisation is a number worth reporting.
 
      An op is ready when every earlier op sharing one of its qubits has been emitted, so
-     reordering never crosses a dependency. *)
+     every qubit still sees exactly its own ops in the circuit's order; only ops on
+     DIFFERENT qubits move relative to each other. *)
   let ops = Array.of_list c.ops in
   let n_ops = Array.length ops in
   let finished = Array.make n_ops false in
   let remaining = ref n_ops in
 
-  (* Do these two operations commute?
+  (* A shared qubit is always a dependency, even between ops that commute.
 
-     This is where the batching comes from.  A weight-6 check is six CX gates that all
-     share the same ancilla, and treating a shared qubit as a dependency serialises them --
-     which leaves one contact ready per ancilla, offsets scattered over the whole loop, and
-     a batch size of barely more than one.  But CX gates sharing only their CONTROL commute
-     with each other, and so do CX gates sharing only their TARGET: the six can happen in
-     any order, and once the scheduler knows that, a whole check is available at once.
-
-     `cx a,b` and `cx b,a` do NOT commute, and nothing commutes past a Hadamard on a qubit
-     it touches -- so the rule is stated narrowly rather than assumed generously. *)
-  let commutes (u : Circuit.op) (v : Circuit.op) =
-    let shared = List.exists (fun q -> List.mem q v.qubits) u.qubits in
-    if not shared then true
-    else
-      match (u.name, u.qubits, v.name, v.qubits) with
-      | "cx", [ c1; t1 ], "cx", [ c2; t2 ] -> (c1 = c2 && t1 <> t2) || (t1 = t2 && c1 <> c2)
-      | _ -> false
-  in
+     This pass used to exempt CX gates sharing only their control, or only their target:
+     a weight-6 check's six CNOTs could then happen in any order, a whole check was ready
+     at once, and the batches grew.  But the order of a qubit's gates is the circuit
+     author's, not the compiler's -- in a syndrome round it is the hook structure, chosen
+     on purpose -- and a unitary cannot tell the difference, so every check passed the
+     reordered programmes (726 adjacent pairs out of order on a BB144 round).  The batches
+     now come only from ops that are ready in the circuit's own order. *)
 
   (* per-qubit op lists, so readiness is a scan over the ops touching this one *)
   let touching = Array.make c.n_qubits [] in
@@ -561,9 +552,7 @@ let run ?(sweep = Monotone) ?placement ?(dock_all = false) (a : Arch.t) (c : Cir
     let (o : Circuit.op) = ops.(i) in
     List.exists
       (fun q ->
-        List.exists
-          (fun j -> j < i && (not finished.(j)) && not (commutes ops.(j) o))
-          touching.(q))
+        List.exists (fun j -> j < i && not finished.(j)) touching.(q))
       o.qubits
   in
 
