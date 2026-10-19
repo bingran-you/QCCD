@@ -9,6 +9,7 @@ which is what the website shows.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import gzip
 import json
 import sys
@@ -23,6 +24,23 @@ ROOT = Path(__file__).resolve().parents[2] / "Reproduce"
 PROFILES = {"QCCDSIM": models.QCCDSIM, "QCCDSIM_PHYSICAL": models.QCCDSIM_PHYSICAL,
             "QCCDSIM_GATESET": models.QCCDSIM_GATESET,
             "TISCC": models.TISCC, "JONES": models.JONES, "CYCLONE": models.CYCLONE}
+
+
+def ours_profile(name: str):
+    """The profile one of OUR schedules is held to: the paper's, with the circuit's order.
+
+    A paper's own schedules are judged by the order its tools keep (some reorder commuting
+    CNOTs, some treat a benchmark's gates as a set).  Ours are not: our compilers may not
+    change the order of a qubit's gates, commuting or not (decided 2026-10-19), so every one
+    of our schedules is checked with `circuit_order="strict"` whatever the paper's profile
+    allows.  QCCDSim's gate-set profile made strict IS QCCDSim's profile, and keeps its name.
+    """
+    p = PROFILES[name]
+    if p.circuit_order == "strict":
+        return p
+    if p is models.QCCDSIM_GATESET:
+        return models.QCCDSIM
+    return dataclasses.replace(p, circuit_order="strict")
 
 
 CACHE = ROOT.parent / "out" / "repro_cache"
@@ -176,9 +194,9 @@ def check_ours(paper: dict, o: dict, by: dict) -> dict:
     profiles, measured = {}, {}
     for name in o["profiles"]:
         law, observers, extra = _law_and_observers(spec, sched, raw)
-        rep = check(sched, PROFILES[name], duration=law, circuit=circ, observers=observers,
-                    strict=True)
-        profiles[PROFILES[name].name] = {"checks": rep.checks, "ok": rep.ok,
+        prof = ours_profile(name)
+        rep = check(sched, prof, duration=law, circuit=circ, observers=observers, strict=True)
+        profiles[prof.name] = {"checks": rep.checks, "ok": rep.ok,
                                          "violations": rep.summary()["violations"],
                                          "first_violations": rep.summary()["first"]}
         measured = {"makespan_us": rep.metrics["makespan_us"],

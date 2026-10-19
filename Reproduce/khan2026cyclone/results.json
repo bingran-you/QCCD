@@ -116,7 +116,7 @@
     },
     "config_name": "hgp225_cyclone"
    },
-   "seconds": 1.67
+   "seconds": 1.44
   },
   {
    "id": "hgp225_cyclone_zfix",
@@ -196,7 +196,7 @@
     },
     "config_name": "hgp225_cyclone_zfix"
    },
-   "seconds": 2.33
+   "seconds": 1.25
   },
   {
    "id": "hgp375_cyclone",
@@ -284,7 +284,7 @@
     },
     "config_name": "hgp375_cyclone"
    },
-   "seconds": 3.94
+   "seconds": 3.19
   },
   {
    "id": "hgp375_cyclone_zfix",
@@ -364,7 +364,7 @@
     },
     "config_name": "hgp375_cyclone_zfix"
    },
-   "seconds": 4.6
+   "seconds": 3.6
   },
   {
    "id": "hgp625_cyclone",
@@ -452,7 +452,7 @@
     },
     "config_name": "hgp625_cyclone"
    },
-   "seconds": 13.09
+   "seconds": 9.59
   },
   {
    "id": "hgp625_cyclone_zfix",
@@ -532,7 +532,7 @@
     },
     "config_name": "hgp625_cyclone_zfix"
    },
-   "seconds": 11.59
+   "seconds": 9.13
   },
   {
    "id": "hgp225_baseline_Gx15_c5",
@@ -685,7 +685,7 @@
     },
     "circuit_file": "QLPDC[[225,9,6]].qasm"
    },
-   "seconds": 4.66
+   "seconds": 3.17
   },
   {
    "id": "bb72_cyclone",
@@ -772,7 +772,7 @@
     },
     "config_name": "bb72_cyclone"
    },
-   "seconds": 0.26
+   "seconds": 0.13
   },
   {
    "id": "bb90_cyclone",
@@ -859,7 +859,7 @@
     },
     "config_name": "bb90_cyclone"
    },
-   "seconds": 0.7
+   "seconds": 0.16
   },
   {
    "id": "bb144_cyclone",
@@ -946,7 +946,7 @@
     },
     "config_name": "bb144_cyclone"
    },
-   "seconds": 1.2
+   "seconds": 0.44
   },
   {
    "id": "bb72_baseline_Gx9_c5",
@@ -1054,7 +1054,7 @@
     },
     "circuit_file": "QLPDC[[72,12,6]].qasm"
    },
-   "seconds": 0.51
+   "seconds": 0.35
   },
   {
    "id": "bb90_baseline_Gx10_c5",
@@ -1162,7 +1162,7 @@
     },
     "circuit_file": "QLPDC[[90,8,10]].qasm"
    },
-   "seconds": 0.79
+   "seconds": 0.49
   },
   {
    "id": "bb144_baseline_Gx12_c5",
@@ -1275,7 +1275,7 @@
     },
     "circuit_file": "QLPDC[[144,12,12]].qasm"
    },
-   "seconds": 1.83
+   "seconds": 0.95
   }
  ],
  "ratios": [],
@@ -1310,9 +1310,9 @@
    },
    "ok": true,
    "measured": {
-    "makespan_us": 55570.0,
-    "last_start_us": 55470.0,
-    "moves": 10584
+    "makespan_us": 209285.0,
+    "last_start_us": 209185.0,
+    "moves": 39852
    },
    "theirs": {
     "makespan_us": 124140.0,
@@ -1320,7 +1320,7 @@
     "moves": 23328
    },
    "theirs_ok": true,
-   "seconds": 1.78
+   "seconds": 2.28
   },
   {
    "id": "hgp375_ours",
@@ -1352,9 +1352,9 @@
    },
    "ok": true,
    "measured": {
-    "makespan_us": 83455.0,
-    "last_start_us": 83355.0,
-    "moves": 26460
+    "makespan_us": 379315.0,
+    "last_start_us": 379215.0,
+    "moves": 120780
    },
    "theirs": {
     "makespan_us": 204800.0,
@@ -1362,7 +1362,7 @@
     "moves": 64800
    },
    "theirs_ok": true,
-   "seconds": 4.99
+   "seconds": 7.65
   },
   {
    "id": "hgp625_ours",
@@ -1394,9 +1394,9 @@
    },
    "ok": true,
    "measured": {
-    "makespan_us": 136965.0,
-    "last_start_us": 136865.0,
-    "moves": 72300
+    "makespan_us": 674810.0,
+    "last_start_us": 674710.0,
+    "moves": 358200
    },
    "theirs": {
     "makespan_us": 341500.0,
@@ -1404,7 +1404,7 @@
     "moves": 180000
    },
    "theirs_ok": true,
-   "seconds": 11.71
+   "seconds": 22.89
   },
   {
    "id": "bb72_ours",
@@ -1436,9 +1436,9 @@
    },
    "ok": true,
    "measured": {
-    "makespan_us": 17150.0,
-    "last_start_us": 17050.0,
-    "moves": 1080
+    "makespan_us": 764945.0,
+    "last_start_us": 764845.0,
+    "moves": 48708
    },
    "theirs": {
     "makespan_us": 42280.0,
@@ -1446,7 +1446,7 @@
     "moves": 2592
    },
    "theirs_ok": true,
-   "seconds": 0.13
+   "seconds": 2.18
   },
   {
    "id": "bb90_ours",
@@ -1478,9 +1478,9 @@
    },
    "ok": true,
    "measured": {
-    "makespan_us": 18280.0,
-    "last_start_us": 18180.0,
-    "moves": 1440
+    "makespan_us": 387790.0,
+    "last_start_us": 387690.0,
+    "moves": 30870
    },
    "theirs": {
     "makespan_us": 52450.0,
@@ -1488,7 +1488,7 @@
     "moves": 4050
    },
    "theirs_ok": true,
-   "seconds": 0.3
+   "seconds": 1.46
   },
   {
    "id": "bb144_ours",
@@ -1520,9 +1520,9 @@
    },
    "ok": true,
    "measured": {
-    "makespan_us": 22800.0,
-    "last_start_us": 22700.0,
-    "moves": 2880
+    "makespan_us": 3181350.0,
+    "last_start_us": 3181250.0,
+    "moves": 405360
    },
    "theirs": {
     "makespan_us": 81860.0,
@@ -1530,7 +1530,7 @@
     "moves": 10368
    },
    "theirs_ok": true,
-   "seconds": 0.66
+   "seconds": 21.13
   }
  ]
 }
