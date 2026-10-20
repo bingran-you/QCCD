@@ -2,8 +2,9 @@
 
 Each device is imported into a throwaway workspace, the board's circuit is compiled for it by the
 reference compiler (qccdc, compiler "auto"), and the result is frozen and graded under the reference
-profile. Run it from a checkout of the `compiler` branch (972d8bf or later) with the toolchain
-installed (`qccd toolchain install`), from the repository root:
+profile. Run it from the root of a checkout of yezhuoyang/QCCD's `compiler` branch at 972d8bf with
+this folder copied in, with compiler dbd13d8952f3 and a qcheck built from that checkout (README.md
+has the steps):
 
     python Codesign/hillclimb/grade.py rep9@1 Codesign/hillclimb/rep9/designs/*.arch.json
 
@@ -31,8 +32,11 @@ USER = {"kind": "human", "id": "cli"}
 DONE = ("succeeded", "failed", "cancelled", "timeout", "internal_error")
 
 
-def wait(ws: Workspace, job_id: str) -> dict:
+def wait(ws: Workspace, job_id: str, timeout: float = 3600.0) -> dict:
+    t0 = time.time()
     while (job := ws.job(job_id))["status"] not in DONE:
+        if time.time() - t0 > timeout:
+            raise SystemExit(f"timed out waiting for {job_id}")
         time.sleep(0.3)
     return job
 
@@ -42,17 +46,22 @@ def grade(board: str, path: Path) -> str:
     base = base_from_arch(arch)
     with tempfile.TemporaryDirectory() as tmp:
         ws = Workspace.init(Path(tmp) / "ws", board)
-        change = ws.apply_change_set({"expected_revision": ws.head().revision, "request_id": "import", "mode": "apply",
-                                      "summary": "import", "operations": [{"type": "studio_sync", "base": {
-                                          "geom": base.geom, "seed": base.seed, "post": base.post}}]}, USER)
-        if change.get("status") != "committed":
-            return f"import refused: {change}"
-        job = wait(ws, ws.submit_design(USER, board=board, profile="reference")["job_id"])
-        result = job.get("result") or {}
-        if job["status"] != "succeeded":
-            return f"submit {job['status']}: {(result.get('log') or job.get('error'))}"[-600:]
-        wait(ws, result["grading_job"])
-        report = ws.submission(result["submission_id"])["report"] or {}
+        try:
+            sync = {"type": "studio_sync", "base": {"geom": base.geom, "seed": base.seed, "post": base.post}}
+            change = ws.apply_change_set({"expected_revision": ws.head().revision, "request_id": "import",
+                                          "mode": "apply", "summary": "import", "operations": [sync]}, USER)
+            if change.get("status") != "committed":
+                return f"import refused: {change}"
+            job = wait(ws, ws.submit_design(USER, board=board, profile="reference")["job_id"])
+            result = job.get("result") or {}
+            if job["status"] != "succeeded":
+                return f"submit {job['status']}: {str(result.get('log') or job.get('error'))[-600:]}"
+            graded = wait(ws, result["grading_job"])
+            if graded["status"] != "succeeded":
+                return f"grading {graded['status']}: {graded.get('error')}"
+            report = ws.submission(result["submission_id"])["report"] or {}
+        finally:
+            ws.close()
     metric = report.get("rank_by")
     value = ((report.get("metrics") or {}).get(metric) or {}).get("value")
     eligibility = report.get("eligibility") or {}
