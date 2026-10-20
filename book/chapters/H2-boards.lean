@@ -228,7 +228,7 @@ theorem fan_reordered_rejected : check fanReordered = false :=
 /-!
 The BB board is where this happened. Until 2026-10-20 its marks were typed, so here is what they
 said that day, beside what the semantic check, with the proved checker, said when re-run on each
-compiled entry's own certificate, circuit and device. The board had 21 entries; 6 are
+compiled entry's own certificate, circuit and device. That day the board had 21 entries; 6 were
 devices the compiler could not serve, with no programme and no mark. The other 15:
 -/
 
@@ -262,8 +262,11 @@ two ops sharing a qubit are out of order: op 92 (cx [153, 10]) comes before op 9
 
 -- two CNOTs sharing the control `q[153]`, exactly the swap of the figure above. The twelve
 entries marked "not run" all passed. A computed mark would have said both things, and since that
-day the board's marks are computed: the stride layout's card reads FAILED, with the reason above,
-and the twelve read passed.
+day the board's marks are computed. The stride layout was then compiled again, with the published
+compiler, which keeps every qubit's operations in circuit order: its certificate passes R10, and
+its round takes 1,419 ms instead of 522 ms, in 824 transport batches instead of 546. Serving the
+CNOTs in the order the circuit gives them costs this layout time; the old certificate's speed
+came partly from breaking that order.
 
 #### Exercise 8 (★) `a_stale_mark`
 Find the entry whose typed mark said passed and whose certificate no longer does.
