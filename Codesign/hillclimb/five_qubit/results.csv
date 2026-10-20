@@ -1,0 +1,8 @@
+rank,T_jones_ms,T_jones_ms_at_search,eligible,audit_ok,dacs,traps,junctions,planar,agent,board_id,file,pick,note
+1,1.62,1.62,True,True,33,6,0,True,a01,1792365795-a01-ceea5d90,designs/01-a01-ceea5d90.arch.json,,"a01: 6-trap 3x2 rectangle cycle, broadcast wiring (33 DACs), no named loop, climbed caps/zones/positions (planar)"
+2,1.62,1.62,True,True,51,6,0,False,a04,1792365836-a04-ef5e5c8d,designs/02-a04-ef5e5c8d.arch.json,,"a04: evo search from a02's 6-trap broadcast_groups x-line (1792365670-a02-ea8302b5): caps/zone/order mutations, 23 moves"
+3,1.62,1.62,True,True,51,6,0,True,a02,1792366395-a02-403f2c07,designs/03-a02-403f2c07.arch.json,,"a02: 6-trap planar path on integer grid (no crossing/overlapping rails), broadcast_groups 51 DACs, no named loop; climbed positions/caps/flags; gates 725, 23 moves"
+4,1.62,1.62,True,True,33,6,0,True,a03,1792367225-a03-69e96537,designs/04-a03-69e96537.arch.json,,"a03: a01's 6-trap broadcast cycle (1792365795-a01-ceea5d90) with caps/flags re-chosen (S0/S5 cap 3, S1/S2 gate-only); 23 moves, same 1.62 plateau"
+5,1.635,1.635,True,True,51,6,0,True,a02,1792365879-a02-1024ff5a,designs/05-a02-1024ff5a.arch.json,,"a02: 6-trap closed named loop L0 (hexagon), broadcast_groups 51 DACs, climbed caps/flags/order; gates 725, 26 moves"
+6,1.635,1.635,True,True,51,6,0,True,a02,1792367342-a02-4378f654,designs/06-a02-4378f654.arch.json,,"a02: STRICT-honest 6-trap path, every rail a unit axis step (same label = same displacement vector), broadcast_groups 51 DACs; 26 moves"
+7,1.64,1.64,True,True,51,6,0,True,a02,1792365670-a02-ea8302b5,designs/07-a02-ea8302b5.arch.json,,"a02: 6-trap straight x line, broadcast_groups wiring (51 DACs), simd_classes, no named loop; gates 725, 27 moves"
