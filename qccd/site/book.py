@@ -132,7 +132,8 @@ def exercise_parts(code: str, name: str) -> dict:
     proof = code[assign + 2:]
     after = ""
     # the proof runs to the end of the block, or to the first top-level command after it
-    nxt = re.search(r"(?m)^(theorem|def|example|#\w+|structure|instance|abbrev)\b", proof)
+    nxt = re.search(r"(?m)^(?:theorem|lemma|def|example|#\w+|structure|inductive|class|instance|abbrev|"
+                    r"open|namespace|section|end|variable|set_option|attribute|@\[|/--|/-!)", proof)
     if nxt:
         proof, after = proof[:nxt.start()], proof[nxt.start():]
     expected = f"∀ {binders}, {typ}" if binders else typ
@@ -500,6 +501,9 @@ def lesson_story(ch: Chapter) -> str:
             t = " ".join(para.split())
             if not t or t.startswith("#") or t.startswith("*"):
                 continue
+            # a card shows plain text: drop the prose's marks (`code`, **bold**, *italic*, links)
+            t = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", t)
+            t = re.sub(r"`([^`]*)`|\*\*([^*]+)\*\*|\*([^*]+)\*", lambda m: next(g for g in m.groups() if g is not None), t)
             m = re.match(r"(.+?[.!?])(\s|$)", t)
             return dash(m.group(1) if m else t)
     return ""

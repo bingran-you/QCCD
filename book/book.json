@@ -104,7 +104,7 @@
         {
           "id": "G1",
           "title": "Exact numbers",
-          "status": "draft",
+          "status": "live",
           "slug": "G1-exact-numbers",
           "source": "chapters/G1-exact-numbers.lean",
           "ids": "book:G1"
@@ -112,7 +112,7 @@
         {
           "id": "G2",
           "title": "The native pulses",
-          "status": "draft",
+          "status": "live",
           "slug": "G2-pulses",
           "source": "chapters/G2-pulses.lean",
           "ids": "book:G2"
@@ -120,7 +120,7 @@
         {
           "id": "G3",
           "title": "u3 from two pulses",
-          "status": "draft",
+          "status": "live",
           "slug": "G3-u3",
           "source": "chapters/G3-u3.lean",
           "ids": "book:G3"
@@ -128,7 +128,7 @@
         {
           "id": "G4",
           "title": "CX from MS",
-          "status": "draft",
+          "status": "live",
           "slug": "G4-cx-from-ms",
           "source": "chapters/G4-cx-from-ms.lean",
           "ids": "book:G4"
@@ -136,7 +136,7 @@
         {
           "id": "G5",
           "title": "Stabilizer tableaux",
-          "status": "draft",
+          "status": "live",
           "slug": "G5-tableaux",
           "source": "chapters/G5-tableaux.lean",
           "ids": "book:G5"
@@ -144,7 +144,7 @@
         {
           "id": "G6",
           "title": "Measurement and reset",
-          "status": "draft",
+          "status": "live",
           "slug": "G6-measurement",
           "source": "chapters/G6-measurement.lean",
           "ids": "book:G6"
@@ -152,7 +152,7 @@
         {
           "id": "G7",
           "title": "The semantic check",
-          "status": "draft",
+          "status": "live",
           "slug": "G7-semantic-check",
           "source": "chapters/G7-semantic-check.lean",
           "ids": "book:G7"

@@ -326,7 +326,8 @@ no meaning, and exchanging them changes nothing a correct verdict depends on. `a
 witnesses list the loop rider first, the other way round from the ops' qubits, and they are correct.
 
 The bug the mutation stands for is real: a CNOT whose control and target are exchanged. That bug
-lives in the **pulses**, which the certificate does not contain and Lean never reads. What refuses
+lives in the **pulses**, which the checker's input does not carry (the certificate file lists them
+beside each witness, as text) and Lean's checker never reads. What refuses
 it is the semantic half of the verdict, `Compiler/bridge/check_cert.py`, which composes the
 programme's emitted pulses into a stabilizer tableau (or, off the Clifford gates, an exact unitary)
 and compares it with the source circuit (Part G builds that comparison). We ran all three versions

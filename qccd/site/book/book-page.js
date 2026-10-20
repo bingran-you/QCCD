@@ -254,6 +254,13 @@
         if (text[i] !== '"') { out.push({ line: s0, text: 'This string is not closed: a " is missing.' }); }
         i++; continue;
       }
+      // a character literal ('(' or '\x28'), which holds no bracket; an apostrophe after a
+      // name's character is part of the name (h', ih'), and a non-ASCII one counts as such
+      var prev = text[i - 1] || ' ';
+      if (ch === "'" && !/[\w'.!?]/.test(prev) && prev.charCodeAt(0) < 128) {
+        var lit = /^'(?:\\(?:x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|.)|[^'\\\n])'/.exec(text.slice(i, i + 10));
+        if (lit) { i += lit[0].length; continue; }
+      }
       var o = OPEN.indexOf(ch), c = CLOSE.indexOf(ch);
       if (o >= 0) stack.push({ ch: ch, want: CLOSE[o], line: line });
       else if (c >= 0) {
