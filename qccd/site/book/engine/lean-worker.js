@@ -120,6 +120,14 @@ async function boot(msg) {
         if (Module._lean_enable_initializer_execution) Module._lean_enable_initializer_execution();
         const sp = Module._lean_init_search_path();
         if ((Module.getValue(sp + 7, 'i8') & 0xff) !== 0) throw new Error('lean_init_search_path failed');
+        // This build links with EXIT_RUNTIME=1 and main() never runs, so the keepalive counter
+        // is 0.  The first callback the runtime thread handles afterwards -- e.g. a message from
+        // a pthread that Lean started to generate equation lemmas -- then "exits" the runtime:
+        // FS.quit() closes every file descriptor (the EBADF jam) and all pthreads are
+        // terminated (the hang).  Holding one keepalive reference prevents it.  The glue is a
+        // classic script, so its top-level `runtimeKeepalivePush` is a global here.
+        if (typeof runtimeKeepalivePush === 'function') runtimeKeepalivePush();
+        else throw new Error('runtimeKeepalivePush not found in lean.js');
         ready = true;
         post({ type: 'ready', ms: Math.round(performance.now() - t0), heapBytes: wasmMem ? wasmMem.buffer.byteLength : null });
       } catch (e) { post({ type: 'fatal', why: 'Lean init failed: ' + (e && e.message || e) }); }
@@ -128,21 +136,6 @@ async function boot(msg) {
   };
   post({ type: 'progress', phase: 'start', file: eng['lean.js'].file, loaded: 0, total: 0 });
   importScripts(jsUrl);
-}
-
-// After a file that makes Lean generate equation lemmas (`simp [f]`, `unfold f`, ...), file
-// descriptors 0, 1 and 2 are found closed in the emscripten FS, and every later
-// lean_wasm_compile fails at once with EBADF.  Reopening them, lowest first so they get their
-// old numbers back, is enough for the following compiles to work (verified repeatedly in
-// tests/jam-bisect.mjs); the page still restarts the worker if a compile jams anyway.
-function fixStdio() {
-  const FS = Module.FS;
-  const missing = [0, 1, 2].filter((fd) => !FS.streams[fd]);
-  for (const fd of missing.sort()) {
-    const s = FS.open(fd === 0 ? '/dev/stdin' : fd === 1 ? '/dev/stdout' : '/dev/stderr', fd === 0 ? 0 : 1);
-    if (s.fd !== fd) throw new Error(`reopened fd ${fd} as ${s.fd}`);
-  }
-  return missing;
 }
 
 function leanString(s) { const p = Module.stringToNewUTF8(s); const o = Module._lean_mk_string(p); Module._free(p); return o; }
@@ -167,10 +160,9 @@ function compile(code, path) {
       if (!l.isErr && l.t.startsWith('{')) { try { messages.push(JSON.parse(l.t)); continue; } catch (e) { /* plain */ } }
       output.push(l.t);
     }
-    // Generating equation lemmas (`simp [f]`, `unfold f`) closes fds 0-2 in this build: the
-    // stdio handle objects are freed (apparently when a short-lived Lean thread exits), and
-    // every later compile fails with EBADF.  Reopening the fds works for a few compiles and then
-    // hangs, so the page must replace this worker: say so.
+    // Safety net: if the runtime ever "exits" again (see runtimeKeepalivePush above), its file
+    // descriptors are gone and every later compile fails with EBADF; tell the page, which
+    // then replaces this worker.  With the keepalive reference held this has not happened.
     const stdioClosed = [0, 1, 2].some((fd) => !Module.FS.streams[fd]);
     return { ok: tag === 0, ioError: tag !== 0, ioErrorText, stdioClosed, ms: Math.round(performance.now() - ts), messages, output };
   } catch (e) {
@@ -187,12 +179,4 @@ self.onmessage = (ev) => {
     try { const FS = Module.FS; mkdirp(FS, m.path.slice(0, m.path.lastIndexOf('/'))); FS.writeFile(m.path, m.text); post({ type: 'file_written', id: m.id, bytes: m.text.length }); }
     catch (e) { post({ type: 'file_written', id: m.id, error: String(e) }); }
   } else if (m.type === 'mem') post({ type: 'mem', id: m.id, heapBytes: wasmMem ? wasmMem.buffer.byteLength : null });
-  else if (m.type === 'fds') {
-    // diagnostics: which low file descriptors exist in the emscripten FS, optionally reopening 1/2
-    const FS = Module.FS;
-    const before = [0, 1, 2, 3, 4, 5].map((fd) => (FS.streams[fd] ? `${fd}:${FS.streams[fd].path}` : `${fd}:-`));
-    if (m.reopen) fixStdio();
-    const after = [0, 1, 2, 3, 4, 5].map((fd) => (FS.streams[fd] ? `${fd}:${FS.streams[fd].path}` : `${fd}:-`));
-    post({ type: 'fds', id: m.id, before, after });
-  }
 };

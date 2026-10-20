@@ -15,9 +15,10 @@
 // still waiting; the replaced promise resolves with { superseded:true }.  Call check() on every
 // edit and only the latest text is elaborated.
 //
-// Restarts: the engine is replaced (a) after a compile that generated equation lemmas -- this
-// build then has stdin/stdout/stderr closed and fails every later compile -- in the background,
-// so the result in hand is returned at once; (b) when a request hits the JavaScript stack limit
+// Restarts: the engine is replaced (a) after a compile that left it without stdin/stdout/stderr
+// -- a safety net: that happened whenever Lean generated equation lemmas until lean-worker.js
+// began holding an Emscripten keepalive reference -- in the background, so the result in hand
+// is returned at once; (b) when a request hits the JavaScript stack limit
 // or finds the engine jammed, and that request is retried once on the new engine, resolving
 // { crashed:true, why } if it fails again; (c) when a request runs longer than timeoutMs (Lean
 // cannot be interrupted any other way).  With { spare:true } a second engine is kept booted, so

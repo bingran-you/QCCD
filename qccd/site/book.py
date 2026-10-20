@@ -365,7 +365,14 @@ def chapter_body(ch: Chapter, vol: int, n: int, book: dict) -> str:
            '</span><span class="prog"></span><span class="score"></span></div>')
     return (head + bar + '<article id="chapter">' + "\n".join(cells) + "</article>"
             + '<aside id="goals" hidden><div class="gh">Goals at the cursor</div><pre></pre></aside>'
-            + f'<script type="application/json" id="bookdata">{html.escape(json.dumps(data), quote=False)}</script>')
+            + f'<script type="application/json" id="bookdata">{script_json(data)}</script>')
+
+
+def script_json(data) -> str:
+    """JSON for a `<script type="application/json">`, whose text the browser does NOT decode as
+    HTML: entity-escaping it (`=>` as `=&gt;`) corrupts the Lean inside.  Only a closing tag or a
+    comment opener can end the element early, so only those are escaped, as JSON escapes."""
+    return json.dumps(data, ensure_ascii=False).replace("</", "<\\/").replace("<!--", "<\\u0021--")
 
 
 def index_body(book: dict) -> str:

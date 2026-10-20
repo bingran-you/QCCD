@@ -267,8 +267,10 @@
       addMsg(slot.cell, s, 'line ' + (m.line - slot.start + 1), m.text);
       if (s === 'error') { slot.cell.classList.add('bad'); errorsInCell.set(slot.cell, true); }
     });
+    // the engine now reports parse errors itself; these checks stay as a fallback and speak
+    // only when Lean reported no error in the block
     cells.forEach(function (cell) {
-      if (cell.hasAttribute('data-hidden')) return;
+      if (cell.hasAttribute('data-hidden') || errorsInCell.get(cell)) return;
       syntaxProblems(cell._ta.value).forEach(function (p) {
         addMsg(cell, 'error', 'line ' + p.line, p.text);
         cell.classList.add('bad'); errorsInCell.set(cell, true);

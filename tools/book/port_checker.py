@@ -253,7 +253,9 @@ def main(argv: list[str]) -> int:
                                      fromfile="/dev/null" if a is None else f"a/Compiler/lean/{rel}", tofile=f"b/{rel}")
     (out / "port.diff").write_bytes("".join(diff).encode("utf-8"))
     sources = {rel: hashlib.sha256((src / rel).read_bytes()).hexdigest() for rel in rels}
-    (out / "port-sources.json").write_text(json.dumps({"source": str(src), "files": sources}, indent=1) + "\n", encoding="utf-8")
+    # no local path: this ends up in the published manifest
+    label = "Compiler/lean" if src.parts[-2:] == ("Compiler", "lean") else src.name
+    (out / "port-sources.json").write_text(json.dumps({"source": label, "files": sources}, indent=1) + "\n", encoding="utf-8")
     added = sum(1 for l in diff if l.startswith("+") and not l.startswith("+++"))
     removed = sum(1 for l in diff if l.startswith("-") and not l.startswith("---"))
     print(f"port_checker: {len(derived)} files -> {out} (+{added} -{removed} lines; port.diff)")

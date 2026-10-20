@@ -2,9 +2,14 @@
 """Compile the derived checker with the browser's own wasm Lean and pack the library.
 
 usage: python build_packs.py --repo <repo> --derived <port_checker output> --engine <dir> \
-                             --json-lib <dir> --out <dir> [--no-brotli]
+                             --json-lib <dir> --out <dir> [--runtime <dir>] [--engine-info <json>] [--no-brotli]
 
-  --engine    the unpacked runtime fixture: bin/lean.js, bin/lean.wasm, lib/lean (Init closure)
+  --engine    the unpacked runtime fixture: bin/lean.js, bin/lean.wasm, lib/lean (Init closure);
+              its lean.js/lean.wasm compile the library (the command-line path)
+  --runtime   a directory with the lean.js/lean.wasm to SHIP, when they differ from the
+              fixture's (the book ships a relink with the parse-error patch; see
+              tools/engine/ENGINE.md); default: the fixture's own pair
+  --engine-info  a JSON object merged into manifest.engine (patch, link kit, toolchain)
   --json-lib  the .olean/.ir/.ir.sig closure of Lean.Data.Json (Std + Lean parts), same commit
   --out       receives build/ (sources, oleans, logs) and site/ (what a web server hosts):
                 site/lean-<sha12>.js, site/lean-<sha12>.wasm      the engine
@@ -180,6 +185,8 @@ def main() -> int:
     ap.add_argument("--engine", required=True, type=Path)
     ap.add_argument("--json-lib", required=True, type=Path)
     ap.add_argument("--out", required=True, type=Path)
+    ap.add_argument("--runtime", type=Path, default=None)
+    ap.add_argument("--engine-info", type=Path, default=None)
     ap.add_argument("--no-brotli", action="store_true")
     a = ap.parse_args()
     out = a.out.resolve()
@@ -224,8 +231,12 @@ def main() -> int:
     print(f"  axioms: {len(axioms)} reported in {dt:.1f} s")
 
     brotli = not a.no_brotli
-    engine_files = {"lean.js": put(site, a.engine / "bin" / "lean.js", "lean", ".js", brotli),
-                    "lean.wasm": put(site, a.engine / "bin" / "lean.wasm", "lean", ".wasm", brotli)}
+    rt = a.runtime if a.runtime else a.engine / "bin"
+    engine_files = {"lean.js": put(site, rt / "lean.js", "lean", ".js", brotli),
+                    "lean.wasm": put(site, rt / "lean.wasm", "lean", ".wasm", brotli)}
+    compiler = {"lean.js": sha256((a.engine / "bin" / "lean.js").read_bytes()),
+                "lean.wasm": sha256((a.engine / "bin" / "lean.wasm").read_bytes())}
+    engine_info = json.loads(a.engine_info.read_text(encoding="utf-8")) if a.engine_info else {}
     packs = [pack("init", [(a.engine / "lib" / "lean", "")], commit, site, brotli),
              pack("json", [(a.json_lib, "")], commit, site, brotli),
              pack("qccdc", [(work / "lib", "")], commit, site, brotli)]
@@ -234,7 +245,9 @@ def main() -> int:
         "schema": 1,
         "built": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "engine": {"lean": "4.33.0-pre", "commit": commit, "source": "github.com/cauli/lean4 (release browser-62b6a22-compact1; runtime fixture runtime-62b6a22-compact1)",
-                   "files": engine_files, "needs": "SharedArrayBuffer: serve pages and workers with COOP same-origin + COEP require-corp"},
+                   "files": engine_files, "needs": "SharedArrayBuffer: serve pages and workers with COOP same-origin + COEP require-corp",
+                   "library_compiled_by": {"note": "the unmodified fixture lean.js/lean.wasm, command-line path", "sha256": compiler},
+                   **engine_info},
         "packs": packs,
         "derived_from": {**prov, "port_sources": port_sources},
         "modules": builds,

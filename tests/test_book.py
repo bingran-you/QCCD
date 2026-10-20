@@ -113,6 +113,23 @@ def test_the_readers_chapter_leaves_every_exercise_open(lean, vol, c, tmp_path):
     assert not [m for m in msgs if m["line"] >= start and m["sev"] == "error"]
 
 
+def test_the_page_carries_the_lean_byte_for_byte(tmp_path):
+    """The page reads its grader, prelude and certificate Lean out of a JSON <script>, whose text
+    the browser never entity-decodes: an HTML-escaped `=>` (`=&gt;`) once made every restated
+    statement with a `>` fail to parse, and an engine that dropped parse errors then counted the
+    exercise solved with its statement unchecked."""
+    book.build(tmp_path)
+    for vol, c in LIVE:
+        ch = book.parse_chapter(book.BOOK / c["source"], c["slug"])
+        page = (tmp_path / "book" / f'{c["slug"]}.html').read_text(encoding="utf-8")
+        blob = re.search(r'<script type="application/json" id="bookdata">(.*?)</script>', page, re.S).group(1)
+        data = json.loads(blob)
+        assert data["grader"] == book.grader(ch)
+        assert data["prelude"] == (book.ASSETS / "engine" / "prelude.lean").read_text(encoding="utf-8")
+        for case in data["cases"]:
+            assert "&gt;" not in case["lean"] and "&lt;" not in case["lean"] and "&amp;" not in case["lean"]
+
+
 def test_every_exercise_has_a_progress_id_the_server_accepts():
     """qccd-86's progress API widens to `^(?:[A-Z][0-9]{1,2}|[a-z]+:[A-Za-z0-9._-]{1,48})$`."""
     rx = re.compile(r"^(?:[A-Z][0-9]{1,2}|[a-z]+:[A-Za-z0-9._-]{1,48})$")
