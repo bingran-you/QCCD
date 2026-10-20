@@ -79,9 +79,11 @@ def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: boo
     (out / "signoff.json").write_text(json.dumps(signoff, indent=1, ensure_ascii=False),
                                       encoding="utf-8")
     (out / f"{alg.name}.alg").write_text(alg.source, encoding="utf-8")
+    # the leaves go on the website as written: provenance thinned, as build.py's are
+    from .build import published
     leaf_files = {}
     for name in lib.leaf_masters():
-        payload = json.dumps(leaves.data[name]).replace("</", "<\\/")
+        payload = json.dumps(published(leaves.data[name])).replace("</", "<\\/")
         (out / "leaf" / f"{name}.js").write_text(
             f"window.__gadgetLeaf&&window.__gadgetLeaf({payload});\n", encoding="utf-8")
         leaf_files[name] = f"leaf/{name}.js"
