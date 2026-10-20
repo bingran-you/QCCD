@@ -115,6 +115,14 @@ def fixture_site(tmp_path: Path) -> Path:
     page = with_nav(studio, 0, None, "[]", app=True)         # the course is on it, so the sync is added
     assert page.count("window.QCCDPROGRESS = {") == 1
     (out / "studio.html").write_text(page.replace("__FOOTER__", "").replace("__SITEROOT__", ""), encoding="utf-8")
+    # the book keeps its own exercises on the same account (qccd/site/book/book-progress.js);
+    # a book page opened between two readers must not vouch for the course's stars
+    book_js = ROOT / "qccd" / "site" / "book" / "book-progress.js"
+    if book_js.exists():
+        book = ('<!doctype html><html><head><meta charset="utf-8"><title>book</title></head><body><main><p>a book page</p></main>'
+                "<script>" + book_js.read_text(encoding="utf-8") + "</script></body></html>")
+        page = with_nav(book, 0, None, "[]")
+        (out / "book.html").write_text(page.replace("__FOOTER__", "").replace("__SITEROOT__", ""), encoding="utf-8")
     return out
 
 
@@ -138,4 +146,4 @@ def test_the_learn_page_and_the_account_in_a_real_browser(tmp_path: Path):
                  "a star earned in the studio reaches the account within a few seconds",
                  "another reader on this browser does not inherit the last reader's stars",
                  "signed out: nothing is sent, and the page shows this browser"):
-        assert want in names, f"the story never reached: {want}"
+        assert any(n.startswith(want) for n in names), f"the story never reached: {want}"

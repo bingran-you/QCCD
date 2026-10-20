@@ -208,14 +208,22 @@ try {
   step("the studio's Learn tab is refreshed with the account's stars", (await evaluate('window.__refreshed || 0')) >= 1 && (await localStars()).C1 === 1,
        { refreshed: await evaluate('window.__refreshed || 0'), before: refreshed0 });
 
-  // 8. another reader on the same browser starts from their own progress
+  // 8. another reader on the same browser starts from their own progress -- also when they
+  // open a book page first: the book keeps its own owner and must not vouch for the course's
   await signOut(); await signIn(BOB);
   const b0 = posts;
+  const book = fs.existsSync(path.join(site, 'book.html'));
+  if (book) {
+    const p8 = new Promise(r => { loaded = r; });
+    await send('Page.navigate', { url: BASE + 'book.html' });
+    await Promise.race([p8, sleep(20000)]); loaded = null;
+    await until("!!window.QCCDBOOK && QCCDBOOK.state().status !== 'loading'", 'the book page to match the account');
+  }
   await open('learn/');
   ls = await localStars();
   const bob = await accountStars(BOB);
   p = await panel();
-  step("another reader on this browser does not inherit the last reader's stars",
+  step("another reader on this browser does not inherit the last reader's stars" + (book ? ' (a book page opened first)' : ''),
        Object.keys(bob).length === 0 && Object.keys(ls).length === 0 && posts === b0 && /Bob Builder/.test(p.who) && p.next[0] === 'A1', { bob, ls, p });
 
   // 9. signed out again: the page works from the browser, and sends nothing
