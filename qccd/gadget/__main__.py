@@ -128,6 +128,38 @@ def _cmd_floorplan(a) -> int:
     return 0 if rep["ok"] else 1
 
 
+def _cmd_optimize(a) -> int:
+    """Search the floorplans of the town family for one that runs a program with less
+    traffic (or a shorter makespan), each candidate scheduled; write the best as text."""
+    from pathlib import Path as _P
+    from .algorithm import parse_algorithm_file
+    from .floorplan import FLOORPLANS_DIR, load_file
+    from .library import LeafLibrary
+    from .optimize import floorplan_text, optimise, rows_of
+    leaves = LeafLibrary(a.cache, rebuild=a.rebuild)
+    alg = parse_algorithm_file(a.program)
+    base = a.floorplan or (FLOORPLANS_DIR / f"{alg.floorplan}.floor" if alg.floorplan else None)
+    if base is None:
+        print("name a floorplan to start from (--floorplan F)", file=sys.stderr)
+        return 2
+    lib, fp = load_file(base, leaves)
+    res = optimise(alg, rows_of(lib), leaves, objective=a.objective, budget=a.budget,
+                   seed=a.seed, log=print)
+    s0, s1 = res["start"], res["best"]
+    print(f"  {res['seconds']} s, {a.budget} candidates scheduled: traffic {s0['traffic']:,} -> "
+          f"{s1['traffic']:,} ion-sites ({100 * (s1['traffic'] - s0['traffic']) / s0['traffic']:+.1f}%), "
+          f"makespan {s0['makespan_us'] / 1e6:.2f} -> {s1['makespan_us'] / 1e6:.2f} s")
+    out = _P(a.out or _P(base).with_name(_P(base).stem + f"_{a.objective}.floor"))
+    note = (f"found by `python -m qccd.gadget optimize {a.program}` from {_P(base).name}: "
+            f"objective {a.objective}, {a.budget} candidates (seed {a.seed}), each scheduled;\n"
+            f"traffic {s0['traffic']:,} -> {s1['traffic']:,} ion-sites, makespan "
+            f"{s0['makespan_us'] / 1e6:.2f} -> {s1['makespan_us'] / 1e6:.2f} s")
+    out.write_text(floorplan_text(res, title=f"{fp.title} (less {a.objective})", comment=note),
+                   encoding="utf-8", newline="\n")
+    print(f"  wrote {out}")
+    return 0
+
+
 def _cmd_parse(a) -> int:
     from .logicq import ParseError, parse_file
     try:
@@ -240,6 +272,14 @@ def main(argv=None) -> int:
     al.add_argument("--studio", action="store_true",
                     help="also write the full studio page for every op used")
     common(al)
+    op = sub.add_parser("optimize", help="search floorplans for less traffic, each candidate scheduled")
+    op.add_argument("program", help="an .alg file")
+    op.add_argument("--floorplan", help="the floorplan to start from (default: the one the program names)")
+    op.add_argument("--objective", choices=("traffic", "makespan", "both"), default="traffic")
+    op.add_argument("--budget", type=int, default=40, help="candidates to schedule (default 40)")
+    op.add_argument("--seed", type=int, default=1)
+    op.add_argument("-o", "--out")
+    common(op)
     fl = sub.add_parser("floorplan", help="read a floorplan and judge it by the floorplan rules")
     fl.add_argument("floorplan", help="a .floor file (qccd/gadget/floorplan.py)")
     common(fl)
@@ -264,7 +304,8 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     return {"build": _cmd_build, "parse": _cmd_parse, "library": _cmd_library,
             "showcase": _cmd_showcase, "site": _cmd_site, "places": _cmd_places,
-            "algorithm": _cmd_algorithm, "floorplan": _cmd_floorplan}[a.cmd](a)
+            "algorithm": _cmd_algorithm, "floorplan": _cmd_floorplan,
+            "optimize": _cmd_optimize}[a.cmd](a)
 
 
 if __name__ == "__main__":

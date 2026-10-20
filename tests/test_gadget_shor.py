@@ -151,3 +151,32 @@ def test_the_design_page_shows_the_machine_rules_the_sign_off_traffic_and_floorp
     chan = lambda m: sorted((c.name, c.a, c.b, c.length, c.kind, round(c.latency_us, 4),
                              tuple(tuple(round(v, 4) for v in p) for p in c.points)) for c in m.channels)
     assert chan(A) == chan(B)
+
+
+# ------------------------------------------------------------------------- traffic
+
+def test_the_optimiser_never_makes_traffic_worse_and_writes_a_floorplan(leaves):
+    from qccd.gadget.floorplan import parse_floorplan, load
+    from qccd.gadget.optimize import floorplan_text, optimise, rows_of
+    lib, _ = load_file(FLOORPLANS_DIR / "shor.floor", leaves)
+    alg = parse_algorithm_file(SHOR)
+    res = optimise(alg, rows_of(lib), leaves, budget=4, seed=7)
+    assert res["best"]["traffic"] <= res["start"]["traffic"]
+    assert len(res["history"]) <= 5 and res["history"][0]["move"] == "start"
+    text = floorplan_text(res, title="optimised")
+    fp = parse_floorplan(text, "opt")
+    assert judge_floorplan(load(fp, leaves), leaves, regions=fp.regions)["ok"]
+
+
+def test_shor_runs_on_the_floorplan_the_optimiser_found(leaves):
+    """shor_traffic.floor: found by 150 scheduled candidates; Shor moves far fewer ion-sites on
+    it than on shor.floor, and every rule still holds."""
+    alg = parse_algorithm_file(SHOR)
+    out = {}
+    for name in ("shor", "shor_traffic"):
+        lib, fp = load_file(FLOORPLANS_DIR / f"{name}.floor", leaves)
+        alg2, gir = schedule_with_refresh(alg, lib, leaves)
+        rules = judge_schedule(lib, leaves, gir, regions=fp.regions)
+        assert not gir["refused"] and not rules["failed"], (name, rules["failed"])
+        out[name] = traffic(gir, lib)["ion_sites"]
+    assert out["shor_traffic"] < 0.7 * out["shor"], out

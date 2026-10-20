@@ -221,6 +221,15 @@ the block's own lease, and its syndrome is decoded at once. A round changes no l
 The **traffic** of an execution -- ion-sites shuttled, junction passes, time bundles wait on
 roads -- is reported with every schedule, and is what a floorplan is designed to reduce.
 
+**Designing for traffic** (`qccd/gadget/optimize.py`, `python -m qccd.gadget optimize`). A
+seeded hill climb over the floorplans the town builder makes (which places stand in which row,
+in what order), every candidate *scheduled* -- its traffic and makespan are the schedule's own,
+and a candidate that refuses an instruction or breaks a machine rule is not one. The best is
+written as an ordinary floorplan. From `shor.floor`, 150 candidates (160 s) found
+`shor_traffic.floor`: Shor moves 199,616 ion-sites there against 325,626 (39% fewer, refresh
+rounds included), every rule holding and the compositional sign-off unchanged; the makespan
+hardly moves (10.77 → 10.73 s), because Shor's critical path is lattice surgery, not travel.
+
 ---
 
 ## 8 · Shor
@@ -273,5 +282,5 @@ python -m qccd.gadget algorithm examples/gadgets/algorithms/shor15.alg   # its f
 | A3 | parallel scheduler, G12–G14, traffic | ✅ `city.py` `parallel=True`; every example passes F1–F9 and G1–G14 and signs off; `magic_teleport` 791 → 490 ms |
 | A4 | gate definitions, nested guards, `sx`/`h`/`t`/`tdg`/`ccx`/`cswap`, contracts | ✅ `algorithm.py`, `gates/standard.alg`, `logic/contract.py`; every gate proved; the shipped T gadget was wrong, fixed |
 | A5 | `shor15.alg` on a Shor floorplan, compositional sign-off, logical check | ✅ `shor.floor`, `mem_d3`, `refresh.py`, `logic/compose.py`; 23 rules hold, compositional sign-off passed |
-| A6 | the design page: floorplans, traffic, parallel lanes | |
-| A7 | the tutorial's gadget parts | |
+| A6 | the design page: floorplans, traffic, parallel lanes | ✅ the page shows the 23 rules (each opening to its assertion), the compositional sign-off, a traffic panel and the floorplan's text; the editor exports `.floor`; `optimize` searches floorplans for traffic |
+| A7 | the tutorial's gadget parts | drafted: Part J, six Lean lessons (`book/chapters/J1`–`J6`), 47 exercises, each checked natively; publishing is the tutorial maintainer's |
