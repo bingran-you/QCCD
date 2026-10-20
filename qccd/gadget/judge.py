@@ -25,6 +25,7 @@ def _report_json(rep) -> dict:
     for r in rep.results:
         row = r.to_json()
         row["text"] = getattr(r, "text", "")
+        row["about"] = getattr(r, "about", "")
         out["rules"].append(row)
         if r.verdict == "holds":
             out["passed"].append(r.id)

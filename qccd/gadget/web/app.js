@@ -1542,11 +1542,39 @@
     }
   }
 
+  // The compositional sign-off (docs/ARCHITECTURE.md §1, §6): for a program the flat
+  // check cannot enumerate, five parts, each a check that ran.
+  function compositionalHtml(c) {
+    const parts = c.parts || {};
+    let h = `<div class="so ${c.passed ? "pass" : "fail"}">${c.passed ? "✓ signed off in parts: every part checked and held" : "✗ a part of the sign-off did not hold"}</div>`;
+    const row = (ok, text) => `<div class="sol ${ok ? "pass" : "fail"}">${ok ? "✓" : "✗"} ${text}</div>`;
+    if (parts.places) h += row(parts.places.passed, "every op the schedule runs is a verified place op (G9)");
+    if (parts.gadgets && parts.gadgets.rows.length)
+      h += row(parts.gadgets.passed, "the π/4 gadgets are their rotations in every branch: " +
+        parts.gadgets.rows.map((g) => `${escapeHtml(g.gate)} = ${escapeHtml(g.contract)} (${escapeHtml(g.correction || "")})`).join("; "));
+    if (parts.gates && parts.gates.rows.length)
+      h += row(parts.gates.passed, "every gate called is its contract in every branch: " +
+        parts.gates.rows.map((g) => `${escapeHtml(g.gate)} = ${escapeHtml(g.contract)} ` +
+          `(${(g.branches || []).length} branch${(g.branches || []).length === 1 ? "" : "es"}, ${parts.gates.calls[g.gate] || 0} call${parts.gates.calls[g.gate] === 1 ? "" : "s"})`).join("; "));
+    if (parts.composition) h += row(parts.composition.passed, `the floorplan and the schedule obey every machine rule (${(parts.composition.held || []).length} hold)`);
+    if (parts.semantics) {
+      const d = parts.semantics.distribution || [];
+      h += row(parts.semantics.passed, `the program, every call as its contract, gives: ` +
+        d.map((x) => `${Object.entries(x.outcomes).map(([k, v]) => `${escapeHtml(k)}=${v}`).join(" ")} with probability ${(+x.p).toFixed(3)}`).join("; "));
+    }
+    return h;
+  }
+
   function renderSignoff() {
     const box = $("verif");
     const r = D.signoff;
     if (!box) return;
     if (!r) { box.style.display = "none"; return; }
+    if (r.passed == null && r.skipped && D.compositional) {
+      $("verifBody").innerHTML = compositionalHtml(D.compositional) +
+        `<div class="note">the flat sign-off does not apply: ${escapeHtml(r.skipped)}</div>`;
+      return;
+    }
     let h = `<div class="so ${r.passed ? "pass" : "fail"}">${r.passed ? "✓ the schedule computes the algorithm" : "✗ the schedule does not match the algorithm"}</div>`;
     h += `<div class="note">flattened: ${r.circuit.qubits} ions, ${Object.entries(r.circuit.ops).map(([k, v]) => `${v} ${k}`).join(" · ")}; one symbolic run</div>`;
     for (const x of r.relations || []) h += `<div class="sol ${x.ok ? "pass" : "fail"}">${x.ok ? "✓" : "✗"} ${escapeHtml(x.relation)}${x.why ? `<br><span class="muted">${escapeHtml(x.why)}</span>` : ""}</div>`;
@@ -1571,7 +1599,75 @@
     $("verifBody").innerHTML = h;
   }
 
+  // The machine's rules, as the rule language decided them: F1-F9 on the floorplan, G1-G14
+  // on the schedule.  A rule opens to its own assertion, word for word, and what it found.
+  function renderMachineRules(mr) {
+    const el = $("checksBody");
+    el.textContent = "";
+    const groups = [["F", "the floorplan"], ["G", "the schedule"]];
+    for (const [pre, title] of groups) {
+      const rows = (mr.rules || []).filter((r) => r.id.startsWith(pre));
+      if (!rows.length) continue;
+      const g = document.createElement("div");
+      g.className = "ck";
+      g.innerHTML = `<span class="grp">${title}</span>`;
+      el.appendChild(g);
+      for (const r of rows) {
+        const div = document.createElement("div");
+        div.className = "ck";
+        const state = r.verdict === "holds" ? "pass" : r.verdict === "fails" ? "fail" : "skip";
+        let more = "";
+        if (r.about) more += `<div>${escapeHtml(r.about)}</div>`;
+        if (r.text) more += `<pre>${escapeHtml(r.text)}</pre>`;
+        if (r.verdict === "fails") more += `<div style="color:var(--bad)">${r.count || 0} counterexample(s): ${escapeHtml((r.examples || []).slice(0, 4).join("; "))}</div>`;
+        else if (r.reason) more += `<div class="muted">${escapeHtml(r.verdict)}: ${escapeHtml(r.reason)}</div>`;
+        div.innerHTML = `<b class="${state}">${r.id}</b><span>${escapeHtml(r.title)}</span><div class="t">${more}</div>`;
+        if (state === "fail") div.classList.add("open");
+        div.onclick = () => div.classList.toggle("open");
+        el.appendChild(div);
+      }
+    }
+    const nf = (mr.failed || []).length;
+    $("checksCount").textContent = `${(mr.passed || []).length} of ${(mr.rules || []).length} hold`;
+    const b = $("checksBadge");
+    b.textContent = nf ? `${nf} rule${nf === 1 ? "" : "s"} failed` : "F1–F9 · G1–G14 ✓";
+    b.className = nf ? "bad" : "ok";
+    b.title = "the machine's rules: the floorplan's (F) and the schedule's (G), each an assertion in the rule language";
+  }
+
+  function renderTraffic() {
+    const t = D.traffic;
+    if (!t) return;
+    $("traffic").hidden = false;
+    const fmt = (v) => typeof v === "number" ? v.toLocaleString() : escapeHtml(String(v));
+    const rows = [
+      ["ion-sites shuttled", fmt(t.ion_sites)],
+      ["bundles carried", fmt(t.carries)],
+      ["junction passes", fmt(t.junction_passes)],
+      ["time bundles waited", `${(t.wait_us / 1000).toFixed(1)} ms`],
+      ["longest wait on a road", `${(t.longest_wait_us / 1000).toFixed(1)} ms`],
+      ["busiest road", `${escapeHtml(t.busiest_road || "-")} (${(100 * t.busiest_road_share).toFixed(0)}%)`],
+      ["places at work at once", `${t.peak_parallel_ops} at most, ${(+t.mean_parallel_ops).toFixed(2)} on average`],
+    ];
+    $("trafficBody").innerHTML = rows.map(([k, v]) => `<span class="k">${k}</span><span class="n">${v}</span>`).join("");
+  }
+
+  function setupFloorplan() {
+    if (!D.floorplan) return;
+    const b = $("bFloor");
+    b.hidden = false;
+    $("fvText").textContent = D.floorplan;
+    const m = /^floorplan\s+(\w+)/m.exec(D.floorplan);
+    $("fvTitle").textContent = `Floorplan ${m ? m[1] : ""}`;
+    const save = $("fvSave");
+    save.href = URL.createObjectURL(new Blob([D.floorplan], { type: "text/plain" }));
+    save.download = `${m ? m[1] : "floorplan"}.floor`;
+    b.onclick = () => $("floorView").classList.toggle("open");
+    $("fvClose").onclick = () => $("floorView").classList.remove("open");
+  }
+
   function renderChecks() {
+    if (D.machineRules && (D.machineRules.rules || []).length) { renderMachineRules(D.machineRules); return; }
     const ck = D.checks || {};
     const el = $("checksBody");
     el.textContent = "";
@@ -2368,6 +2464,8 @@
   for (const p of M.ancestors(S.path)) treeOpen.add(p);
   renderChecks();
   renderSignoff();
+  renderTraffic();
+  setupFloorplan();
   renderProgram();
   legend();
   go(S.path);

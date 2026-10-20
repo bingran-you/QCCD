@@ -132,6 +132,8 @@ def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: boo
     from .page import render_page
     render_page(out / "index.html", lib=lib, gir=gir, checks=checks, leaf_files=leaf_files,
                 studio_pages=studio_pages, rules=PLACE_RULES,
+                machine_rules=rules, compositional=compositional, traffic=stats["traffic"],
+                floorplan=(Path(floorplan).read_text(encoding="utf-8") if floorplan else None),
                 title=f"{alg.title} — QCCD verified gadgets", signoff=signoff,
                 categories=CATEGORIES, category_order=ORDER)
     stats["seconds"]["total"] = round(time.time() - t_start, 2)

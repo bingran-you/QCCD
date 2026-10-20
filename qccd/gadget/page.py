@@ -29,7 +29,9 @@ def _blob(obj) -> str:
 def render_page(path, *, lib, gir, checks, leaf_files: dict, studio_pages: dict | None = None,
                 rules: dict | None = None, title: str | None = None,
                 inline_leaves: dict | None = None, signoff: dict | None = None,
-                categories: dict | None = None, category_order: list | None = None) -> Path:
+                categories: dict | None = None, category_order: list | None = None,
+                machine_rules: dict | None = None, compositional: dict | None = None,
+                traffic: dict | None = None, floorplan: str | None = None) -> Path:
     if categories is None:
         from .categories import CATEGORIES, ORDER
         categories, category_order = CATEGORIES, ORDER
@@ -42,6 +44,15 @@ def render_page(path, *, lib, gir, checks, leaf_files: dict, studio_pages: dict 
         "leafInline": inline_leaves or {},
         "studio": studio_pages or {},
         "signoff": signoff,
+        # the machine level (docs/ARCHITECTURE.md): every rule of the floorplan and the
+        # schedule as the rule language decided it, the compositional sign-off, the traffic,
+        # and the floorplan as written
+        "machineRules": machine_rules,
+        "compositional": compositional,
+        "traffic": traffic,
+        "floorplan": floorplan,
+        # where each place family belongs (rule F9): the editor writes regions with it
+        "homeRegion": __import__("qccd.gadget.floorplan", fromlist=["HOME_REGION"]).HOME_REGION,
         "categories": categories,
         "categoryOrder": category_order or list(categories),
         # the studio's own palette and shape ratios: a trapping site, a junction, a rail

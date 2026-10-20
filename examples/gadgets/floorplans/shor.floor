@@ -18,7 +18,7 @@
 # qccd.gadget.town.town(rows=...) and qccd.gadget.floorplan.write, then edited as text.
 #
 #   python -m qccd.gadget floorplan examples/gadgets/floorplans/shor.floor
-#   python -m qccd.gadget algorithm examples/gadgets/algorithms/shor15.alg #       --floorplan examples/gadgets/floorplans/shor.floor
+#   python -m qccd.gadget algorithm examples/gadgets/algorithms/shor15.alg     # it names this floorplan
 
 floorplan shor_d3 "A machine for Shor's algorithm (surface code, d = 3)"
 code surface_d3

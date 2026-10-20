@@ -102,3 +102,52 @@ def test_the_factories_work_while_the_computation_runs(machine):
     assert len({e[3] for e in produce}) == 2           # both factories take work
     t = traffic(gir, lib)
     assert t["peak_parallel_ops"] >= 3 and t["ion_sites"] > 0
+
+
+# ------------------------------------------------------------------------- the design page
+
+def test_the_design_page_shows_the_machine_rules_the_sign_off_traffic_and_floorplan(tmp_path, leaves):
+    """The page a reader opens: the compositional sign-off (not a red flat verdict), the 23
+    rules each opening to its own assertion, the traffic, and the floorplan as written."""
+    import json
+    import shutil
+    import subprocess
+    import sys
+    sys.path.insert(0, str(ROOT / "tests"))
+    from chrome_path import CHROME
+    node = shutil.which("node")
+    if node is None or CHROME is None:
+        pytest.skip("node and Chrome are needed to look at the page")
+    from qccd.gadget.verified import build_algorithm
+    res = build_algorithm(SHOR, out_dir=tmp_path / "shor15", leaves=leaves, log=None)
+    assert res["stats"]["signed_off"] == "compositional"
+    r = subprocess.run([node, str(ROOT / "tests" / "gadget_machine_browser.mjs"),
+                        str(tmp_path / "shor15")], capture_output=True, text=True,
+                       encoding="utf-8", timeout=300)
+    assert r.returncode == 0, r.stderr
+    seen = json.loads(r.stdout.strip().splitlines()[-1])
+    assert seen["errors"] == [] and "fatal" not in seen, seen
+    assert seen["verdict"]["first"].startswith("✓ signed off in parts")
+    assert seen["verdict"]["ticks"] == 5 and seen["verdict"]["crosses"] == 0
+    assert "does not apply" in seen["verdict"]["note"]
+    want = [f"F{i}" for i in range(1, 10)] + [f"G{i}" for i in range(1, 15)]
+    assert seen["rules"]["ids"] == want and seen["rules"]["hold"] == want
+    assert seen["rules"]["count"] == "23 of 23 hold" and "✓" in seen["rules"]["badge"]
+    assert seen["opened"]["open"] and seen["opened"]["visible"]
+    assert "road(c1) = road(c2)" in seen["opened"]["text"]
+    assert any(t.startswith("ion-sites shuttled: ") for t in seen["traffic"])
+    fl = seen["floorplan"]
+    assert fl["button"] and fl["open"] and fl["head"].startswith("floorplan shor_d3")
+    assert fl["download"] == "shor_d3.floor"
+    # the editor writes the floorplan language: its text loads into the very machine the
+    # file it came from builds -- every place, junction, road and wire, where it was
+    from qccd.gadget.floorplan import parse_floorplan, load as load_floor
+    text = seen["exported"]
+    assert text and text.startswith("floorplan shor_d3")
+    lib2 = load_floor(parse_floorplan(text, "exported"), leaves)
+    lib1, _ = load_file(FLOORPLANS_DIR / "shor.floor", leaves)
+    A, B = lib1[lib1.top], lib2[lib2.top]
+    assert sorted((i.name, i.master, round(i.x, 4), round(i.y, 4)) for i in A.instances) ==         sorted((i.name, i.master, round(i.x, 4), round(i.y, 4)) for i in B.instances)
+    chan = lambda m: sorted((c.name, c.a, c.b, c.length, c.kind, round(c.latency_us, 4),
+                             tuple(tuple(round(v, 4) for v in p) for p in c.points)) for c in m.channels)
+    assert chan(A) == chan(B)
