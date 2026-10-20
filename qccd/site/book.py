@@ -329,6 +329,35 @@ def published_cases() -> list[dict]:
     return out
 
 
+def devices() -> dict:
+    """The geometry of every device a figure may draw, from its own document: node positions
+    in model units, rails, loops, and which sites can gate."""
+    out = {}
+    for f in sorted(COMPILED.glob("*.arch.json")):
+        if f.name.endswith(".expanded.json"):
+            continue
+        a = json.loads(f.read_text(encoding="utf-8"))
+        g, zt = a["geometry"], a.get("zone_types", {})
+        out[a["name"]] = {
+            "nodes": [[n["id"], n["pos"][0], n["pos"][1], n["kind"],
+                       bool(zt.get(n.get("zone_type") or "", {}).get("gate"))] for n in g["nodes"]],
+            "segs": [s["ends"] for s in g.get("segments", [])],
+            "loops": [{"id": l["id"], "nodes": l["nodes"], "closed": bool(l.get("closed"))} for l in g.get("loops", [])],
+        }
+    return out
+
+
+FIGURE_RE = re.compile(r"^\{\{figure\s+([A-Za-z_][A-Za-z0-9_']*)((?:\s+[a-z]+=[^\s}]+)*)\s*\}\}$")
+
+
+def figure_html(name: str, params: str) -> str:
+    kv = dict(p.split("=", 1) for p in params.split())
+    attrs = "".join(f' data-{k}="{html.escape(v)}"' for k, v in kv.items() if k in ("at", "show"))
+    return (f'<figure class="leanfig" data-name="{html.escape(name)}"{attrs}>'
+            '<div class="figwait">This figure is drawn from Lean\'s own replay of '
+            f'<code>{html.escape(name)}</code>; it appears when Lean has checked the chapter.</div></figure>')
+
+
 CERTS_PANEL = ('<div class="certs" id="certs"><div class="act"><button type="button" id="certsgo" disabled>'
                'Prove all of them</button><span id="certsum">Lean is loading.</span></div><div id="certrows"></div></div>')
 
@@ -339,8 +368,18 @@ def chapter_body(ch: Chapter, vol: int, n: int, book: dict) -> str:
     cells, k = [], 0
     for b in ch.blocks:
         if b.kind == "prose":
-            body = prose_html(b.text.replace("{{certificates}}", "\n\n@@CERTS@@\n\n"))
-            cells.append('<div class="prose">' + body.replace("<p>@@CERTS@@</p>", CERTS_PANEL) + "</div>")
+            figs, lines = [], []
+            for line in b.text.replace("{{certificates}}", "\n\n@@CERTS@@\n\n").splitlines():
+                m = FIGURE_RE.match(line.strip())
+                if m:
+                    figs.append(figure_html(m.group(1), m.group(2)))
+                    lines += ["", f"@@FIG{len(figs) - 1}@@", ""]
+                else:
+                    lines.append(line)
+            body = prose_html("\n".join(lines)).replace("<p>@@CERTS@@</p>", CERTS_PANEL)
+            for i, f in enumerate(figs):
+                body = body.replace(f"<p>@@FIG{i}@@</p>", f)
+            cells.append('<div class="prose">' + body + "</div>")
             continue
         code = reader_code(b)
         attrs = f' data-cell="{k}"'
@@ -357,6 +396,9 @@ def chapter_body(ch: Chapter, vol: int, n: int, book: dict) -> str:
             # what the browser's Lean puts in front of the reader's text, in place of the
             # chapter's own `import` line (its engine compiles every file as a module)
             "prelude": (ASSETS / "engine" / "prelude.lean").read_text(encoding="utf-8"),
+            # the figures: Lean's replay of a named certificate, drawn on its device
+            "figureHelper": (ASSETS / "engine" / "figure.lean").read_text(encoding="utf-8"),
+            "devices": devices(),
             "cases": ([{k: v for k, v in c.items() if not k.startswith("_")} for c in published_cases()]
                       if any("{{certificates}}" in b.text for b in ch.blocks if b.kind == "prose") else [])}
     head = (f'<p class="crumbs"><a href="index.html">{html.escape(book["title"])}</a> &rsaquo; '
@@ -424,12 +466,13 @@ def build(out: Path, packs: Path | None = None) -> list[Path]:
             body = chapter_body(ch, v["n"], c["n"], book)
             page = PAGE.format(title=f'{html.escape(ch.title)} - {html.escape(book["title"])}', style=STYLE,
                                extra_css=css, body=body)
-            # the Lean runtime first (it defines window.Book), then the page that drives it
+            # the Lean runtime first (it defines window.Book), the figures, then the page
             page = page.replace("</body>", '<script src="engine/book-runtime.js" defer></script>'
+                                           '<script src="book-figure.js" defer></script>'
                                            '<script src="book-page.js" defer></script></body>')
             (dst / f'{c["slug"]}.html').write_text(page.replace("__FOOTER__", ""), encoding="utf-8")
             written.append(dst / f'{c["slug"]}.html')
-    for name in ("book-page.js",):
+    for name in ("book-page.js", "book-figure.js"):
         (dst / name).write_bytes((ASSETS / name).read_bytes())
         written.append(dst / name)
     eng = dst / "engine"

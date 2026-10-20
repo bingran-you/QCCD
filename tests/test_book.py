@@ -130,6 +130,51 @@ def test_the_page_carries_the_lean_byte_for_byte(tmp_path):
             assert "&gt;" not in case["lean"] and "&lt;" not in case["lean"] and "&amp;" not in case["lean"]
 
 
+def test_the_figures_draw_what_lean_replays(lean, tmp_path):
+    """Every figure in the pilot chapter is Lean's replay of a named certificate
+    (engine/figure.lean).  Run natively, the figures must say what the chapter's prose says
+    about them: the Bell pair holds; the late move's CNOT finds q0 in C1; the teleport's move is
+    no hop; the foreign witness is co-located but not the op's own ions."""
+    vol, c = LIVE[0]
+    ch = book.parse_chapter(book.BOOK / c["source"], c["slug"])
+    src = (book.BOOK / c["source"]).read_text(encoding="utf-8").replace("\r\n", "\n")
+    names = re.findall(r"\{\{figure\s+([A-Za-z_][A-Za-z0-9_']*)", src)
+    assert {"bell", "bellLate", "bellTeleport", "bellForeign"} <= set(names), names
+    tail = (book.ASSETS / "engine" / "figure.lean").read_text(encoding="utf-8")
+    evals = "".join(f"#eval IO.println (QCCDBook.figure {n}).compress\n" for n in dict.fromkeys(names))
+    msgs = run_lean(src + book.grader(ch) + "\n" + tail + evals, tmp_path)
+    assert not [m for m in msgs if m["sev"] == "error"]
+    figs = [json.loads(m["text"]) for m in msgs if m["sev"] == "info" and m["text"].lstrip().startswith('{"')]
+    by = {}
+    for n, f in zip(dict.fromkeys(names), figs):
+        by[n] = f
+    assert by["bell"]["check"] is True and by["bell"]["arch"] == "chain4"
+    assert [p for p in by["bell"]["pos"][4] if p[0] == "q0"] == [["q0", "C0"]]       # moved in cycle 3
+    late_cx = [g for g in by["bellLate"]["gates"] if g[7] == "cx"][0]
+    assert by["bellLate"]["check"] is False and late_cx[4] == ["C1", "C0"]
+    assert by["bellTeleport"]["check"] is False and by["bellTeleport"]["moves"][0][4] is False
+    # ... and the hop is ALL that is wrong with it: every witness finds its ions in its trap
+    assert all(g[4] == [g[2]] * len(g[3]) for g in by["bellTeleport"]["gates"])
+    foreign_cx = [g for g in by["bellForeign"]["gates"] if g[7] == "cx"][0]
+    assert foreign_cx[4] == ["C0", "C0"] and foreign_cx[6] is False
+
+
+def test_a_published_certificate_with_rotations_draws_them(lean, tmp_path):
+    """The certificates panel's figures: a ring certificate's rotations come out as flat
+    [t, loop, delta] rows (a Lean triple would print nested), and its replay holds."""
+    case = [c for c in book.published_cases() if c["rots"]]
+    assert case, "no published certificate with a rotation"
+    c = case[0]
+    text = ("import QCCDC.Cert.Sound\nopen QCCDC.Cert\n\n" + c["lean"].split("\n\ntheorem")[0] + "\n\n"
+            + (book.ASSETS / "engine" / "figure.lean").read_text(encoding="utf-8")
+            + f"#eval IO.println (QCCDBook.figure {c['ident']}).compress\n")
+    msgs = run_lean(text, tmp_path)
+    assert not [m for m in msgs if m["sev"] == "error"], msgs
+    fig = [json.loads(m["text"]) for m in msgs if m["text"].lstrip().startswith('{"')][0]
+    assert fig["check"] is True
+    assert fig["rots"] and all(len(r) == 3 and isinstance(r[2], int) for r in fig["rots"]), fig["rots"]
+
+
 def test_every_exercise_has_a_progress_id_the_server_accepts():
     """qccd-86's progress API widens to `^(?:[A-Z][0-9]{1,2}|[a-z]+:[A-Za-z0-9._-]{1,48})$`."""
     rx = re.compile(r"^(?:[A-Z][0-9]{1,2}|[a-z]+:[A-Za-z0-9._-]{1,48})$")

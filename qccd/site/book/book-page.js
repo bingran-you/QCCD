@@ -121,7 +121,46 @@
       line += n + 1;                                   // the blank line between cells
     });
     graderAt = line;
-    return parts.join('\n\n') + '\n' + data.grader;
+    var doc = parts.join('\n\n') + '\n' + data.grader;
+    // the figures: Lean's replay of each named certificate, one #eval per name, after the grader
+    figLines = {};
+    var names = [];
+    figs.forEach(function (f) { var n = f.getAttribute('data-name'); if (names.indexOf(n) < 0) names.push(n); });
+    if (names.length) {
+      doc += '\n' + data.figureHelper;
+      names.forEach(function (n) {
+        figLines[doc.split('\n').length] = n;
+        doc += '#eval IO.println (QCCDBook.figure ' + n + ').compress\n';
+      });
+    }
+    return doc;
+  }
+  var figs = Array.prototype.slice.call(document.querySelectorAll('figure.leanfig'));
+  var figLines = {}, figObjs = new Map();
+  function drawFigures(messages) {
+    if (!window.BookFigure || !figs.length) return;
+    var got = {};
+    messages.forEach(function (m) {
+      var n = figLines[m.line];
+      if (n && sev(m.severity) === 'info' && /^\s*\{/.test(m.text)) {
+        try { got[n] = JSON.parse(m.text); } catch (e) { /* not the figure's line */ }
+      }
+    });
+    figs.forEach(function (f) {
+      var n = f.getAttribute('data-name'), fig = got[n];
+      if (!fig) {
+        if (!figObjs.get(f)) f.innerHTML = '<div class="figwait">Lean has no certificate named <code>' + esc(n)
+          + '</code> right now: an error above stops it, or its definition was changed.</div>';
+        else f.classList.add('stale');
+        return;
+      }
+      f.classList.remove('stale');
+      var dev = data.devices[fig.arch];
+      if (!dev) { f.innerHTML = '<div class="figwait">No drawing of the device <code>' + esc(fig.arch) + '</code>.</div>'; return; }
+      var o = figObjs.get(f);
+      if (!o) { o = BookFigure.create(f); figObjs.set(f, o); }
+      o.update(fig, dev);
+    });
   }
   function cellOf(line) {
     for (var i = 0; i < layout.length; i++) if (line >= layout[i].start && line <= layout[i].end) return layout[i];
@@ -171,6 +210,7 @@
         return;
       }
       show(msgs, false);
+      drawFigures(msgs);
       status('ready', 'Lean checked the chapter', (res.ms != null ? (res.ms / 1000).toFixed(1) + ' s' : ''));
       if (pending) schedule(50);
     }, function (err) {
@@ -341,9 +381,39 @@
       r.innerHTML = '<span><b>' + esc(c.id) + '</b></span>'
         + '<span class="what">' + esc(c.arch) + ' &middot; ' + c.ops + ' ops, ' + c.moves + ' moves'
         + (c.rots ? ', ' + c.rots + ' rotations' : '') + ', ' + c.witnesses + ' witnesses</span>'
-        + '<span><a href="' + c.files.qcheck + '" download>input</a> &middot; <a href="' + c.files.qcert + '" download>certificate</a></span>'
+        + '<span><button type="button" class="watch">watch</button> &middot; <a href="' + c.files.qcheck + '" download>input</a> &middot; <a href="' + c.files.qcert + '" download>certificate</a></span>'
         + '<span class="v" data-case="' + esc(c.id) + '">not yet proved</span>';
       rows.appendChild(r);
+      var fig = document.createElement('figure');
+      fig.className = 'leanfig casefig';
+      fig.setAttribute('data-name', c.ident);
+      fig.hidden = true;
+      rows.appendChild(fig);
+      r.querySelector('.watch').addEventListener('click', function () {
+        if (!fig.hidden) { fig.hidden = true; return; }
+        fig.hidden = false;
+        if (figObjs.get(fig)) return;
+        fig.innerHTML = '<div class="figwait">Lean is replaying ' + esc(c.id) + '…</div>';
+        // the case's definition alone (not its theorem), then Lean's replay of it
+        var text = 'open QCCDC.Cert\n\n' + c.lean.split('\n\ntheorem')[0] + '\n\n' + data.figureHelper
+          + '#eval IO.println (QCCDBook.figure ' + c.ident + ').compress\n';
+        (function attempt() {
+          if (casesRunning || running) { setTimeout(attempt, 300); return; }
+          running = true;
+          rt.check(text).then(function (res) {
+            running = false;
+            var got = null;
+            ((res && res.messages) || []).forEach(function (m) {
+              if (sev(m.severity) === 'info' && /^\s*\{/.test(m.text || '')) { try { got = JSON.parse(m.text); } catch (e) { /* skip */ } }
+            });
+            if (!got || !data.devices[got.arch]) { fig.innerHTML = '<div class="figwait">Lean could not replay ' + esc(c.id) + '.</div>'; return; }
+            var o = BookFigure.create(fig);
+            figObjs.set(fig, o);
+            o.update(got, data.devices[got.arch]);
+            if (pending) schedule(50);
+          }, function () { running = false; fig.innerHTML = '<div class="figwait">Lean could not replay ' + esc(c.id) + '.</div>'; });
+        })();
+      });
     });
     var go = document.getElementById('certsgo'), sum = document.getElementById('certsum');
     sum.textContent = data.cases.length + ' certificates from the Compilation page.';

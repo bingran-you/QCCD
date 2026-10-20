@@ -57,6 +57,14 @@ def bell : Input :=
     loops := [] }
 
 /-!
+Here is that certificate as Lean replays it. Press ▶. Qubit 0 (ion `q0`) has its Hadamard in
+`C1` at cycle 2, hops to `C0` in cycle 3, and the CNOT fires in `C0` at cycle 8. Nothing in the
+figure is drawn from the certificate's own say-so: every position is the checker's replay
+(`posAt`), and every tick or cross under it is one of the checker's conditions, evaluated on that
+move or that witness. Edit `bell` above and the figure follows.
+
+{{figure bell}}
+
 `#eval` runs an expression and shows the result. It proves nothing; it computes.
 -/
 
@@ -86,7 +94,10 @@ after every move before `t`, before every move at or after it. `look` finds one 
 
 /-!
 The move is stamped `t = 3`: `q0` is still in `C1` at the start of cycle 3, and in `C0` from
-the start of cycle 4.
+the start of cycle 4. Step the figure from cycle 3 to cycle 4 and watch it go: that step is
+Exercise 2.
+
+{{figure bell at=3}}
 
 `decide +kernel` proves a statement by having Lean's kernel, the small trusted core that
 checks every proof, compute it to `true`. It is the strongest kind of "by computation": the
@@ -94,7 +105,7 @@ kernel is the only thing trusted.
 
 #### Exercise 2 (★) `q0_moves_in_cycle_3`
 Prove both halves: at the start of cycle 3 `q0` is in `C1`, and at the start of cycle 4 it is
-in `C0`. (`∧` is "and"; `⟨p, q⟩` proves it from two proofs.)
+in `C0` -- the two frames of the figure above. (`∧` is "and"; `⟨p, q⟩` proves it from two proofs.)
 -/
 
 theorem q0_moves_in_cycle_3 :
@@ -126,6 +137,10 @@ It is eleven conditions, joined by `∧`. In words:
 10. `Grounded`: every witness names an operation the circuit has.
 11. `RespectsOrder`: operations sharing a qubit are carried out in the order the circuit
     writes them.
+
+In the figures, each move's row is condition 6 (a hop, and it starts where the ion is), and
+each witness's row is conditions 7 and 8 (the ions together, a trap that can gate, the op's own
+ions).
 
 Each condition is a `Prop`, a statement, and each one is **decidable**: there is a program
 that settles it. That is what makes a checker possible.
@@ -195,6 +210,11 @@ def bellLate : Input := { bell with moves := [⟨9, "q0", "C1", "C0"⟩] }
 #eval diagnose bellLate
 
 /-!
+Go to cycle 8: the CNOT's witness says both ions are in `C0`, and the replay has `q0` still in
+`C1`. That red row is exactly what Exercise 5 asks you to prove.
+
+{{figure bellLate at=8}}
+
 `decide +kernel` would prove `check bellLate = false` by computation. A proof that says *why*
 is better: `rejects_not_colocated` states that if some ion of some witness is not where the
 witness says at its cycle, the checker refuses.
@@ -215,14 +235,19 @@ theorem late_rejected : check bellLate = false :=
     (by simp [bellLate, bell]) (by simp) (by decide +kernel)
 
 /-!
-**The teleport.** Start `q0` in `C3` and move it straight to `C0`. The device has no such hop.
+**The teleport.** Start `q0` in `C3` (its Hadamard there too) and move it straight to `C0`.
+The device has no such hop:
+in the figure the claimed jump is drawn as the certificate states it, across two traps.
+
+{{figure bellTeleport at=3}}
 
 #### Exercise 6 (★★) `teleport_rejected`
 Prove it is refused, with `rejects_teleport`.
 -/
 
 def bellTeleport : Input :=
-  { bell with init := [("q0", "C3"), ("q1", "C0")], moves := [⟨3, "q0", "C3", "C0"⟩] }
+  { bell with init := [("q0", "C3"), ("q1", "C0")], moves := [⟨3, "q0", "C3", "C0"⟩],
+              gates := [⟨0, 2, "C3", ["q0"]⟩, ⟨1, 8, "C0", ["q0", "q1"]⟩] }
 
 #check @rejects_teleport
 
@@ -231,7 +256,10 @@ theorem teleport_rejected : check bellTeleport = false :=
 
 /-!
 **Somebody else's ions.** The CNOT's witness names `q1` twice and leaves `q0` out. The two
-named ions are certainly together, so condition 7 holds; condition 8 does not.
+named ions are certainly together, so condition 7 holds; condition 8 does not -- one green tick
+and one red cross on the same row.
+
+{{figure bellForeign at=8}}
 -/
 
 def bellForeign : Input :=
@@ -277,7 +305,8 @@ Every compiled example on the Compilation page has its certificate published bes
 input the checker reads from it. The panel below turns each input into a Lean value, exactly as
 the checker parses it, and proves by `decide +kernel` that it holds: the same theorem as
 Exercise 4, for certificates you did not write. Each row links the two files, so you can run the
-command-line checker on them too and compare.
+command-line checker on them too and compare, and **watch** opens the certificate's own figure:
+the ring's rotations, the grid's junctions, every gate in its trap.
 
 {{certificates}}
 
