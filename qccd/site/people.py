@@ -48,6 +48,46 @@ PEOPLE: list[dict] = [
                  "and that the compiler lesson's companion page was never published.",
         "links": {},
     },
+    {
+        "name": "Jaewon",
+        "role": "Contributor",
+        "affiliation": "University of California, Berkeley",
+        "group": "team",
+        "about": "Reran our schedules for the Jones et al. layouts and found that they did not keep "
+                 "each qubit's gate order, which is why the compiler now never reorders an input "
+                 "circuit; checks the reproduced numbers against the papers.",
+        "links": {},
+    },
+    {
+        "name": "Alex",
+        "role": "Contributor",
+        "affiliation": "University of Michigan",
+        "group": "team",
+        "about": "Reads the Compilation and Reproduce pages line by line and asks what each term "
+                 "means: which checks ran, how capacity and fidelity are defined, and what the "
+                 "instructions look like written out in full.",
+        "links": {},
+    },
+    {
+        "name": "Yuewen",
+        "role": "Contributor",
+        "affiliation": "University of Michigan",
+        "group": "team",
+        "about": "Tests the studio and reports what gets in the way: the comment bar covering text, "
+                 "a hover card that repeated itself, an empty primitives list and a missing "
+                 "companion page; asked for the Compilation page to be rewritten plainly.",
+        "links": {},
+    },
+    {
+        "name": "Jack",
+        "role": "Contributor",
+        "affiliation": "Cornell University",
+        "group": "team",
+        "about": "Read the Compilation page as a newcomer and asked where its terms come from, "
+                 "whether the input is standard OpenQASM and what the dependency graph is, which "
+                 "the page now explains.",
+        "links": {},
+    },
 ]
 
 #: Who leads, who funds, and where the contributors are based -- in that order on the page.
