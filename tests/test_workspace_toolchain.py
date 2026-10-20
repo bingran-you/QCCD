@@ -209,10 +209,12 @@ def test_check_runs_the_checker_in_use_and_passes_on_its_verdict(tmp_path):
     if BUILT_QCHECK is None:
         pytest.skip("no checker built in this checkout (`qccd toolchain build-checker`)")
     ok, bad = tmp_path / "ok.qcheck.json", tmp_path / "bad.qcheck.json"
-    ok.write_text('{"circuit": "c", "arch": "none", "n_qubits": 0}', encoding="utf-8")
+    empty = '"moves": [], "gates": [], "gate_sites": ["S0"], "hops": []'
+    ok.write_text('{"circuit": "c", "arch": "none", "n_qubits": 0, "map": {}, "init": {}, "circuit_ops": [], '
+                  + empty + '}', encoding="utf-8")
     bad.write_text('{"circuit": "c", "arch": "none", "n_qubits": 2, "map": {"0": "a", "1": "b"}, '
-                   '"init": {"a": "S0", "b": "S0"}, "circuit_ops": [{"i": 0, "name": "cx", "qubits": [0, 1]}]}',
-                   encoding="utf-8")
+                   '"init": {"a": "S0", "b": "S0"}, "circuit_ops": [{"i": 0, "name": "cx", "qubits": [0, 1]}], '
+                   + empty + '}', encoding="utf-8")
     env = {**os.environ, "QCCD_QCHECK": str(BUILT_QCHECK)}
 
     def check(*args):
@@ -224,3 +226,28 @@ def test_check_runs_the_checker_in_use_and_passes_on_its_verdict(tmp_path):
     assert gone.returncode == 2 and "no such file" in gone.stderr
     # what the checker says names no source file: a reader may quote it whole
     assert ".py" not in a.stdout and "bridge/" not in a.stdout
+
+
+def test_the_checker_refuses_a_malformed_input_by_name(tmp_path):
+    """`{}` was read as an empty programme and ACCEPTED, and a move whose t is 20.0 was dropped
+    -- a programme with one move fewer.  Both are refused now, naming what is wrong."""
+    if BUILT_QCHECK is None:
+        pytest.skip("no checker built in this checkout (`qccd toolchain build-checker`)")
+    whole = ('{"circuit": "c", "arch": "none", "n_qubits": 1, "map": {"0": "a"}, "init": {"a": "S0"}, '
+             '"circuit_ops": [], "moves": [MOVE], "gates": [], "gate_sites": ["S0", "S1"], '
+             '"hops": [{"from": "S0", "to": "S1"}]}')
+    cases = {"{}": ("{}", 'the field "circuit" is missing'),
+             "float t": (whole.replace("MOVE", '{"t": 20.0, "ion": "a", "from": "S0", "to": "S1"}'),
+                         "moves[0] is malformed"),
+             "no hops": (whole.replace("MOVE", "").replace(', "hops": [{"from": "S0", "to": "S1"}]', ""),
+                         'the field "hops" is missing')}
+    for name, (text, says) in cases.items():
+        f = tmp_path / "x.qcheck.json"
+        f.write_text(text, encoding="utf-8")
+        r = subprocess.run([str(BUILT_QCHECK), str(f)], capture_output=True, text=True, timeout=60)
+        assert r.returncode == 1 and "REJECTED -- the input is malformed" in r.stdout and says in r.stdout, \
+            (name, r.stdout, r.stderr)
+    # the same document with a whole move is read, and judged on what it says
+    f.write_text(whole.replace("MOVE", '{"t": 1, "ion": "a", "from": "S0", "to": "S1"}'), encoding="utf-8")
+    r = subprocess.run([str(BUILT_QCHECK), str(f)], capture_output=True, text=True, timeout=60)
+    assert "malformed" not in r.stdout and r.returncode in (0, 1), r.stdout

@@ -182,4 +182,82 @@ def Input.ofJson (j : Json) : Input :=
       | .ok o => o.toList.map fun (k, v) => (k, strList v)
       | .error _ => [] }
 
+/-! ## Reading it strictly
+
+`Input.ofJson` reads what it can: a malformed entry is dropped and a missing field is empty.
+That is what a page wants that shows a certificate, and it is not what a checker may do --
+a move whose `t` is `20.0` dropped is a programme with one move fewer, and `{}` read as empty
+is a programme with nothing to check, which `check` then accepts.  So `qcheck` reads with
+`Input.parse`: every field the checker relies on must be present and of its type, and every
+entry of every list must read, or the file is refused with the first thing that is wrong.
+What it returns on success is what `Input.ofJson` returns, since every entry read. -/
+
+private def need (j : Json) (k : String) : Except String Json :=
+  match j.getObjVal? k with
+  | .ok v => .ok v
+  | .error _ => .error s!"the field \"{k}\" is missing"
+
+private def eachGo {α : Type} (what : String) (f : Json → Option α) :
+    Nat → List Json → Array α → Except String (List α)
+  | _, [], acc => .ok acc.toList
+  | i, x :: xs, acc =>
+    match f x with
+    | some y => eachGo what f (i + 1) xs (acc.push y)
+    | none => .error s!"{what}[{i}] is malformed: {x.compress}"
+
+/-- The list under `k`: every entry read by `f`.  An optional field that is absent is empty. -/
+private def listField {α : Type} (j : Json) (k : String) (f : Json → Option α)
+    (optional : Bool := false) : Except String (List α) :=
+  match j.getObjVal? k with
+  | .ok v =>
+    match v.getArr? with
+    | .ok a => eachGo k f 0 a.toList #[]
+    | .error _ => .error s!"\"{k}\" is not a list"
+  | .error _ => if optional then .ok [] else .error s!"the field \"{k}\" is missing"
+
+private def objField (j : Json) (k : String) (optional : Bool := false) :
+    Except String (List (String × Json)) :=
+  match j.getObjVal? k with
+  | .ok v =>
+    match v.getObj? with
+    | .ok o => .ok o.toList
+    | .error _ => .error s!"\"{k}\" is not an object"
+  | .error _ => if optional then .ok [] else .error s!"the field \"{k}\" is missing"
+
+private def strField (j : Json) (k : String) : Except String String := do
+  match str? (← need j k) with
+  | some s => pure s
+  | none => throw s!"\"{k}\" is not a string"
+
+private def natField (j : Json) (k : String) : Except String Nat := do
+  match nat? (← need j k) with
+  | some n => pure n
+  | none => throw s!"\"{k}\" is not a natural number"
+
+/-- Parse the checker's input, refusing anything malformed (see above). -/
+def Input.parse (j : Json) : Except String Input := do
+  let circuit ← strField j "circuit"
+  let arch ← strField j "arch"
+  let nQubits ← natField j "n_qubits"
+  let qmap ← (← objField j "map").mapM fun (k, v) =>
+    match k.toNat?, str? v with
+    | some n, some s => .ok (n, s)
+    | _, _ => .error s!"map[\"{k}\"] is malformed: {v.compress}"
+  let init ← (← objField j "init").mapM fun (k, v) =>
+    match str? v with
+    | some s => .ok (k, s)
+    | none => .error s!"init[\"{k}\"] is malformed: {v.compress}"
+  let loops ← (← objField j "loops" (optional := true)).mapM fun (k, v) =>
+    match v.getArr? with
+    | .ok a => (eachGo s!"loops[\"{k}\"]" str? 0 a.toList #[]).map fun ns => (k, ns)
+    | .error _ => .error s!"loops[\"{k}\"] is not a list"
+  pure { circuit, arch, nQubits, qmap, init, loops
+         ops := ← listField j "circuit_ops" opOf
+         moves := ← listField j "moves" moveOf
+         rots := ← listField j "rotations" rotOf (optional := true)
+         gates := ← listField j "gates" gateOf
+         unrealised := ← listField j "unrealised" nat? (optional := true)
+         gateSites := ← listField j "gate_sites" str?
+         hops := ← listField j "hops" pairOf }
+
 end QCCDC.Cert

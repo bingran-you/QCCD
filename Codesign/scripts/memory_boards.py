@@ -87,7 +87,7 @@ def devices(release) -> list[dict]:
         ("grid9x9", "lattice", "grid9x9 — the baseline lattice", "traps on the wires of a 9x9 junction grid"),
         ("deck_unit_cell", "lattice", "deck_unit_cell — the same lattice, broadcast-wired", "grid9x9 with the 32-channel WISE control block"),
         ("chain", "line", "chain — a line of traps", "one linear trap"),
-        ("stationary_chain", "line", "stationary_chain — no transport at all", "one trap holding everything: no heating from transport, one long chain"),
+        ("stationary_chain", "line", "stationary_chain — two traps, one rail", "two traps joined by one rail: little heating from transport, long chains"),
     ]
     out += [{"key": k, "family": f, "title": t, "claim": c, "arch": SC.ARCH / f"{k}.arch.json"} for k, f, t, c in shipped]
     out += [

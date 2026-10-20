@@ -189,10 +189,12 @@ def _smoke(exe: Path, tool: str = "qccdc_cli") -> None:
     with tempfile.TemporaryDirectory() as td:
         if tool == "qcheck":
             ok, bad = Path(td) / "ok.json", Path(td) / "bad.json"
-            ok.write_text('{"circuit": "smoke", "arch": "none", "n_qubits": 0}', encoding="utf-8")
+            empty = '"moves": [], "gates": [], "gate_sites": ["S0"], "hops": []'
+            ok.write_text('{"circuit": "smoke", "arch": "none", "n_qubits": 0, "map": {}, "init": {}, '
+                          '"circuit_ops": [], ' + empty + '}', encoding="utf-8")
             bad.write_text('{"circuit": "smoke", "arch": "none", "n_qubits": 2, "map": {"0": "a", "1": "b"}, '
-                           '"init": {"a": "S0", "b": "S0"}, "circuit_ops": [{"i": 0, "name": "cx", "qubits": [0, 1]}]}',
-                           encoding="utf-8")
+                           '"init": {"a": "S0", "b": "S0"}, "circuit_ops": [{"i": 0, "name": "cx", "qubits": [0, 1]}], '
+                           + empty + '}', encoding="utf-8")
             a, r = _run(exe, [ok], "checker"), _run(exe, [bad], "checker")
             if a.returncode != 0 or "ACCEPTED" not in a.stdout:
                 raise ToolchainError("the downloaded checker did not run here: " + (a.stderr or a.stdout)[-600:])

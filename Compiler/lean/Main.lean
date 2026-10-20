@@ -32,7 +32,12 @@ def main (args : List String) : IO UInt32 := do
       IO.eprintln s!"qcheck: {path}: not JSON: {e}"
       pure 2
     | .ok j =>
-      let inp := Input.ofJson j
+      match Input.parse j with
+      | .error e =>
+        IO.println s!"qcheck {path}"
+        IO.println s!"  REJECTED -- the input is malformed: {e}"
+        pure 1
+      | .ok inp =>
       IO.println s!"qcheck {inp.circuit} on {inp.arch}"
       IO.println s!"  {inp.ops.length} circuit ops, {inp.gates.length} gate witnesses, \
 {inp.moves.length} moves, {inp.rots.length} rotations, {inp.nQubits} qubits"
