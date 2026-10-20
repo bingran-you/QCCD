@@ -152,11 +152,19 @@ That is the trust in one line: the link from the file to the value `check_sound`
 the compiled parser, believed.
 
 What closes the gap is outside Lean. `Compiler/bridge/check_cert.py` reads the same certificate
-in Python. On this one it never reaches a verdict: its own replay counts cycles with `range`, and a
-cycle of `20.0` stops it with a `TypeError`. The official grader treats a semantic check that
-produced no verdict as `internal_error`, which is never a pass. With the cycle written `20`, the
-proved checker refuses the teleport itself, and `check_cert.py` adds that `q1` makes no moves in the
-programme and one in the certificate. Both outcomes we ran.
+in Python, and before anything else checks its shape: every field it reads, with its type. On this
+one it says
+
+```
+  malformed: move 1 has t = 20.0, not a cycle number
+  -> R10 FAILED: the certificate is malformed: move 1 has t = 20.0, not a cycle number
+```
+
+(Until 2026-10-20 it had no such check, and a cycle of `20.0` stopped its replay with a Python
+`TypeError`; the official grader counts a semantic check that produced no verdict as
+`internal_error`, which is never a pass either.) With the cycle written `20`, the proved checker
+refuses the teleport itself, and `check_cert.py` adds that `q1` makes no moves in the programme
+and one in the certificate. Both outcomes we ran.
 
 A field that is missing altogether reads as an empty list. For most fields that fails safe: an
 empty `gates` leaves the circuit's ops unwitnessed. Not for all. An empty JSON object `{}` reads as
@@ -293,6 +301,8 @@ theorem more_hops_still_accepted {inp : Input} (hd : check inp = true)
 certificate to the programme and to the source circuit is `Compiler/bridge/check_cert.py`, which is
 Python, computed and believed. In the order its `main` runs them:
 
+* **shape**: every field of the certificate it reads is there, with its type (a cycle is a whole
+  number); a malformed certificate fails R10 here, by name;
 * **binding** (`check_binding`): the certificate's `circuit_ops` are the source circuit's ops, read
   from the QASM, op by op: the same gate (the same name and angles, or the same matrix) on the same
   qubits, and a gate on three or more qubits, such as `ccx`, as a run of ops whose product is its
