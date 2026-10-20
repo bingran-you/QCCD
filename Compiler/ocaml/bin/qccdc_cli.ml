@@ -40,6 +40,27 @@ let usage () =
       compile by rotating the loop rigidly: one template moves every ion at once.
       For a conveyor device and a bipartite circuit (a syndrome-extraction round).
 
+  qccdc rotate ... --placement <layout.json>      (also honoured by `compile`'s fallback)
+      start the riders in the loop slots, and park the docked qubits at the docks, that
+      the file names: {"loop": {"<qubit>": slot}, "docks": {"<qubit>": "<dock site>"}}.
+      A code-aware placer decides the layout; this pass still certifies the program.
+
+  qccdc rotate ... --dock-all
+      dock every rider standing beside a dock in every batch, gate only the contacts:
+      what a machine whose spurs share one waveform with no per-site switch must do.
+
+  qccdc racetrack <in.qasm> --arch <expanded.json> -o <out-prefix> [--init-placement <json>]
+      compile on a race track -- one closed loop with its gate zones ON it and no docks
+      (Quantinuum H2): rigid shifts of the whole loop, swaps in the capacity-2 zones, and
+      up to one gate per gate zone per round.  Also `compile`'s last fallback, after the
+      general router and rigid rotation have both declined (not under --no-rotate).
+
+  qccdc compile|rotate|racetrack ... --rules <ruleset.rules>
+      plan with this rule set instead of the standard one: R13's max_chain bounds a gate
+      chain (no bound without R13), and without R22 a cycle may carry unlike motions.
+      Every rule of the set is checked on the output afterwards (qccd.ruleset); give the
+      resolved file, with every rule written out.
+
   qccdc pulses-selftest
       differential-test the pulse table against the unitaries it claims to implement
 
@@ -54,6 +75,18 @@ let arg_after flag argv =
     | [] -> None
   in
   go argv
+
+(* `--placement <json>`: a layout decided upstream (see `Rotate_pipeline.placement`).
+   Read here, once, so both the `rotate` command and `compile`'s rotation fallback see
+   the same file; a malformed one is a usage error, not a compile result. *)
+let placement_arg rest =
+  match arg_after "--placement" rest with
+  | None -> None
+  | Some path -> (
+    try Some (Qccdc.Rotate_pipeline.placement_of_file path) with
+    | Invalid_argument m | Sys_error m | Yojson.Json_error m ->
+      Printf.eprintf "--placement %s: %s\n" path m;
+      exit 2)
 
 let cmd_arch path =
   let a = Qccdc.Arch.load path in
@@ -187,7 +220,29 @@ let cmd_traps path =
       print_endline "  WARNING: the trap graph is disconnected");
   0
 
-let cmd_compile inp arch_path out =
+(* `--init-placement <json>`: `{"q0": "T0_0h", ...}` -- every ion the circuit names, at
+   the trap it starts in.  Read once, like `--placement`; a malformed file is a usage
+   error, not a compile result. *)
+let init_placement_arg rest =
+  match arg_after "--init-placement" rest with
+  | None -> None
+  | Some path -> (
+    try
+      match Yojson.Safe.from_file path with
+      | `Assoc kv ->
+        Some
+          (List.map
+             (fun (ion, v) ->
+               match v with
+               | `String s -> (ion, s)
+               | _ -> invalid_arg (ion ^ ": site must be a string"))
+             kv)
+      | _ -> invalid_arg "expected an object {ion: site}"
+    with Invalid_argument m | Sys_error m | Yojson.Json_error m ->
+      Printf.eprintf "--init-placement %s: %s\n" path m;
+      exit 2)
+
+let cmd_compile ?init inp arch_path out =
   let a = Qccdc.Arch.load arch_path in
   (match Qccdc.Arch.check_structure a with
   | [] -> ()
@@ -199,7 +254,7 @@ let cmd_compile inp arch_path out =
   let name = Filename.remove_extension (Filename.basename inp) in
   let c = Qccdc.Circuit.build ~name prog in
   let r =
-    Qccdc.Compile.run a c ~arch_path:("arch/" ^ a.name ^ ".arch.json") ~qasm_path:inp
+    Qccdc.Compile.run ?init a c ~arch_path:("arch/" ^ a.name ^ ".arch.json") ~qasm_path:inp
   in
   Printf.printf "%s -> %s (%s regime)
 " (Qccdc.Circuit.summary c) a.name
@@ -278,15 +333,16 @@ let cmd_route_instances inp arch_path out =
     (List.length insts) out;
   0
 
-let cmd_rotate ?(sweep = Qccdc.Rotate_pipeline.Monotone) inp arch_path out =
+let cmd_rotate ?(sweep = Qccdc.Rotate_pipeline.Greedy) ?placement ?(dock_all = false) inp
+    arch_path out =
   let a = Qccdc.Arch.load arch_path in
   let prog = Qccdc.Qasm.parse_file inp in
   let name = Filename.remove_extension (Filename.basename inp) in
   let c = Qccdc.Circuit.build ~name prog in
   let c, _ = Qccdc.Circuit.lower c in
   let p, cert, st, notes =
-    Qccdc.Rotate_pipeline.run ~sweep a c ~arch_path:("arch/" ^ a.name ^ ".arch.json")
-      ~qasm_path:inp
+    Qccdc.Rotate_pipeline.run ~sweep ?placement ~dock_all a c
+      ~arch_path:("arch/" ^ a.name ^ ".arch.json") ~qasm_path:inp
   in
   Printf.printf "%s -> %s (rigid rotation)
 " (Qccdc.Circuit.summary c) a.name;
@@ -331,23 +387,111 @@ let cmd_rotate ?(sweep = Qccdc.Rotate_pipeline.Monotone) inp arch_path out =
 " out out;
   if Qccdc.Cert.check ~loops cert <> [] then 1 else 0
 
+(* The race-track pass (`Racetrack`): a closed loop with no docks.  Nothing is written
+   unless it succeeds, so a decline leaves whatever a caller wrote before it untouched. *)
+let cmd_racetrack ?(strict = false) ?init inp arch_path out =
+  let a = Qccdc.Arch.load arch_path in
+  let prog = Qccdc.Qasm.parse_file inp in
+  let name = Filename.remove_extension (Filename.basename inp) in
+  let c = Qccdc.Circuit.build ~name prog in
+  let p, cert, _, notes =
+    Qccdc.Racetrack.run ?init a c ~arch_path:("arch/" ^ a.name ^ ".arch.json") ~qasm_path:inp
+  in
+  (match Qccdc.Tsir.validate p with
+  | [] -> ()
+  | errs ->
+    prerr_endline "  TSIR SHAPE ERRORS:";
+    List.iter (fun e -> prerr_endline ("    " ^ e)) errs;
+    raise (Qccdc.Racetrack.Not_applicable "the programme it built is malformed"));
+  let loops =
+    List.filter_map
+      (fun (l : Qccdc.Arch.loop) ->
+        if l.closed then Some (l.lid, Array.of_list l.nodes) else None)
+      a.loops
+  in
+  let fails = Qccdc.Cert.check ~loops cert in
+  (* as a fallback it must not replace the caller's answer with a programme its own
+     certificate refutes *)
+  if strict && fails <> [] then
+    raise
+      (Qccdc.Racetrack.Not_applicable
+         (Printf.sprintf "its certificate fails the self-check (%s)"
+            (match fails with f :: _ -> f.where ^ ": " ^ f.why | [] -> "")));
+  Printf.printf "%s -> %s (race track)\n" (Qccdc.Circuit.summary c) a.name;
+  List.iter (fun n -> Printf.printf "  - %s\n" n) notes;
+  Printf.printf "  %d instructions\n" (Qccdc.Tsir.length p);
+  (match fails with
+  | [] ->
+    Printf.printf
+      "  certificate: %d gate witnesses, %d moves, %d rotations, self-check OK\n"
+      (List.length cert.gates) (List.length cert.moves) (List.length cert.rotations)
+  | fs ->
+    Printf.printf "  CERTIFICATE SELF-CHECK FAILED (%d)\n" (List.length fs);
+    List.iteri
+      (fun i (f : Qccdc.Cert.failure) ->
+        if i < 6 then Printf.printf "    %s: %s\n" f.where f.why)
+      fs);
+  Qccdc.Tsir.save (out ^ ".tsir.json") p;
+  Qccdc.Cert.save (out ^ ".qcert.json") cert;
+  Printf.printf "  -> %s.tsir.json  %s.qcert.json\n" out out;
+  if fails <> [] then 1 else 0
+
+(* `compile`'s last resort: the race track, once rotation has declined.  [k] is what the
+   caller does if this declines too -- exactly what it did before the pass existed. *)
+let try_racetrack ?init inp arch_path out (k : unit -> 'a) : 'a =
+  prerr_endline "  trying the race track: rigid shifts of the whole loop, swaps in its zones";
+  match cmd_racetrack ~strict:true ?init inp arch_path out with
+  | code -> exit code
+  | exception Qccdc.Racetrack.Not_applicable r ->
+    Printf.eprintf "  the race track does not apply either: %s\n" r;
+    k ()
+  | exception e ->
+    (* a fault in the newest pass must not cost the caller the answer it had *)
+    Printf.eprintf "  the race track failed (%s); the answer above stands\n"
+      (Printexc.to_string e);
+    k ()
+
 let () =
   let argv = Array.to_list Sys.argv |> List.tl in
+  (match arg_after "--rules" argv with
+   | Some path -> (
+     try
+       Qccdc.Rules.load path;
+       Printf.eprintf "  planning with %s
+" (Qccdc.Rules.describe ())
+     with
+     | Qccdc.Rules.Bad m -> Printf.eprintf "%s
+" m; exit 2
+     | Sys_error m -> Printf.eprintf "cannot read the rule set: %s
+" m; exit 2)
+   | None -> ());
   match argv with
   | "rotate" :: inp :: rest -> (
     match (arg_after "--arch" rest, arg_after "-o" rest) with
     | Some ap, Some out -> (
       let sweep =
         match arg_after "--sweep" rest with
-        | Some "greedy" -> Qccdc.Rotate_pipeline.Greedy
-        | _ -> Qccdc.Rotate_pipeline.Monotone
+        | Some "monotone" -> Qccdc.Rotate_pipeline.Monotone
+        | _ -> Qccdc.Rotate_pipeline.Greedy
       in
-      try exit (cmd_rotate ~sweep inp ap out) with
+      let placement = placement_arg rest in
+      let dock_all = List.mem "--dock-all" rest in
+      try exit (cmd_rotate ~sweep ?placement ~dock_all inp ap out) with
       | Qccdc.Rotate_pipeline.Not_applicable m ->
         Printf.eprintf "%s: rotation does not apply: %s
 " inp m; exit 5
       | Qccdc.Qasm.Error m -> Printf.eprintf "%s: parse error: %s
 " inp m; exit 2)
+    | _ -> usage ())
+  | "racetrack" :: inp :: rest -> (
+    match (arg_after "--arch" rest, arg_after "-o" rest) with
+    | Some ap, Some out -> (
+      try exit (cmd_racetrack ?init:(init_placement_arg rest) inp ap out) with
+      | Qccdc.Racetrack.Not_applicable m ->
+        Printf.eprintf "%s: the race track does not apply: %s\n" inp m;
+        exit 5
+      | Qccdc.Qasm.Error m -> Printf.eprintf "%s: parse error: %s\n" inp m; exit 2
+      | Qccdc.Circuit.Error m -> Printf.eprintf "%s: %s\n" inp m; exit 2)
     | _ -> usage ())
   | "route-instances" :: inp :: rest -> (
     match (arg_after "--arch" rest, arg_after "-o" rest) with
@@ -361,7 +505,7 @@ let () =
     match (arg_after "--arch" rest, arg_after "-o" rest) with
     | Some arch_path, Some out -> (
       try
-        let code, unrealised = cmd_compile inp arch_path out in
+        let code, unrealised = cmd_compile ?init:(init_placement_arg rest) inp arch_path out in
         (* A PARTIAL PLACEMENT IS A DECLINE TOO.  The general router signals "I cannot do
            this" in two different ways: it raises `Unroutable`, or it returns having left
            some ops unrealised.  The rotation fallback below used to hang off the
@@ -376,14 +520,15 @@ let () =
 " inp
             (List.length unrealised);
           prerr_endline "  trying rigid rotation, which does not need a free slot to move into";
-          try exit (cmd_rotate inp arch_path out) with
+          try exit (cmd_rotate ?placement:(placement_arg rest) ~dock_all:(List.mem "--dock-all" rest) inp arch_path out) with
           | Qccdc.Rotate_pipeline.Not_applicable r ->
             Printf.eprintf "  rotation does not apply either: %s
 " r;
-            (* the partial program from the compile above is still on disk, and this is
-               now the final answer, so publish the verdict the caller greps for *)
-            report_unrealised unrealised;
-            exit code
+            try_racetrack ?init:(init_placement_arg rest) inp arch_path out (fun () ->
+                (* the partial program from the compile above is still on disk, and this is
+                   now the final answer, so publish the verdict the caller greps for *)
+                report_unrealised unrealised;
+                exit code)
         end;
         report_unrealised unrealised;
         exit code
@@ -406,10 +551,11 @@ let () =
            silently wrong number in a document whose whole point is that number. *)
         if List.mem "--no-rotate" rest then exit 4;
         prerr_endline "  trying rigid rotation, which does not need a free slot to move into";
-        try exit (cmd_rotate inp arch_path out) with
+        try exit (cmd_rotate ?placement:(placement_arg rest) ~dock_all:(List.mem "--dock-all" rest) inp arch_path out) with
         | Qccdc.Rotate_pipeline.Not_applicable r ->
           Printf.eprintf "  rotation does not apply either: %s
-" r; exit 4)
+" r;
+          try_racetrack ?init:(init_placement_arg rest) inp arch_path out (fun () -> exit 4))
       | Qccdc.Place.Too_many_qubits m ->
         Printf.eprintf "%s: %s
 " inp m; exit 4)

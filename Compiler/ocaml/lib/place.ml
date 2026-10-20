@@ -30,13 +30,16 @@ let ion_name q = Printf.sprintf "q%d" q
 (* Symmetric pair weights over the two-qubit gates.  One-qubit gates constrain nothing
    about *pairs*, so they are absent -- but they do force a visit to a gate-capable trap,
    which the router handles and the placer deliberately ignores: optimising placement for
-   one-qubit gates on a device where every trap can gate would be optimising nothing. *)
+   one-qubit gates on a device where every trap can gate would be optimising nothing.
+   Nor is a barrier a pair, whatever its width: it orders, it never brings two ions
+   together, so `barrier a,b` must not pull a and b towards each other. *)
 let interaction (c : Circuit.t) : (int * int, int) Hashtbl.t =
   let w = Hashtbl.create 64 in
   List.iter
     (fun (o : Circuit.op) ->
-      match o.qubits with
-      | [ a; b ] ->
+      match (o.name, o.qubits) with
+      | "barrier", _ -> ()
+      | _, [ a; b ] ->
         let k = if a < b then (a, b) else (b, a) in
         Hashtbl.replace w k (1 + (try Hashtbl.find w k with Not_found -> 0))
       | _ -> ())
@@ -186,13 +189,23 @@ let run ?(variant = 0) (a : Arch.t) (t : Traps.t) (d : Traps.dists) (c : Circuit
      and uselessly.  Tiering by capability first fixes that without changing any device
      where the distinction does not exist. *)
   let can_gate s = match Arch.node a s with Some n -> n.can_gate | None -> false in
+  (* And prefer sites no switchless channel ties to others (`Arch.tied_classes`).  An ion
+     the router may not leave idle on a conveyor well (R4) is an ion it must not START
+     there: H2's 40 wells are tied to three signals, and a placement that stored qubits in
+     them left every one of them frozen, so the first gate that needed one was unroutable.
+     Each tier is tried untied first, then as it was; on a device with no tied site the two
+     are the same list, so every such device places exactly as before. *)
+  let tied = Arch.tied_classes a in
+  let untied s = not (Hashtbl.mem tied s) in
   let tiers =
-    [
-      List.filter (fun s -> open_trap s && not_choke s && can_gate s) t.sites;
-      List.filter (fun s -> open_trap s && not_choke s) t.sites;
-      List.filter (fun s -> open_trap s && can_gate s) t.sites;
-      List.filter open_trap t.sites;
-    ]
+    List.concat_map
+      (fun l -> [ List.filter untied l; l ])
+      [
+        List.filter (fun s -> open_trap s && not_choke s && can_gate s) t.sites;
+        List.filter (fun s -> open_trap s && not_choke s) t.sites;
+        List.filter (fun s -> open_trap s && can_gate s) t.sites;
+        List.filter open_trap t.sites;
+      ]
   in
   (* Choose the tier by CAPACITY, not by trap count.  `ring144_24v` has 144 non-junction
      traps of capacity 2 -- 288 slots -- and a 168-qubit round fits them comfortably.

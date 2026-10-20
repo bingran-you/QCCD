@@ -309,6 +309,20 @@ def cmd_studio(args) -> int:
     packages to offer rather than a pair.
     """
     model = deck_model() if args.model == "deck" else corrected_model(args.table)
+    # THE SCALE.  Node positions are lattice units and carry no length; the nanometres
+    # live in the technology sidecar, exactly as `qccd phys` reads them.  The studio
+    # loaded none at all, so nothing on its page could be measured -- a design tool for
+    # hardware in which no distance and no angle had a value.  Default rather than
+    # optional: `surface_default` is the reference process built from the collaborator's
+    # own rule defaults, and it is isotropic, so a page that says nothing about its
+    # process still says something true about its proportions.
+    from .phys.tech import load_technology
+    from .viz.scale import DEFAULT_TECH
+    # `getattr`, because `cmd_tutorial` builds this Namespace by hand out of the arguments
+    # IT takes and cannot know about every flag the studio parser grows.  The default is
+    # the renderer's own, so the tutorial page measures in the same process the studio
+    # does rather than in whatever this line happened to name.
+    tech = load_technology(getattr(args, "tech", None) or DEFAULT_TECH)
     source = None
     if args.tsir:
         prog = TSIR.load(args.tsir)
@@ -334,18 +348,27 @@ def cmd_studio(args) -> int:
         prog = TSIR(name="empty", arch_spec=args.name)
     report = verify(prog, arch, model)
     path = render_html(arch, prog, report.result, model, args.out,
+                       tech=tech,
                        kicker="QCCD STUDIO",
+                       open_pane=getattr(args, "open_pane", None),
                        headline=(f"{arch.name} - {prog.name}" if args.tsir
                                  else f"{arch.name} - design"),
                        lede=(f"a compiled program, step by step: {len(prog)} hardware "
                              f"instructions against "
                              f"{len(source['ops'])} circuit statements"
                              if source else
+                             # a seeded page describes its device (the renderer falls
+                             # back to `arch.description`); only the blank canvas
+                             # carries the onboarding sentence
+                             None if args.seed else
                              "an empty canvas: build a device, write a test programme, "
                              "and see what can and cannot be checked here"),
                        template_stems="*" if args.all_templates else None,
                        max_frames=args.max_frames,
                        source=source)
+    print(f"  scale         {tech.name}: {tech.nm_per_unit_x.nm / 1000:g} x "
+          f"{tech.nm_per_unit_y.nm / 1000:g} um per lattice unit, "
+          f"{tech.n_dc_pairs} DC pairs per site")
     print(f"wrote {path}  ({path.stat().st_size:,} bytes, "
           f"{len(arch.device.nodes)} nodes, {len(prog)} instructions)")
     if source:
@@ -353,6 +376,34 @@ def cmd_studio(args) -> int:
               f"{len(source['realises'])} instructions discharge one, "
               f"{len(source['toward'])} shuttle towards one, "
               f"{len(source['after'])} clear up after one")
+    return 0
+
+
+def cmd_tutorial(args) -> int:
+    '''`qccd tutorial` -- the studio page with its course, plus the compiled companion
+    page Part D steps through, in one directory with relative links between them.
+
+    The browser cannot run the compiler, so the course's compiled lesson lives on a page
+    built from a shipped artifact (`micro.qasm` on `grid9x9`, with its certificate); the
+    studio page links to it by file name.  Both pages carry the whole course.
+    '''
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    common = dict(seed=None, name="studio", template=None, program=None, tsir=None,
+                  qasm=None, cert=None, k="", model=args.model, table=args.table,
+                  all_templates=True, max_frames=args.max_frames, open_pane="L")
+    cmd_studio(argparse.Namespace(out=str(out / "studio.html"), **common))
+    # the compiled programme ships with the repository (`Compiler/examples/micro/`); a newer
+    # one from the compiler's own build directory wins when there is one
+    from qccd.viz.course import MICRO_QASM, matrix_file
+    tsir, qasm = matrix_file("micro_grid9x9.cooled.tsir.json"), MICRO_QASM
+    if tsir.exists() and qasm.exists():
+        cmd_studio(argparse.Namespace(**{**common, "out": str(out / "micro_grid9x9.html"),
+                                         "tsir": str(tsir), "qasm": str(qasm)}))
+    else:
+        missing = (tsir if not tsir.exists() else qasm).relative_to(ROOT).as_posix()
+        print(f"  companion page skipped: {missing} is missing from this copy of the "
+              f"repository; the same page is at https://qccd.academy/micro_grid9x9.html")
     return 0
 
 
@@ -427,7 +478,21 @@ def cmd_open(args) -> int:
         prog = TSIR.load(prog_path)
     elif studio_calls:
         m = Machine(arch)
-        prog = m.program(src.stem, provenance="off").apply_calls(studio_calls).build()
+        # `apply_calls` refuses a statement the toolchain cannot run BEFORE any replay
+        # (an unknown node, a method outside the whitelist): one diagnosis line, not a
+        # traceback -- this is the return leg of a design tool
+        try:
+            prog = m.program(src.stem, provenance="off").apply_calls(studio_calls).build()
+        except (ReplayError, ValueError) as exc:
+            print(f"{arch.name}: the programme was refused")
+            print(f"  {exc}")
+            return 1
+    elif not arch.device.nodes:
+        # a snapshot of an empty canvas: there is nothing to replay and nothing to build a
+        # programme on, and saying so beats the StopIteration `walk` raises on no nodes
+        print(f"{arch.name}: an empty device -- nothing to replay")
+        print("  nodes 0  segments 0  loops 0")
+        return 0
     else:
         prog = program_for(arch, args.program, args.k or "")
     # A programme a HUMAN wrote can be unexecutable, not merely illegal -- an ion declared
@@ -536,6 +601,7 @@ def cmd_phys(args) -> int:
         metal = metal_view_model(layout, width=view["layout"]["W"],
                                  height=view["layout"]["H"])
         out = render_html(arch, prog, rep.result, model, args.html,
+                          tech=tech,
                           kicker="ELECTRODES",
                           headline=f"{arch.name} - {tech.name}",
                           lede=f"{summary['n_polys']} derived electrodes, true to scale, "
@@ -949,6 +1015,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_studio.add_argument("--no-all-templates", dest="all_templates",
                           action="store_false")
     p_studio.add_argument("--max-frames", type=int, default=20000)
+    p_studio.add_argument("--tech", default="surface_default",
+                          help="the technology sidecar the page measures in: a shipped "
+                               "preset name or a path to a .tech.json. Lattice units are "
+                               "not lengths -- this is what turns them into micrometres")
+
+    p_tut = sub.add_parser("tutorial", help="the studio page with its course and the "
+                                            "compiled companion page, in one directory")
+    p_tut.add_argument("-o", "--out", default=str(OUT / "tutorial"))
+    p_tut.add_argument("--model", default="corrected", choices=["deck", "corrected"])
+    p_tut.add_argument("--table", default="qccdsim_jones")
+    p_tut.add_argument("--max-frames", type=int, default=20000)
 
     p_open = sub.add_parser("open", help="verify a design the browser produced")
     p_open.add_argument("file", help="a .arch.json or a .qccd.json studio artifact")
@@ -975,7 +1052,8 @@ def main(argv=None) -> int:
             "phys": cmd_phys, "gds": cmd_gds,
             "analyses": cmd_analyses,
             "arch": cmd_arch,
-            "source": cmd_arch, "studio": cmd_studio, "open": cmd_open, "site": cmd_site,
+            "source": cmd_arch, "studio": cmd_studio, "open": cmd_open,
+            "tutorial": cmd_tutorial, "site": cmd_site,
             "listing": cmd_listing, "disasm": cmd_listing}[args.cmd](args)
 
 

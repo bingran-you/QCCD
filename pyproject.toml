@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qccd"
+version = "0.9.0"
+description = "Trapped-ion QCCD architecture/algorithm co-design: the toolchain, the studio, and local-first agent-native workspaces"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+# The toolchain is standard-library Python; the co-design service and MCP adapter are an extra.
+dependencies = []
+
+[project.optional-dependencies]
+# RANGES, not pins: this extra installs next to whatever else a person already has, and an
+# exact numpy pin once upgraded numpy under two of their packages.  Exact tested versions
+# are in requirements-agent.txt (and in the official image).
+agent = [
+  "fastapi>=0.115", "starlette>=0.40", "uvicorn>=0.30", "pydantic>=2.7", "anyio>=4",
+  "websockets>=13", "mcp>=2.2,<3", "mcp-types>=2.2,<3",
+  # a LOCAL grade's semantics stage (Compiler/bridge/check_cert.py) simulates the circuit;
+  # without these, `qccd submit --local` can never be eligible
+  "stim>=1.14", "qiskit>=2.0", "numpy>=1.26",
+  # the logical error rate (qccd/qec): matching for surface/repetition codes, BP-OSD for
+  # the rest
+  "pymatching>=2.2", "ldpc>=2.3",
+]
+official = ["fastapi==0.135.3", "uvicorn==0.43.0", "psycopg[binary]>=3.2,<3.3"]
+
+[project.scripts]
+qccd = "qccd.workspace.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["qccd*"]
+
+[tool.setuptools.package-data]
+"qccd.workspace" = ["web/*", "skill/**/*", "releases/**/*", "releases/.gitattributes", "toolchain.json"]
+"qccd.viz" = ["*.js", "js/*.js"]
+"qccd.bench" = ["suites/**/*", "suites/.gitattributes"]

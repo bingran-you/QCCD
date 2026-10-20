@@ -1,0 +1,1015 @@
+# QCCD workspaces: local-first, agent-native co-design
+
+Architecture and implementation status for `qccd/workspace/` and `qccd/official/`.
+Last updated 2026-09-22.
+
+A person and an agent (Codex, Claude Code, Cursor, or any MCP client) work on **one versioned local
+workspace**. The person edits in the existing QCCD Studio page. The agent edits through MCP
+tools. Both go through the same validated change-set API. Prompts sent from Studio carry
+frozen context: anchors, sketches, demonstrations. They reach a connected agent session
+without anyone typing in the terminal. Local submissions are immutable, graded by the same
+evaluator the official server runs, and published only after a person approves one exact
+bundle.
+
+---
+
+## 1 · What was already there (reconnaissance)
+
+| concern | where | notes |
+|---|---|---|
+| Studio page | `qccd/viz/render.py` (`render_html`, `_TEMPLATE`, `page_stamp`), `qccd/viz/js/editor.js` (`EDITOR`), `edit.js`, `engine.js` | one self-contained HTML page; the `FORBIDDEN` scan rejects `fetch(` anywhere in it |
+| browser design state | `editor.js` `GEOM/SEED/POST/EDITS` + `PROG` | the page's truth is a **list of records**, replayed from scratch (`replay()`); undo pops records |
+| record vocabularies | `qccd/arch/edit.py` (`OPS`, `SEED`, `MUTATE`, `BUILD`, `apply_edit`, `apply_call`, `apply_program`) | parity with `edit.js` is held by `tests/test_edit_parity.py` |
+| architecture document | `qccd/arch/device.py` (`Architecture.to_json/from_json`), `qccd/arch/schema.py` (`SCHEMA_VERSION = "0.3"`) | validation runs on load only |
+| browser export | `editor.js::documentRecord` (`kind: qccd.studio`), `qccd/__main__.py::cmd_open` | `cmd_open` trusted the browser-serialised `arch` |
+| program | `qccd/ir/tsir.py` (TSIR, stable instruction ids), `qccd/api.py::Program.apply_calls` | |
+| rules, replay | `qccd/verify/` (27 rules; passed/failed/skipped/partial) | R10 is decided outside Python |
+| compiler | `Compiler/ocaml` → `qccdc_cli` (compile/rotate/parse), `Compiler/bridge/*.py` | Python has no QASM compiler |
+| proved checker | `Compiler/lean` → `qcheck` (`QCCDC.Cert.check_sound`), `Compiler/bridge/check_cert.py` (O1 + O2) | the certificate's FNV hashes were never checked; `circuit_ops` came from the compiler |
+| boards | `Codesign/scripts/small_codes.py`, `bb_studio.py`, `qccd/site/build.py` | maintainer scripts; no submission path; `tasks/*/task.json` is mostly unread metadata |
+| server-side | `qccd/site/comments_api.py` (stdlib, accounts/comments) | nothing resembling a submission API |
+
+Before this work there were two edit-to-render paths: browser records rendered by the page
+itself, and Python `Machine` methods rendered by `render_html`. They were joined only through
+file export and re-import. The compile-to-grade path existed only as scripts on one machine.
+
+## 2 · Architecture
+
+```
+Codex / Claude Code / Cursor / any MCP client
+      │ qccd_* tools (stdio MCP, qccd/workspace/mcp_server.py)       ▲ turn/start, turn/steer, turn/interrupt
+      │                                                              │ (Codex app-server bridge, agents/codex.py)
+      ▼                                                              │ notifications/claude/channel (mcp_server.py --channel)
+   local workspace service (service.py: FastAPI + SSE, loopback) ────┘
+      │   ▲ HTTP commands + /api/events (Studio page: web/cowork.js, injected after render_html)
+      ▼   │
+   app.Workspace = core (revisions, change sets) + collab (prompts, delivery) + results (jobs, snapshots)
+      │           ▲
+      │           └── design.replay / operations  (the studio's records through qccd.arch.edit)
+      ▼
+   evaluator.grade(release, bundle, profile) ── qccdc_cli, check_cert.py, qcheck, verify(), metrics
+      │
+      ▼  a person approves one digest (Studio dialog or `qccd publish --submission` at a terminal)
+   qccd/official: API ── queue (db.py) ── worker ── spool ── grader (no network, no credentials)
+```
+
+**One applier.** `design.replay` rebuilds the architecture from the studio's own records
+using the toolchain's whitelists, exactly as `editor.js::replay` does. A browser gesture
+reaches the service as a `studio_sync` operation carrying those records. An agent's semantic
+operation (`add_site`, `add_chain`, `replicate`, `construct`, …, from `operations.OPERATIONS`)
+compiles to the same record shapes. Both are replayed and validated by the same code before
+anything is committed. `tests/test_workspace_design.py` drives the real studio page through
+edits of every record kind and requires the Python replay to reproduce the browser's
+architecture byte for byte. The replay never trusts a client's serialised `arch`.
+
+**State categories** (`store.py`):
+
+| category | tables | behaviour |
+|---|---|---|
+| design inputs | `branches`, `revisions`, `change_sets`, `idempotency`, `artifacts` | revisioned; every commit is one SQLite transaction with its event |
+| collaboration | `notes` (versioned prompts, comments, replies), `context_snapshots`, `prompt_links`, `work` | independent of design revisions; comments never invalidate results |
+| view / agent | `views`, `sessions`, `deliveries` | per tab, per agent runtime |
+| generated results | `jobs`, `snapshots`, `submissions`, `approvals` + read-only files under `.qccd/snapshots/` | immutable, bound to an input digest |
+
+`input_digest` covers the design records and programs. It excludes `meta` and constraints,
+so a comment, a zoom or a lock never makes a result stale. Positions in the device are
+physical inputs and are included; sketch and viewport coordinates live in prompts and are not.
+
+**Identity.** Entities are keyed by their device ids (`node:<id>`, `segment:<id>`,
+`loop:<id>`, `zone:<name>`, `block:<name>`). The studio has no rename verb, so an id is an
+identity. A deleted entity shows up in a frozen prompt as a `missing` anchor, never as
+whatever now sits at its position. Instruction ids come from TSIR and are preserved by the
+cooling pass (`qccd/compile/cooling.py::_rebuild`).
+
+**Files.** `design/studio.json` is a derived mirror written atomically after every commit on
+main. It carries a `qccd_workspace.revision` stamp. **The database is authoritative during
+live editing.** A file written outside Studio (an optimiser, a hand edit) comes in only through
+`qccd import` / `qccd_import_file`. That becomes a change set against the revision the file
+was stamped with, so a stale file is a conflict and never overwrites newer UI edits. Crash
+safety: SQLite WAL, one transaction per commit, and the mirror rewritten from the database on
+service start.
+
+**Concurrency.** Optimistic. Every change set names `expected_revision`. A stale request is a
+409 conflict listing the intervening change sets and what they touched. `rebase: if_disjoint`
+(which Studio uses for human edits) recompiles the same operations on the current head only
+when nothing overlaps. Nothing is last-writer-wins. Idempotency keys (`request_id`) make
+retries return the stored result, and a reused key with different content is refused.
+
+**Protection** (`core._protection_violations`) is enforced in the service for every door:
+Studio, MCP, file import and candidate adoption. An agent may protect entities, but may not
+unprotect what a person protected. `entity` level forbids changing or removing the record;
+`neighbourhood` level also forbids changing its connections.
+
+**Undo** of a change set is a new change set. It removes the records that change set stamped
+(`meta.change_set`), replays, and reports dependent later changes as a conflict instead of
+breaking them.
+
+**Candidates**: `cand/<name>` branches fork main at a revision. Adoption replays the
+candidate's operations onto main through the change-set path, so conflicts and protection
+apply.
+
+### Prompts and delivery (`collab.py`)
+
+- A draft autosaves and never delivers. **Send** freezes a context snapshot. It records the
+  revision the page had rendered, the selection, anchors resolved to entity records at that
+  revision (with `missing` keys), sketches in diagram coordinates plus the viewport they were
+  drawn in, and a demonstration: before/after revisions, a structured diff, the change sets,
+  and target keys. The snapshot, the immutable prompt version, the delivery row and the work
+  row are written in one transaction.
+- Editing a sent prompt creates a new version. A still-queued older version is cancelled as
+  superseded, never resent.
+- `comment` intent is never delivered. The **Ask / Propose / Apply locally** modes are
+  enforced: an `ask` prompt authorises no change set, and a `propose` prompt authorises
+  changes only on candidate branches.
+- Delivery states are `queued → sending → accepted | uncertain | failed | cancelled`. Work
+  states are `pending → working → waiting_input | ready_for_review → resolved | cancelled`.
+  The two are kept separate.
+- Agent replies never create deliveries, so a reply cannot trigger a turn.
+- **Stop** fences the session's writes, cancels its queued deliveries and the jobs its
+  prompts started, and asks the runtime to interrupt where it can. Committed changes stay;
+  they are undone one change set at a time.
+
+### Session adapters (`agents/`, `mcp_server.py`, `delivery.py`)
+
+| mode | deliver | acknowledgement | steer | interrupt | status |
+|---|---|---|---|---|---|
+| **Codex app-server** (`qccd agent connect --client codex`, or Studio → Agent → Connect) | `turn/start` with `clientUserMessageId` = delivery id | the turn id returned (runtime acceptance) | `turn/steer` with `expectedTurnId`; if the turn has already finished, a new turn | `turn/interrupt` | **live-tested** (§5) |
+| **Cursor CLI** (`qccd agent connect --client cursor`, or the chat) | one `cursor-agent -p --output-format stream-json --resume <chat>` run per message, the text on stdin | the run starting | not supported (queued behind the run) | kills the run; the next message resumes the chat | **live-tested** (`tests/workspace_live_cursor.py`, cursor-agent 2026.09.28), and contract-tested with a stand-in `cursor-agent` |
+| **Claude Code channel** (`qccd mcp --client claude --channel`, `claude --dangerously-load-development-channels server:qccd`) | `notifications/claude/channel` `{content, meta}` | none from Claude Code, so `uncertain` until the agent reads the prompt through a tool | not supported (queued) | not supported; the write fence still applies | **contract-tested** over real MCP stdio; not run against a live Claude Code session |
+| **pull** (any MCP client) | none: prompts are listed in `qccd_get_context.unread_prompts` | reading | – | fence only | tested; labelled everywhere as reduced capability, **not** automatic delivery |
+| Claude Agent SDK managed session | – | – | – | – | **not implemented**: it needs an Anthropic API key, cannot reuse a claude.ai subscription login, and would be a different conversation from the user's terminal |
+
+The Codex bridge uses the documented existing-session pattern: an app server on loopback
+(`codex app-server --listen ws://127.0.0.1:PORT`), the user's terminal attached with
+`codex --remote ws://127.0.0.1:PORT`, and the bridge as a second client on the same thread.
+Starting a *new* thread is supported and disclosed as new. The QCCD MCP server is passed to
+the thread through `thread/start`'s per-thread `config`, with
+`default_tools_approval_mode = "approve"`. Measured on Codex 0.154: with an approval policy of
+`never`, an unapproved MCP call is simply declined. So the user's global Codex configuration
+and project trust are left alone. The session records enough to re-attach after a service
+restart: a later `serve` resumes the same thread, starting a new app server if the old one is
+gone. A turn accepted by one service process and finished under the next is still linked to
+its prompt through the turn id stored on the delivery. An app server left from before a
+restart is stopped by pid only while that pid is still a Codex executable. An `uncertain` delivery is reconciled by listing the thread's turns and looking for the
+delivery id before anything is resent.
+
+### Studio live layer (`web/cowork.js`, `web/cowork.css`)
+
+This layer is injected by the service **after** `render_html` writes the stock page. It
+changes nothing in `render.py`, `editor.js`, `engine.js` or the page stamp, and every static
+page keeps its self-containment scan. What it does:
+
+- **Sync.** It diffs `EDITOR`'s record lists against the last confirmed revision and sends
+  one `studio_sync` change set. On a refusal (protection, invalid design, conflict) it
+  restores the service's revision and says why.
+- **Remote changes.** A commit that only appends records is applied as one
+  `EDITOR.transaction` (the view holds, and the user can Ctrl+Z it). Anything else is a
+  `restore()`. Missed events (`gap`) trigger a fresh snapshot, and reconnects resume from
+  `Last-Event-ID` / the cursor.
+- **Anchors and sketches.** Anchors: the selection, pick (canvas hit test, program row
+  `_ref`, `data-id`, `data-hint` fields, a panel fallback), lasso, point, the current frame,
+  and demonstrations. Sketches: freehand, arrow and lasso, stored in lattice units with the
+  view box. A screenshot is not the authoritative representation and is not captured.
+- **The chat (the default).** The dock is one conversation with the agent: the person's
+  messages, the agent's own messages (for Codex, what it writes in the turn is stored as the
+  thread's replies), a typing indicator while it works, and one box with Send, which becomes
+  Stop while it works. The current selection goes with the message as a chip that can be
+  removed. **+** holds lasso, point, arrow, freehand, "show an edit" (a demonstration) and
+  lock or unlock parts. What the agent did appears as small cards: a change with Show and
+  Undo, a run with its round time and "Watch it run", and a comparison with "Open side by
+  side". If no agent is connected, sending starts a conversation with the agent the person
+  chose, else the one installed (below): Codex with approval policy `never` and a read-only
+  shell, Claude Code or Cursor with no shell. Each changes the design only through the QCCD
+  tools. `QCCD_CODEX=none` (or `QCCD_CLAUDE`, `QCCD_CURSOR`) turns one off. The header also
+  carries the draft picker.
+- **The debug view.** Under **⋯**: the old tabs. They hold threads with delivery and work
+  state and their links, the agent session panel (Stop, Resume, target per tab, Follow
+  agent), attributed history with "Undo this change", jobs, and the local leaderboard
+  labelled "Local results - not published". There is a publication review dialog.
+- **Presentation.** With Follow on, the view widens to show the target (`reveal`) and flashes
+  it. With Follow off, a notification with a Show button appears instead. Either way the page
+  reports `displayed` / `notified`.
+- **Run view.** `/run/<snapshot>` renders an immutable snapshot's device and final program,
+  view-only, for comments anchored on generated instructions (`#instr=<id>` focuses one).
+- All text from people or agents is set with `textContent`.
+
+### Runs, drafts and comparison (`runs.py`, `perf.py`, `compare_page.py`)
+
+- **A run** compiles a program onto a design and tells where the time goes. It is a job of
+  kind `run` and an experiment, never a submission. The program is a catalogue name, from
+  the tracked `Compiler/examples/*.qasm` ("bb", "bb code" and "gross" mean `bb144_esm`, the
+  BB [[144,12,12]] syndrome round), or the agent's own OpenQASM. The design is `main` or any
+  draft. The job:
+  1. exports the design;
+  2. compiles with `qccdc_cli rotate` when the device has closed loops, falling back to
+     `compile`, and otherwise uses `compile`;
+  3. inserts cooling, and replays with the rules checked under the release's cost model and
+     under the transport table.
+
+  A design too small for the program, or one the compiler cannot route, fails with the
+  reason. Measured on this machine: BB144 on a 2×72 ring with 24 docks takes about 12 s end
+  to end and gives 522 ms per round.
+- **The performance report** (`perf.performance`) is read off that replay:
+  - the round time, and time by category (transport, cooling, gates, measurement, reset)
+    with shares;
+  - transport time by move class, and the five longest steps;
+  - junction transits with their imbalance, the busiest ions, and ions per trap at gates;
+  - peak heating, and failed rules;
+  - bottleneck sentences computed from those numbers.
+- **Designs** have the names their person gives them, any text ("Two triangles", "Ring v2").
+  Internally each is a branch with a made-up id that is never shown; every door takes the
+  name. A name two designs share is refused rather than guessed. Studio saves, renames,
+  switches and edits them from the chat header, and agents list, create, rename and run them.
+- **Side by side**: `/compare?runs=A,B` shows the comparison table (B minus A), a verdict,
+  each run's bottlenecks, and both runs' own pages (`/runview/<id>`, view-only) in frames.
+  One slider and Play drive both by modelled time: every step's start time is kept with
+  the run. The faster design finishes first, visibly. Only `/runview` may be framed, and
+  only by the same origin.
+- **MCP**: `qccd_list_programs`, `qccd_run_program` (it waits up to 50 s and returns the
+  report), `qccd_compare_runs` (returns the table and opens the side-by-side view in Studio),
+  and `qccd_manage_branch` (drafts).
+
+### The website with the chat (`mirror.py`, `web/pageact.js`, `web/mirror.js`)
+
+- **Every qccd.academy page, through the workspace.** The service listens on a second port
+  and serves the site at `http://127.0.0.1:47100/web/...`. `qccd studio` prints the
+  address; `qccd web [page]` pairs the browser and opens it. 47100 is a well-known port
+  (`mirror.WEB_PORT`, `QCCD_WEB_PORT` changes it): every page of qccd.academy has an
+  **Agent** button whose "Open this page with my agent" is a plain link to
+  `http://127.0.0.1:47100/web/<that page>`, and "Open my Studio" to
+  `http://127.0.0.1:47100/studio`, which redirects to the workspace's own Studio. When
+  another workspace holds 47100, the service uses the port it had last time or any free
+  one, and `qccd web` prints where. A browser that is not paired (the site's Agent link opened
+  in a browser other than the one `qccd studio` opened) says so in the chat, with a box for the
+  pairing link `qccd web` prints: pasting it there pairs that browser. Each page is fetched from the
+  site live, kept in memory for 5 minutes, then revalidated (ETag / Last-Modified). When the
+  site cannot be reached, the last copy is served, marked stale. `QCCD_SITE_URL` points it at
+  another copy of the site, which the tests do. `QCCD_WEB=0` turns the second port off.
+- **What a page gets.**
+  - The chat, the same one as in Studio, framed in the corner.
+  - A link back to the person's own Studio in the site bar.
+  - The site's own Agent button is hidden. The comment layer is switched off: it needs the
+    person's qccd.academy account, and it would call the local API.
+  - The Official leaderboard's reads are passed through.
+  - The site's Studio (`studio.html`, with the course) stays the site's. It is not the
+    workspace's design; that is `/studio`.
+- **Page context.** A message sent from a page carries the page's URL, title and kind. It
+  also carries the text the person selected (a `page` anchor with the `quote`) and anything
+  they pointed at with **+**. The delivery text tells the agent which page it is and which
+  tools read it. `qccd_get_context` lists the open pages. In the conversation, a message
+  says which page it was sent from.
+- **The agent's hands on the page.** Two MCP tools cover a fixed set of actions, all
+  implemented in `web/pageact.js`. Nothing else runs; there is no script execution.
+  - `qccd_page_read` returns the headings, the text (by section, paged), the visible
+    controls (the ones on screen first), the embedded examples with their animation step,
+    the reader's selection, and on studio pages the transport and the lessons.
+  - `qccd_page_act` does `highlight` (with a caption), `scroll`, `click`, `fill`, `press`,
+    `navigate`, `step` and `open_lesson`.
+  - Targets are refs from the last read, CSS selectors, or visible text. `frame` reaches into
+    an embedded example.
+  - `POST /api/page-actions` sends the action to the page as an event and waits for the
+    page's answer, at most 30 s. The default page is the one the current request came from,
+    else the page used last. Only an agent or the CLI can start an action, and only the
+    page's own view can answer it.
+  - The workspace's own Studio takes the same actions (its transport, panels and lessons).
+
+### The agent as a person at the screen
+
+The design goal: a person can ask their agent for anything they could do on the site
+themselves ("open the tutorial and show me how to finish each lesson", "review the rules
+for mistakes and comment under my name", even "scroll back and forth ten times"), and
+watch it happen.
+
+- **Visible.** Every page action first glides a purple cursor, labelled with the agent's
+  name ("Codex: clicking "Show answer""), to its target, then acts. Typing appears letter
+  by letter. The cursor rests, dimmed, where the agent last worked. When the target is
+  under the chat, the chat turns see-through for a while (hovering it restores it).
+  `scroll` takes `by` (pixels, `'page'`, `'-page'`), and `wait` paces a walkthrough.
+- **The Studio.** `studio` runs one verb of the page's Studio API (`EDITOR`): design on the
+  canvas, write the program, and the course's own `lessonLoad` / `lessonCheck` /
+  `lessonHint` / `lessonSolution`. The course solves its exercises with the same verbs.
+  Verbs that touch files or storage are refused. On the person's own Studio the agent
+  draws with the same verbs (`sketchDraw` a shape, `closeLoop`, `stampComponent`, …).
+  The page first syncs the person's pending edits, then runs the verb and commits what it
+  drew as the agent's change set (`by_page_action`, checked against the running action).
+  `addSite` / `addSegment` take the path the person's click and shift-drag take: on a device
+  with a builder (a lesson's canvas) a `d.site` / `d.segment`, so a loop closed over them can
+  name them.
+  Each drawing is therefore attributed, protected and undoable. A verb that refuses fails
+  the action with its rule, for example R20 for a corner under 60°. The course's verbs
+  and `open_lesson` stay off there, since they would replace the design; the refusal points to
+  `/web/studio.html#learn=<id>`, and the person's Studio can navigate back to any `/web/` page. Checked on the live
+  site: all 31 lessons' own solutions pass their checks through these tools (Part D on
+  its compiled companion page).
+- **Comments, as the person.** In the local website the site's comment layer works. Its
+  `/api/` requests are relayed to qccd.academy, and the person signs in once with their
+  own account. The session is kept in the mirror's own cookie (`qccd_site`, path
+  `/api/`), and writes are relayed only from the mirror's origin. Threads are keyed by the
+  site's path, so a comment made locally is in the same place on the public site. The
+  agent has `comments`, `comment`, `reply` and `resolve`, which call the comment layer's
+  own functions. Each comment it writes ends with "— via <agent>" and appears in the chat
+  as a card. It cannot sign in, press the comment layer's buttons, or delete anything.
+  Checked against the live pages with a private copy of the comment service
+  (`tests/workspace_live_comments.py`).
+- **Claude Code, like Codex** (`agents/claude.py`). One `claude -p --input-format stream-json`
+  process per conversation, kept alive between messages, so a message skips Claude Code's
+  start-up: about 9.5 s with the QCCD tools, against about 1 s for a kept-alive process. It is
+  started when the chat is connected, and again when a page whose chat talks to it opens, as
+  long as that agent is not stopped. It stops after 20 minutes idle, counted from its last turn.
+  A change of model or thinking level, or an interrupt, starts a new process that `--resume`s
+  the same conversation. Closing ends the whole process tree, so a `claude.cmd` wrapper
+  cannot leave its node behind. It gets the QCCD tools and Read, Grep and Glob (`--tools`),
+  no bundled skills or slash commands, `--permission-mode dontAsk`, and no shell. The
+  thinking level is `medium` unless the person picks another under ⋯: on the two-triangle
+  request it halved each model call (4.2 s against 8.3 s at Claude Code's default).
+  Its messages stream into the chat, and a failed run says why (a Claude Code that is not
+  signed in says how to sign it in). The chat starts the one last chosen under ⋯ ("New
+  conversation with Codex" / "…with Claude"), else the one `qccd agent install` set up in the
+  workspace, else whichever is installed: a Mac with the ChatGPT app has a Codex beside Claude
+  Code. `QCCD_CLAUDE=none` turns it off. Live-checked: asked on the Rules page
+  "What does rule R7 say? Show me its failing example", Claude read the section,
+  highlighted the failing example with a caption, and answered with the page's numbers.
+- **Cursor, like Claude Code** (`agents/cursor.py`). Cursor's CLI (`cursor-agent`) has a
+  print mode with Claude Code's kind of stream-json events, but no streamed input, so each
+  message is one `cursor-agent -p` run that `--resume`s the conversation's chat (made with
+  `cursor-agent create-chat` when the chat connects, and taken from each run's `system/init`
+  after that). The message goes on stdin, so it has no length limit and never shows in a
+  process list. What a run may do is QCCD's choice, not the person's own Cursor settings:
+  the runs read their settings from `.qccd/cursor/` (`CURSOR_CONFIG_DIR`), whose
+  `cli-config.json` allows the QCCD tools (`Mcp(*-qccd:*)`: Cursor names a project's server
+  `project-<n>-<folder>-qccd`) and denies `Shell(*)`, `Shell(**)` and `Write(**)`, with
+  `approvalMode: allowlist` and the sandbox off. A run is headless without `--force`, and
+  cursor-agent then refuses whatever would need an approval, so it has no shell and edits
+  nothing on disk. It has `--trust` (a headless run in an untrusted folder exits) and
+  `--approve-mcps`. The QCCD tools come from the workspace's `.cursor/mcp.json`. Cursor
+  gives an MCP server only the environment its entry names, so the entry passes
+  `${env:QCCD_SESSION_ID}` through, each run sets it, and a Cursor the person starts there
+  themselves gets a pull session. The chats live under `.qccd/cursor/chats/<md5 of the
+  folder>`, so a renamed folder starts a new chat and says so, as Claude does.
+  `CURSOR_CONFIG_DIR=.qccd/cursor cursor-agent --resume <chat>` goes on in a terminal. Stop
+  kills the run, and the next message resumes the same chat. A run that is not signed in says
+  to run `cursor-agent login`. The chat's note to the agent (short in-between lines, nothing
+  outlives the turn) goes with each message, because the CLI has no flag for a system
+  prompt. `qccd agent install --client cursor` also says whether Cursor's CLI is installed and
+  signed in (`cursor-agent status`), and names the one command that is missing: the editor does
+  not include the CLI. `QCCD_CURSOR=none` turns it off. Live-checked on 2026-09-28 (cursor-agent
+  2026.09.28, model Auto), twice. "What does rule R7 say?" was answered in 15 to 23 s through
+  `qccd_read_reference`. A follow-up on R8 went on in the same chat in 8 s and remembered the R7
+  question. Asked to run `ls` and to write `probe.txt`, it was refused both ("Command blocked by
+  permissions configuration", "Write permission denied") and said so. No file was written. Its
+  tool calls were recorded under the chat's own session.
+
+### Only what is declared
+
+An agent may do on a page only what the code declares (`qccd/workspace/interface.py`; the
+developer's rule is `docs/agent-interface.md`):
+
+- **controls:** a `data-hint` key the page describes, links and fold-outs, fields of a
+  generated form, and a short out-of-line list that may only shrink;
+- **places:** the site's index, the page's own links, and `/studio`;
+- **Studio functions:** those declared for agents in `qccd/viz/js/editor_api.json` (148 of 239).
+
+Anything else is refused with what is declared instead, and the refusal lands in the trace.
+The declarations are read when a page is served, so a rebuild updates what agents know.
+`tests/test_agent_interface.py` fails a change that adds UI or an API function without its
+declaration. The opt-in `tests/workspace_live_interface.py` checks every place on the live
+site.
+
+### Nothing out of sight
+
+What the agent does to the person's design or with their programs happens where they are
+looking.
+
+- **The Design page is the live Studio.** On the local website, `studio.html` (and `#design`)
+  opens the workspace's own Studio (`/studio`). Lesson links (`#learn=…`) stay on the site's
+  Studio. Every change set an agent commits appears there at once, with the agent's cursor
+  at the changed parts and the change set's summary as its caption.
+- **A run is shown before it is reported.** While `qccd_run_program` compiles, the Studio
+  shows the run's program (the first lines of its OpenQASM) and its progress. When it
+  succeeds, the person's tab opens the run's own page (`/runview/<run>`, the circuit
+  beside the compiled program), which plays by itself (`#play`; it used to open paused).
+  Follow off, or a background tab, gets a "Watch it run" button instead. A comparison
+  opens side by side the same way.
+- **The evaluation is on the page** (`run_eval.py`). The run page's left rail holds an
+  Evaluation panel drawn from the evaluator's own replay, step by step (`perf.timeline`):
+  the modelled clock against the round's total, time by category (transport, cooling,
+  gates, measurement, reset), steps, two-qubit gates and ions moved, all counting up as the
+  animation plays, and at the last step the result with its bottlenecks, heating and rules.
+  Its totals are the per-cycle durations the replay sums, so they end exactly at the run's
+  report (the page checks, and says so if they ever do not). The page reports what the
+  panel shows (`POST /api/runs/<run>/evaluation`), and `qccd_run_program` returns that as
+  `evaluation`: the agent reports the numbers on the person's screen. With no page open it
+  returns the evaluator's `performance`, labelled as such.
+- **A run need not be watched.** "Skip to result" on the run page jumps to the final panel;
+  the chat's ⋯ menu has "Play runs as animations" (off: every run opens at its result,
+  `#result`); and `qccd_run_program(animate=false)` opens one run that way, which the agent
+  uses when the person wants designs tried as fast as possible. A BB round plays for about
+  19 minutes at the default speed; at its result it is a second.
+- **All of it in sight.** After an agent changes the design or its programme, the view
+  re-fits when any part of the drawing -- every node, and the decoder, the classical memory
+  and the dashed wires to them (`STAGE_EXTENT`) -- is outside the canvas or under the chat,
+  or has shrunk to a corner of the view (`pageact.js` `keepInView`, on the person's Studio
+  and on the site's Studio pages alike). It fits into the part of the canvas the chat
+  leaves free, and runs after the page has redrawn: the classical layer's floor settles a
+  frame after the change, and a check made at once missed it.
+- **Failures say why.** When the agent's runtime stops without answering, the chat shows
+  why: a failed Codex turn or Claude run leaves its error message (a usage limit, for
+  example) as a notice in the conversation, instead of the conversation going quiet.
+
+### The chat: where it sits, which model, and what the agent did
+
+- **It moves.** Drag the chat by its header, resize it from the bottom-right corner, and
+  double-click the header to put it back. On a website page the chat is a frame, and the
+  page moves the frame when the chat asks it to. The browser remembers the place, once
+  for the Studio and once for the website.
+- **Model and thinking.** The button beside the agent's name picks the model and how hard
+  it thinks, as in Claude or Codex. Claude offers Default, Fable, Opus, Sonnet and Haiku
+  (`claude --model <alias>`) and the levels low, medium, high, xhigh and max (`--effort`).
+  Codex's list is its app server's own (`model/list`), each model with the levels it
+  supports, passed as `model` and `effort` on every `turn/start`. Cursor's list is
+  `cursor-agent models` (the account's models, kept for an hour), passed as `--model`. Its
+  thinking is part of a model's id (a `-thinking` model), so it has no separate level. A choice applies from
+  the next message. It is kept on the session (`capabilities.settings`, and in what a
+  restarted service re-attaches with). Before a conversation exists it is remembered in
+  the browser and used when one starts. `GET /api/agents/models` and
+  `POST /api/sessions/{id}/settings` (a person only) are behind it. Checked: each Claude
+  alias answers with `--effort low`, and Codex's list came from its app server.
+- **The trace** (`trace.py`, `web/trace.js`). Everything an agent does for a request is
+  recorded in order, in `.qccd/traces/<session>.jsonl`:
+  - the full text it was handed, and the person's own words;
+  - what it started with: model, tools, MCP servers, skills;
+  - its thinking;
+  - every tool, MCP and Skill call with its input and result;
+  - every page action and what the page answered;
+  - how the turn ended: time, model turns, cost, error.
+
+  The steps come from four places: Claude's and Cursor's stream-json, Codex's item events, and the
+  QCCD MCP server (which records every call it serves, so agents started in a terminal
+  are traced too), plus the service for page actions. Long values keep their head, keys
+  that name credentials are blanked, and nothing leaves the computer.
+
+  To read a trace, use `/trace` in the browser (⋯ → "Trace: what the agent did, step by
+  step"). It lists each conversation's requests and shows one step by step. Replay shows
+  the steps again at their recorded pace (real time, 4×, 16×, or one a second), and JSON
+  exports them. From a terminal, `qccd trace` lists the conversations and
+  `qccd trace --session <id> [--prompt <id>] [--full | --json | --open]` prints one
+  request. `GET /api/traces[/<session>?prompt=]` serves the same data.
+- **A run as a program** (`atir.py`, 2026-09-26). A request's trace compiles into ATIR: one
+  instruction per line, like a compiled QCCD programme beside its animation.
+  - `recv`: the request arrives.
+  - `boot`: the agent process starts.
+  - `think`: one model call, with its latency and the context it read, which is the agent's
+    memory.
+  - `say`: text the person reads.
+  - `call`: a tool or a page action, with end-to-end and in-tool time and the size of what it
+    returned.
+  - `end`: the turn's totals.
+
+  Each call carries its effects: a design commit (change set and revision), a job started or
+  polled, a design made. `check()` verifies a program. It must be well-formed, and every commit
+  it claims must be in the change-set log at that revision and replay. The tests forge, move and
+  cut commits and results to prove the checker can fail.
+
+  `/trace` opens on the Program view:
+  - a time bar by machine (model, tools, page);
+  - the memory curve;
+  - the listing;
+  - beside it, the design as it stood at the selected instruction, drawn from
+    `GET /api/design-graph?branch=&rev=`, with a commit's new sites marked;
+  - play and step controls.
+
+  `qccd trace --program` prints the listing; `--check` also checks it against the workspace.
+  `GET /api/traces/<session>/program` serves it. Claude Code's per-call usage is recorded
+  since 2026-09-26, so memory is exact from then on. Its output counts are final only on a
+  call's last event, and a program never guesses them.
+
+  Measured on the two-triangle BB request:
+  - **Before the speed fixes:** 101 model calls and 431 s of model time, 76 of the calls
+    polling the grade; one call took 57.5 s to work out dock coordinates.
+  - **After:** 29 model calls and 110 s of model time. The design was submitted after
+    102.7 s (175.7 s before), and the slowest model call took 9.0 s.
+
+  `tools/agent_costs.py` turns traces into the numbers the website's Agentic Design page
+  shows.
+- **A submission follows itself.** The chat shows a submission as one card: its compile, its
+  grade's stage, and then the verdict with the board's ranking metric. `qccd_get_job` on a
+  submission waits through the compile and then the grade, and returns the verdict as `grade`,
+  so one call usually brings it back. The agent follows it once; if it is still running, the
+  agent says the card will show the verdict and stops. Before the checker fix below, a BB grade
+  took 667 s, 93% of it the Lean certificate check, and an agent that followed it used 14 model
+  calls and kept the chat busy the whole time.
+- **The Lean checker replays once** (`Compiler/lean/QCCDC/Cert/Check.lean`). `MovesAreHops`,
+  `GatesLegal` and `RespectsOrder` bind their replay with a `let`. Decided through
+  `unfold; infer_instance`, that `let` landed inside the compiled per-move and per-operand
+  functions, so a BB certificate was replayed about 3,700 times. The instances now decide
+  forms that take the replay as a parameter, equal by `Iff.rfl`; the specification and
+  `check_sound` are unchanged, and the theorems' axioms are still only `propext`. The
+  two-triangle certificate: 623.4 s before, 0.8 s after. Its full reference grade: 667 s
+  before, 12.4 s after. A differential test ran both checkers on the 93 certificates of
+  `Compiler/build/matrix` and 1,091 mutants of them (the C6 mutations, plus four on
+  rotations):
+  - 1,158 cases gave identical output;
+  - 25 were BB cases where the old checker ran past 120 s;
+  - in 1 the old checker ran out of memory, and the new one rejects it with the right reason.
+
+  A movement-heavy certificate (39,940 moves, no rotations) still takes 36 s, because
+  `stateIn` scans the snapshot list for each lookup.
+- **A submission reuses its run's compile.** When a finished run compiled the board's circuit
+  (line endings aside) for the device the design has now, the submission adopts that run's
+  program, certified program and certificate instead of compiling again (29 s for BB). Any
+  other case compiles as before. The grade checks the frozen bundle either way.
+- **`add_docks`** (an operation): the conveyor's docks from a count. They are spread evenly
+  around the first closed loop (or `loop`), never at a corner or beside another dock, one unit
+  in (or `distance`, `side`), each one `add_site(to=[loop site])`.
+- **The agent knows the site.** `qccd_read_reference` section `site` is read from the live
+  site's own search index. It holds:
+  - the main pages, the lessons and the leaderboards;
+  - a short how-to: walk someone through a lesson, show an animation, test a program on
+    the design, try one on a site Studio page, check a page for mistakes, comment.
+
+  Section `site:studio` lists every Studio control in the Studio's own words (the explain
+  layer's HINTS table, the sentences on its hover cards). In a page read, each Studio
+  control carries its `hint` key and that sentence. `query` searches both sections.
+
+## 3 · Grading (`evaluator.py`, `bundle.py`, `metrics.py`, `tasks.py`)
+
+`grade(release, bundle, profile) → report`. The local service, the CLI and the official
+worker all call it.
+
+| stage | establishes | uses |
+|---|---|---|
+| bundle | manifest schema; every member re-hashed; no stray or unknown files; names **this** release (id and digest) | `bundle.read_bundle` |
+| device | loads under the schema and structure checks; size limit | `Architecture.from_json` |
+| physics_lock | `primitives/heating/species/budget` equal the release's `physics.json`; otherwise the design is *exploratory*, never eligible | `tasks.physics_mismatch` |
+| program | well-formed TSIR within limits | `validate_program` |
+| rules | replay under the task model; only R7b, R9 and R10 may be skipped, only R15 may be partial | `qccd.verify.verify` |
+| correspondence | the final program is the certified program with only allowed insertions (`cool`, fresh ids), identical otherwise except the provenance index `meta.call` | new |
+| certificate_binding | the certificate's `circuit_ops` are the **release's** circuit op by op (a composite such as `ccx` as the run of ops whose product is its defining unitary), with its qubit count and a one-to-one qubit map; gate witnesses match certified instructions | `check_cert.check_binding`, `qccd.ir.source_map` |
+| lean_certificate | `QCCDC.Cert.check` (proved sound) accepts, against facts re-derived from the **submitted** device | `mk_qcheck_input.py`, `qcheck` |
+| semantics | O1 transport replay, witnesses tied to the program's instructions, and O2: the emitted pulses, measurements and resets equal to the trusted circuit -- a stabilizer tableau, or outside Clifford an exact unitary up to 10 qubits (partial beyond) | `check_cert.py` without `--qcheck` |
+| metrics | `T_jones`, `T_transport` (ms, modelled), `instructions`, `dacs`, `ions_per_instruction` | `metrics.compute_metrics` |
+
+**Eligible** means every required stage `passed` under the `reference` profile. `skipped`,
+`unsupported`, `partial`, `timeout`, `cancelled` and `internal_error` are never passes. The
+report records task and bundle digests, the evaluator identity (a source digest over the
+code that decides verdicts, plus sha256 of `qccdc_cli` and `qcheck`), per-stage coverage,
+diagnostics with stable ids (`RULE.R1`, `TASK.PHYSICS_MODIFIED`, `CERT.BINDING`,
+`CORR.MISMATCH`, …), metrics with units, and non-deterministic timing kept apart.
+`evaluator.comparable` / `publish.compare_reports` define parity.
+
+**What it does not establish.** Physical realisability beyond the task's model. (The
+certificate's transport *is* compared with the final program's: `check_cert.py` replays both
+and requires each ion's moves, and every rotation, to be the same and in the same order --
+`o1_transport`, part of O1 -- so a programme that moves ions the certificate does not claim,
+or claims moves it does not make, fails the semantics stage. Co-location of the program's
+own gates is rule R6b of the replay, and the semantic link is O2 through the certificate's
+qubit→ion map.)
+
+**Metrics parity.** `tests/test_workspace_metrics.py` reproduces the published board numbers
+(`SmallCode/*/manifest.json`, re-replayed) exactly when those files are present. Modelled
+time never depends on wall-clock time.
+
+**Boards.** Each leaderboard of the website is a task release
+(`qccd/workspace/releases/<task>@<release>/`), which pins the circuit, the physics and the
+manifest by sha256. `.gitattributes` keeps their bytes exact. People only ever see and type a
+board's title. Code finds a board with `find_board` (title or short name, newest edition) and
+refuses an ambiguous name.
+
+Six boards ship, the five from the website (written by `tools/make_releases.py` from each
+board's own title, description and circuit) plus the GHZ starter. Measured 2026-09-24, each on
+its suggested first device, with the full reference grade (rules, Lean certificate,
+semantics) eligible:
+
+| board | first device | per round | grade time |
+|---|---|---|---|
+| BB [[144,12,12]] | ring 72 × 2, 24 docks | 522 ms | about 6 min, mostly Lean |
+| BB [[144,12,12]], drawn in the Studio | a triangle loop of 144 sites, 24 docks inside it ("a large triangle and a smaller one") | 505.8 ms | 451 s |
+| Repetition code, distance 9 | ring 8 × 2, 8 docks | 9.45 ms | seconds |
+| Five-qubit code [[5,1,3]] | 3 × 3 grid | 8.89 ms | seconds |
+| Steane code [[7,1,3]] | ring 8 × 2, 8 docks | 11.48 ms | seconds |
+| Surface code, distance 3 (17 qubits) | ring 8 × 2, 8 docks | 14.1 ms | seconds |
+| GHZ state on four qubits (starter) | chain of 4 | — | about 4 s |
+
+Every metric has a unit and a direction. The numerical policy is `rel_tol 1e-9 / abs_tol
+1e-12`. The track is `codesign-artifact`: hardware plus final schedule for a fixed circuit.
+
+**A workspace is general.** Its lockfile (version 2) names no board, and one workspace
+submits any design to any board. The old version-1 lockfile pinned one release; it still
+opens, and that release becomes its default. `submit_design(design, board)` (the Studio's
+"Submit to this board", the agent's `qccd_submit_local(design, board)`, and `qccd submit
+--local --board <title>`) runs as one job:
+
+1. compile the board's circuit onto the design (the conveyor first for a design with a closed
+   loop, else the router);
+2. adopt the program, which records the circuit it was compiled for;
+3. freeze a snapshot, recording the board and its digest;
+4. grade it against that board.
+
+A program compiled for one board is refused for another, which compiles again instead.
+Databases from before (store schema 1) are migrated in place.
+
+Board entries whose junction curves extend to degrees 5–16 (`random16`, `tanner`) would
+fail `physics_lock` against the reference physics. That is intended: their physics differs
+from the task's.
+
+### The official leaderboard: signing in, testing, submitting (`account.py`, `publications.py`)
+
+A design goes from a person's workspace to qccd.academy's leaderboard in three steps. The
+leaderboard shows who submitted each design.
+
+1. **Test.** The design is graded on the board locally with every check the server runs.
+   This is `submit_design`, as above.
+2. **Sign in.** The workspace is signed in with the person's own qccd.academy account.
+3. **Submit.** The person presses Submit. The server grades the design again, then lists it
+   under the person's name.
+
+**Where a person does it.**
+
+- **Studio.** **Submit to Leaderboard**, in the Studio's head, opens the **Leaderboard panel**
+  (`web/cowork.js`, `GET /api/board-view`). It holds:
+  - a board picker over the boards qccd.academy ranks;
+  - what the board ranks;
+  - **Test on this board**, with the verdict and where it would place;
+  - the sign-in;
+  - the name shown on the board, and public or private;
+  - **Submit as <name>**, enabled only once the design's current revision passed;
+  - the design's requests to publish, each followed to its place on the board;
+  - the official ranking, live, with a **by** column.
+- **Website.** Every board on `/board/` has **Try your own design**. On qccd.academy it offers
+  `http://127.0.0.1:47100/studio?board=<task>` and the setup steps. On the workspace's copy of
+  the site (the mirror) it goes straight there. The mirror's `/studio` forwards `?board=` to
+  the Studio, which opens with the panel on that board.
+- **Terminal.** `qccd login` (and `qccd logout`) do the same sign-in. `qccd publish
+  --submission <id>` reviews the bundle, asks for its digest to be typed, and submits it as the
+  signed-in person. `qccd leaderboard --official --board <title>` shows the board with `by`,
+  and the person's own requests.
+
+**Signing in** is a device link (`qccd/official/accounts.py`). The password is typed on the
+site only; the workspace never sees it.
+
+1. The workspace asks the official server for a code (`POST /official/v1/links`) and opens
+   `https://qccd.academy/connect/?code=XXXX-XXXX`.
+2. On that page, the person, signed in to the site, presses **Allow**.
+3. The page asks the site's accounts service for a **grant** (`POST /api/leaderboard/grant`).
+   A grant is five minutes long, and names the account and that one code. It is signed with
+   HMAC-SHA256 under `QCCD_ACCOUNT_SECRET`, which only the two services hold.
+4. The page hands the grant to the official server (`/v1/links/<code>/approve`). The two
+   services share no database and no network path, so this is how the official server learns
+   who approved.
+5. The workspace, polling with a secret only it holds, collects its key once.
+
+The key is an uploader of kind `account`. It can upload only, and in that person's name. It
+is kept per person, not per workspace, in `~/.qccd/credentials.json` (`QCCD_CREDENTIALS` moves
+it), which only that user can read. No door returns it: the Studio, MCP, the CLI and the context
+give the account's name only. `/connect/` also lists the workspaces that can submit as the
+person, with **Revoke**, and what they submitted. Signing out revokes the key on the server
+first. Without the secret configured, both services refuse the sign-in and say why; maintainer
+tokens (`add-uploader`) still work, and are credited with their own name.
+
+**Only the person submits.** A person's Submit (panel, card, or `qccd publish`) is the
+approval: `approve_publish` binds the bundle digest and the parameters, and `publish`
+re-hashes the bundle before sending it.
+
+An agent's `qccd_submit_official(design, board)` makes a request and nothing more. The request
+moves through these states:
+
+- **testing** — the design had no current passing grade on that board, so it is being tested
+  first;
+- **awaiting_person** — the chat shows a card, *Submit <design> to <board> as <name>?*, with
+  **Submit as <name>** and **Not now**;
+- **uploading**, then **uploaded** — the person pressed Submit.
+
+If nobody is signed in, the card offers the sign-in. A design that failed its test is refused,
+with the reasons. The agent reads `account` and `view.board` (the board the panel shows) in
+`qccd_get_context`. It opens the panel with `qccd_present(open_board)`. It reads its requests
+under `yours` in `qccd_get_leaderboard(board, official=true)`. The panel, its buttons and the
+card are the person's (`data-qccd-private`), so page actions cannot press them.
+
+**What is checked before anything is sent.**
+
+- The design passed: a current (not stale) reference grade of that design on that board,
+  graded eligible.
+- The workspace is signed in.
+- The server ranks that edition of the board: same release id, same digest.
+
+After upload, the request reads the server's own verdict and the design's place on the board
+(`GET /v1/submissions/<id>`, `/v1/leaderboard/<task>`). It re-reads them every few seconds while
+the server grades, then every minute. Nothing is pushed, so a closed page loses nothing.
+
+**Credit.** Every official submission records the account (`account_id`) and its name at the
+time (`credit`). Every leaderboard row, on the site and through the tools, carries it as `by`.
+A person's keys on two computers share the account's quota, 30 submissions a day
+(`QCCD_ACCOUNT_QUOTA`). They also share its private submissions (`GET /v1/submissions` with the
+key).
+
+Tests:
+
+- `tests/test_official_accounts.py`: the grant's checks; the device link; keys and revocation;
+  credit; the HTTP routes.
+- `tests/test_leaderboard_grant.py`: the real site server signs a grant that the official
+  service accepts, and refuses everything else.
+- `tests/test_workspace_official.py`: a real official server on a loopback port, and a real
+  toolchain grade, covering:
+  - sign-in, test, Submit and the credit;
+  - an agent's request that only the person can confirm;
+  - a stale test refused;
+  - sign-out revoking the key.
+
+## 4 · Security and trust boundaries
+
+- **Local service.** Binds 127.0.0.1. Host must be `127.0.0.1:<port>` or `localhost:<port>`.
+  Cross-origin `Origin` is refused, and there are no CORS headers. A browser pairs with a
+  one-time code (5 minutes) that `qccd studio` mints and puts in the URL *fragment*, then
+  strips. The page gets an HttpOnly SameSite=Strict cookie plus a CSRF token required on
+  every write. Agents and the CLI use bearer tokens from `~/.qccd/runtime/<ws>.json`,
+  outside the project and never in URLs, logs, exports or MCP responses. Bearer tokens are
+  new for every service process. Browser pairings outlive one: `<ws>.sticky.json`, in the
+  same user-private directory, keeps the last port and each pairing as the SHA-256 of its
+  cookie with its CSRF token (never the cookie itself), so a restarted service still
+  recognises an open page. Pairings expire after 14 days. Bodies are parsed
+  strictly (duplicate keys, NaN, depth, size). Imports cannot leave the workspace. The CSP
+  allows only same-origin connections.
+- **The website mirror.** Its pages come from the internet, so they get their own origin
+  (the second port), which the workspace does not trust:
+  - The mirror serves GET pages and nothing else. It never honours the pairing cookie, even
+    though browsers send it there (cookies ignore ports).
+  - The workspace refuses the mirror's `Origin` like any other.
+  - The chat on a mirror page is a frame from the workspace's origin (`/chatframe`), and only
+    the mirror's origin may frame it (`frame-ancestors`). Only that frame holds the pairing.
+    It talks to the page by `postMessage`, checking the source window and origin both ways.
+  - Page actions cannot reach the chat: the dock, its menus, dialogs and notices. Navigation
+    and link clicks stay on the site.
+  - What a page answers is website content: data, not authority. It is labelled that way
+    for the agent.
+  - A hostile page could still hide or cover the chat frame, or answer page actions falsely.
+    It cannot read the conversation or act as the person.
+- **Agent scope.** The agent token can edit, comment, run jobs, submit locally and *prepare*
+  publication. It cannot send prompts, approve publication, stop or resume sessions, mint
+  pairing codes, unprotect a person's lock, or shut the service down.
+- **Residual risk.** Any process running as the user can read the runtime file. QCCD's
+  guarantees apply to its own API surface and are not a sandbox against a local agent with a
+  shell. `qccd publish --submission` approves only at an interactive terminal (it asks for
+  the digest). The Studio dialog approves on a click.
+- **Grading.** Bundles are data and never executed. Subprocesses run from argument lists,
+  under timeouts, memory limits (Windows Job Objects, POSIX rlimits) and whole-tree kills. The
+  official grader runs with no network and no credentials (Compose: `network_mode: none`,
+  read-only root, tmpfs, all capabilities dropped). The server never uses client reports or
+  profiles, and resolves tasks from its own releases. Uploads fail closed without configured
+  uploaders. The development token is explicit and loopback-only.
+- **Publication.** An approval is bound to the bundle digest *and* the parameters, used once,
+  and re-verified against the files on disk before upload. The archive contains only the
+  bundle: no optimiser source, conversations, database or credentials.
+
+## 5 · Implementation status
+
+| requirement (brief §) | status | evidence |
+|---|---|---|
+| A · shared domain boundary: one applier for human and agent edits; revisioned contracts | **done** | `test_workspace_design.py` (browser parity), `test_workspace_core.py` |
+| A · evaluator entry point reusing the toolchain | **done** | `test_workspace_grading.py` |
+| B · Studio ↔ service live sync, SSE, reconnect, gaps | **done** | `test_workspace_browser.py` (real Chrome), `test_workspace_service.py` |
+| B · selected-object/region prompts, durable delivery, a real session adapter, agent reply, revision-safe change, highlight | **done**, Codex **live-tested** | `tests/workspace_live_codex.py`: a prompt sent from the page reached a new Codex thread (turn/start accepted); Codex committed a change set via MCP, linked it to the prompt, replied `ready_for_review`; the page rendered it without reload |
+| C · anchors across Studio, sketches, demonstrations, threads, protection, candidates, undo, jobs, immutable local submissions, run view, comparison | **done** | core + browser + grading tests; comparison is the local leaderboard + `compare` |
+| C · full compile/check pipeline | **done** (starter task) | compile ~1 s, reference grade ~4 s with Lean |
+| D · skill + references, installers, capability reporting | **done** | `skill/`, `installers.py`; generated references |
+| D · Codex adapter: deliver, observe, steer, interrupt, reconcile, re-attach | deliver/observe/reconcile **live**; steer/interrupt implemented against the verified schema, **not exercised live** | |
+| D · Claude channel | **contract-tested** only | `test_claude_channel_pushes_studio_prompts_and_reading_acknowledges` |
+| D · generic pull fallback | **done**, labelled reduced | |
+| E · official API, auth, queue, worker, isolated grader, reports, leaderboard, parity | **done**: SQLite, both inline and containerised; the PostgreSQL path has not run | `test_official.py`; `deploy/official/` |
+| E · production deployment | **live** since 2026-09-22 at `https://qccd.academy/official/` (JSON API); authorised by the user | `deploy/official/README.md`; a private smoke submission graded eligible there, with exact parity |
+| F · WebMCP / Playwright | **not done** (optional); a CDP driver (`tests/workspace_browser.mjs`) serves testing | |
+| demonstration script | **done**; live Codex run: see below | `examples/workspace_demo/demo.py` |
+
+**The demonstration with a live Codex agent** (`demo.py --agent codex`, 2026-09-22, third
+run). What happened, in order:
+
+1. *"Use this structure here, but preserve these gate zones"*: Codex asked which source
+   structure was meant (`waiting_input`) instead of guessing.
+2. The clarification queued behind the running turn and was delivered when that turn ended.
+   Codex committed C4 and C5 with two segments through MCP, linked the change set to the
+   prompt, and resolved it. C0 and C1 were untouched.
+3. The person moved C5 by hand and sent *"Like this; apply the same arrangement to the other
+   selected module"*, with the edit as a demonstration and the protected C0 as the target.
+   Codex read it as "move C0 the same way". The service's protection check refused the
+   preview, and Codex reported that and asked (`waiting_input`). It did not work around the
+   protection. (The scripted stand-in reads the same words as "build the mirrored chain
+   beside C0", which protection allows. The sentence is ambiguous.)
+4. Compile, local reference grade (all ten stages passed, eligible), a later edit leaving that
+   result stale and byte-identical, and approve + publish to the development official
+   server. That server's independent report agreed exactly (no stage or metric
+   differences).
+
+The earlier runs did not complete. In run 1, Codex asked a question and the demo had no
+answer step. In run 2, the service was killed from outside twice, which led to the
+restart-continuity work in §6.
+
+Tested combination: Windows 11, Python 3.14.3, FastAPI 0.135.3 / Starlette 1.0.0 / uvicorn
+0.43.0 / pydantic 2.13.5, MCP SDK 2.2.0 (`mcp`, `mcp-types`), websockets 16.0, Codex CLI
+0.154.0-alpha.6.2 (app-server protocol schema generated locally), Chrome headless, Node 24.
+Claude Code 2.1.199 is installed but its channel was not exercised live.
+
+## 6 · Known issues and gaps
+
+- **Services killed from outside; cause not found.** On 2026-09-22, processes on this
+  machine were terminated several times with no output at all: no traceback, no
+  `faulthandler` record, no Windows Application or System event.
+  - Twice (about 14:37–14:50 and 15:14–15:21 local time), every `python.exe` on the machine
+    died, including another project's long-running workers.
+  - In the second live Codex demonstration, only this workspace's service died, twice:
+    3 s into a Codex turn (15:24:57) and 2 min after the turn ended (15:27:25). Other Python
+    processes survived both times.
+
+  Nothing in this code kills by name or image. Every kill targets a pid: its own
+  subprocesses, and an app server it started (checked first to still be Codex). The system
+  is built to survive such a kill:
+  - A restarted service listens on the **same port** and still honours the browser
+    pairings, so an open Studio page's event stream reconnects without a reload.
+    `test_a_page_survives_a_service_restart` kills the service mid-session in real Chrome.
+  - Adapters and the CLI find or restart the service (`ensure_service`). They never start a
+    twin while the old pid lives, and `.qccd/service.lock` allows one service per workspace.
+  - Codex sessions re-attach to their thread.
+  - Uncertain deliveries are reconciled.
+  - Dead jobs become `internal_error` and are not rerun.
+
+  - `qccd studio --keep-alive` stays in the foreground and restarts a service that was
+    killed. It does not restart one stopped on purpose (`qccd stop` removes the runtime
+    file; a kill leaves it behind).
+
+  **Gap:** without `--keep-alive`, nothing restarts a killed service until an agent or the
+  CLI next needs it. A page on its own cannot start one, and shows *disconnected* until then. Two earlier bugs from
+  this investigation are fixed: `_pid_alive` treated *access denied* as dead, and a service
+  spawned inside an agent's job object could die with it (it now spawns with job breakaway).
+- **No prebuilt compiler for Intel Macs**, and a prebuilt Lean checker for Windows and Linux
+  on x86-64 only (the Mac build of the current checker is not made yet). Elsewhere `qccd
+  toolchain build-checker` makes `qcheck` in about a minute;
+  until then local reference grades stay `unsupported` at the certificate stage.
+  `tests/test_workspace_toolchain.py` fails when `Compiler/ocaml`, or a source `qcheck` is built
+  from, changes without a new release (`deploy/toolchain/README.md`).
+- The `qccd` console script needs the repository layout. The toolchain reads repo-relative
+  files (`arch/` templates, `Compiler/` binaries), so install with `pip install -e .[agent]`
+  from a clone. A standalone wheel is not complete.
+- The BB board's reference check takes about 6 minutes on this machine, mostly the Lean
+  checker. The official grader's memory limit has to cover it (see the deploy notes).
+- `studio_sync` build records are hoisted before the seal, as the page does. A device whose
+  seal changes form between revisions (generator ↔ explicit) makes an in-flight human edit
+  unrebaseable. It is refused, and the page shows the current design.
+- `render_html` is called once per service for the design view. The page's other embedded
+  data (templates, schema) is fixed at that render.
+- A run's page footer (the in-browser engine's estimate) can disagree with the evaluator's
+  replay: 569 ms against 522 ms for BB144 on the 24-dock ring. That is the Studio engine's
+  parity gap (`tests/parity.mjs`), not the run's. The comparison page says which number is
+  the evaluator's.
+- The official service is live at `https://qccd.academy/official/`, built from commit
+  `10152b1`, which had not been pushed to GitHub when it was deployed. Its leaderboard is
+  JSON only; qccd.academy has no page for it yet. Its data volumes are not backed up. The
+  PostgreSQL code path has never been run.
+- **The website mirror needs the internet** for any page it has not cached; the Studio and
+  everything else stay offline. Pages are cached per service process, in memory only.
+- Page actions work on the DOM as it is. A site page that builds its controls from script
+  without buttons, links or ARIA roles shows fewer controls; the agent can still target
+  them by selector or text.
+- A live Codex answer on a website page has **not** been observed yet. On 2026-09-23 the
+  account's Codex usage limit was reached, and both attempts ended with Codex's
+  `usageLimitExceeded`. The full loop is tested with a real MCP client standing in for the
+  agent (`test_an_mcp_agent_answers_a_question_from_the_page`); the rerun is
+  `QCCD_LIVE_CODEX=1 python tests/workspace_live_page.py`.
+- A demonstration is delivered as data (diff, change sets, targets). Generalising it is the
+  agent's job, and the service only guarantees that the result is valid and respects
+  protection.
+
+## 7 · Running it
+
+**Install** (from a clone; the toolchain reads repository files). Python 3.10 or newer: macOS
+ships 3.9 as `python3` and no `python`, so there install one first (`brew install python@3.13`).
+
+```bash
+# macOS / Linux
+python3.13 -m venv .venv                         # any Python >= 3.10
+source .venv/bin/activate                        # then `python` and `qccd` are the venv's
+pip install -e ".[agent]"                        # quoted: zsh would expand the brackets
+
+# Windows (PowerShell or cmd)
+py -m venv .venv
+.venv\Scripts\activate
+pip install -e ".[agent]"
+
+qccd toolchain install     # the prebuilt compiler, and on Windows and Linux the proved checker too
+qccd toolchain build-checker   # on a Mac: build the proved checker from source (needs Lean)
+```
+
+`qccd toolchain install` fetches `qccdc_cli` for Windows or Linux on x86-64 or macOS on Apple
+silicon, and `qcheck` (the Lean checker) where one is published -- Windows and Linux on x86-64
+-- from qccd.academy. It refuses each download unless its size and SHA-256 match
+`qccd/workspace/toolchain.json`, installs it under `~/.qccd/toolchain/`, and runs it once
+(the compiler on a test circuit, the checker on a certificate it must accept and one it must
+reject). `qccd toolchain status` says which compiler and checker are in use: `QCCD_QCCDC` /
+`QCCD_QCHECK` first, then one built in the checkout, then the installed one. Where no `qcheck`
+is published, `qccd toolchain build-checker` builds it from source in about a minute without
+Mathlib (it runs `lake build` in `Compiler/lean/checker`, so it needs Lean, installed with
+elan; the command says how if it is missing), runs it once on a certificate it must accept and
+one it must reject, and the workspace uses it from then on; without it a reference grade reports
+the Lean stage `unsupported`, which is never eligible. `qccd toolchain check
+<file>.qcheck.json` runs the checker in use on one certificate, with its own output and exit
+code (0 accepted, 1 rejected). An Intel Mac builds the compiler from source. How a
+release is built and published: `deploy/toolchain/README.md`.
+
+**One workspace, end to end.** Two kinds of words below. **Yours to name, anything you
+like:** the workspace folder ("My QCCD designs" is only an example; `qccd init` with no name makes
+the folder you are in the workspace; rename or move it later while the service is stopped), every
+design (the Studio's design menu, `--design`, or ask the agent), and the name shown if you
+publish. **Type as shown:** the commands, and a board by its title or any unambiguous part of it
+(`"BB"`, `"surface code"`; `qccd boards` lists them). There is no task to choose: one workspace
+takes any number of designs to every board.
+
+```bash
+qccd init "My QCCD designs"              # any folder name; or `qccd init` inside a folder you have
+cd "My QCCD designs"
+qccd agent install --client codex        # .agents/skills/qccd, .codex/config.toml block, AGENTS.md block
+qccd agent install --client claude --channel   # .claude/skills/qccd, .mcp.json "qccd", CLAUDE.md block
+qccd agent install --client cursor       # .cursor/skills/qccd, .cursor/mcp.json "qccd", .cursor/rules/qccd.mdc
+qccd studio                              # starts the service, opens Studio paired (one-time code)
+qccd studio --keep-alive                 # ...and stays, restarting the service if something kills it
+qccd web                                 # the qccd.academy website with the same chat on every page
+qccd web rules/                          # ...opened at a page
+qccd agent connect --client codex        # a NEW Codex thread bound to this workspace
+qccd agent connect --client codex --thread <id>   # ...or your existing conversation
+#   then attach your terminal to the same app server:  codex --remote ws://127.0.0.1:<port>
+#   Claude Code instead: claude --dangerously-load-development-channels server:qccd
+qccd agent connect --client cursor       # a NEW Cursor chat the Studio's messages run in
+qccd boards                              # the leaderboards, by title
+qccd submit --local --board "BB [[144,12,12]]" --design "Two triangles" --wait
+                                         # compile for the board, adopt, freeze, reference grade
+                                         #   -> "Local result - not published"
+qccd leaderboard --board "BB [[144,12,12]]"
+qccd compile --board surface --adopt     # the steps one by one, when wanted
+qccd validate --board surface --json     # a draft grade of the head revision
+qccd login                               # sign this computer in with YOUR qccd.academy account (once)
+qccd publish --submission <sub_id>       # review, type the digest, submit it in your name
+qccd leaderboard --official --board "BB [[144,12,12]]"   # the official ranking, with who submitted each
+qccd logout                              # sign this computer out (its key is revoked)
+qccd publish --approval <ap_id> --server https://qccd.academy/official   # a maintainer's token instead
+qccd trace                               # what the agents did: every request, step by step
+qccd trace --session <id> --open         # ...one conversation in the browser, with Replay
+qccd status | qccd stop
+```
+
+A workspace's installed skill is brought up to the code's version when the service starts
+(it restarts itself on new code), unless it was edited; `qccd agent install` rewrites it.
+
+`python -m qccd.workspace <command>` is the same CLI without the console script. Outside a
+workspace, `qccd studio` still writes the static page exactly as `python -m qccd studio`
+does. `qccd agent install` is idempotent and also serves as repair; `qccd agent status`
+reports what is installed and what each client can actually do.
+
+**Offline.** After install, designing, compiling, checking and local grading contact no QCCD
+server. The only outbound traffic is the agent's own connection to its provider, and an
+explicit `qccd publish`. QCCD uploads nothing by default. Whatever context you give the
+agent goes to its provider as part of that agent's normal operation.
+
+**Platforms.** Developed on Windows 11 with Python 3.14.3, and tested on macOS 26 (Apple
+silicon) with Python 3.13: the whole suite, real Chrome included, and a local BB [[144,12,12]]
+reference grade (compile 1.9 s, grade 4.9 s, eligible), and the website's instructions followed
+from a fresh clone with real Claude Code and Codex agents: designing and submitting from the
+Studio, a rule explained on its page, a lesson walked through, a leaderboard design built,
+run and ranked, a page reviewed for mistakes. POSIX uses process groups and `fcntl`
+locks in place of Job Objects and `msvcrt`. The memory ceiling on a tool is `RLIMIT_AS` on
+Linux and, on macOS -- whose kernel neither enforces `RLIMIT_AS` nor lets a process set it
+below the address space it has already reserved -- a watchdog on the process group's physical
+footprint. A service started by a desktop app (whose PATH is only the system's) still finds
+`claude`, `codex` and `cursor-agent` in Homebrew, npm and `~/.local/bin`, and in the Claude Code editor
+extension and the ChatGPT app, which carry them.
+
+**Tests.**
+
+| file | what it holds | time |
+|---|---|---|
+| `tests/test_workspace_design.py` | browser/Python replay parity (real studio page through `tests/editor.mjs`), strict JSON, operations | ~10 s |
+| `tests/test_workspace_core.py` | change sets, idempotency, conflicts, rebase, protection (every door), import, undo, candidates, prompts, modes, stop, delivery, recovery, a Codex turn finishing after a restart | ~2 s |
+| `tests/test_workspace_grading.py` | compile → adopt → reference grade; immutability/staleness; tampered bundles; unsafe archives; publication binding | ~20 s |
+| `tests/test_workspace_service.py` | Host/Origin/CSRF/pairing, agent-token limits, body limits, path escapes, hostile text, SSE replay/gap over a real socket, MCP over real stdio, the Claude channel push, a hard-killed service coming back on its port with its pairings | ~35 s |
+| `tests/test_workspace_browser.py` | real Chrome: sync, render without reload, frozen lasso/arrow context, protection in the UI, two tabs, presentation with Follow on/off, reconnect, a page surviving a hard kill of the service | ~50 s |
+| `tests/test_workspace_contracts.py` | generated JSON Schemas are current; real documents validate | ~2 s |
+| `tests/test_workspace_metrics.py` | the evaluator's metrics equal 12 published board entries | <1 s |
+| `tests/test_workspace_cli.py` | `qccd` commands as a user runs them | ~5 s |
+| `tests/test_official.py` | the official service on SQLite with the inline grader, parity included | ~15 s |
+| `tests/test_official_accounts.py` | signing in with a site account: the grant's checks, the device link, keys and their revocation, the credit on the leaderboard, the HTTP routes | ~35 s |
+| `tests/test_leaderboard_grant.py` | the site's accounts service signs a grant the official service accepts, and refuses strangers, bad requests and other sites | ~2 s |
+| `tests/test_workspace_official.py` | the official leaderboard from a workspace, against a real official server on a loopback port: sign in, test, Submit, credit; an agent's request only the person confirms; a stale test refused; sign-out revokes the key | ~60 s |
+| `tests/test_workspace_claude.py` | Claude Code as a chat agent with a stand-in executable: one conversation resumed, only the QCCD and read-only tools, a failed run's reason in the chat; the model and thinking level the person picks reach the command line; a turn's trace step by step (thinking, Skill and MCP calls with results, cost); a Codex turn traced from its item events | ~8 s |
+| `tests/test_workspace_cursor.py` | Cursor as a chat agent with a stand-in `cursor-agent`: one chat resumed by a run per message, the message on stdin; every run headless with the QCCD tools allowed and the shell and file writes denied, whatever the person's own Cursor allows; the session passed to the QCCD tools; the model the person picks on the command line; a run that is not signed in says how to sign in; Stop, then the same chat goes on; a turn's trace and program; a renamed folder; the installer; in real Chrome, the Studio chat offering and talking to Cursor | ~6 s |
+| `tests/workspace_live_comments.py` | **live**, opt-in (`QCCD_LIVE_WEB=1`): the agent comments on real qccd.academy pages as a signed-in person, against a PRIVATE copy of the comment service | ~20 s |
+| `tests/test_workspace_toolchain.py` | the prebuilt compiler: the manifest matches the committed source, a download is refused unless its size and hash match, an install runs once, and which compiler is used | ~3 s |
+| `tests/test_workspace_web.py` | the website mirror against a local copy of a site: paths, cache, stale copies, what the mirror refuses, that its origin has no authority, the chat frame's framing, the page-action round trip and who may take part, a page's context in a message; the trace of MCP calls and page actions (and `qccd trace`); the site guide from the site's index and the Studio's hints; in real Chrome every page action on a mirrored page, the Studio's own page actions, the agent's design and runs shown in the person's Studio, and a real MCP client answering a question asked on a page | ~60 s |
+| `tests/test_agent_interface.py` | **the gate**: every Studio API function declared (`editor_api.json`), the page actions agree across the service, pageact.js, the MCP tool and the skill, agent-facing text names only agent verbs, the out-of-line list only shrinks; in Chrome every Studio control declared and every `data-hint` described (and a planted undeclared button is caught) | ~10 s |
+| `tests/test_feature_registry.py` | **the registry gate**: every capability is one Feature (`features.py`); every route an agent can reach, CLI verb and job kind is tied to one or set aside with a reason; the MCP tools, manifest and skill are generated from it; the skill refreshes on its content digest | <1 s |
+| `tests/test_workspace_ler.py` | a memory board (built in a temporary release) graded with its `ler` stage and ranked by `ler_per_round`; the `ler` job on any design; local/official parity on a stochastic metric | ~30 s |
+| `tests/test_bench.py` | the Compiler board: the `qccd.compiler@1` contract and archive (unsafe zips refused), the reference compiler against itself (speedup 1), broken compilers caught as wrong / refused / crash / no_output / timeout, the hidden split fixed by its seed, the sandbox spool giving the same verdicts, a compiler graded and ranked by the official service, the documents against their schemas | ~10 s |
+| `tests/test_qec_*.py` | the logical error rate (qccd/qec): memory experiments at their code distance, the noise channels from the device's physics, extraction from compiled programs, the noiseless check catching wrong programs, the decoders | ~60 s |
+| `tests/workspace_live_interface.py` | **live**, opt-in (`QCCD_LIVE_WEB=1`): every place of the live site through the mirror; fails on an undeclared control not in its known-debt list | ~10 min |
+| `tests/workspace_live_web.py` | **live**, opt-in (`QCCD_LIVE_WEB=1`): the real qccd.academy through the mirror, every kind of page, with console and CSP messages | ~30 s |
+| `tests/workspace_live_page.py` | **live**, opt-in (`QCCD_LIVE_CODEX=1`): a question asked on a website page, answered by a real Codex | ~2 min |
+| `tests/workspace_live_cursor.py` | **live**, opt-in (`QCCD_LIVE_CURSOR=1`): three messages to a real, signed-in Cursor: answered through the QCCD tools, the same chat, a shell command and a file write refused and nothing written, the calls attributed to the chat | ~1 min |
+| `tests/workspace_live_codex.py` | **live**, opt-in (`QCCD_LIVE_CODEX=1`): a Studio prompt into a real Codex thread | ~1 min |
+| `examples/workspace_demo/demo.py` | the full demonstration (scripted or live Codex) | ~1–10 min |
+
+The service, MCP and browser tests need the agent extras (`requirements-agent.txt`); run them
+with the venv interpreter. The rest run under the plain toolchain Python.

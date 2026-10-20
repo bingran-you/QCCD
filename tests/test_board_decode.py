@@ -1,0 +1,208 @@
+"""A `decode` on a leaderboard page lights the wires to the decoder (docs/tsir.md).
+
+The user looked at `board/bb144/22_planar12_own_a72` and saw a decoder, dashed wires and a
+classical memory drawn under the device -- and nothing ever used them: the programme had no
+instruction that sent an outcome anywhere.  Now every leaderboard programme calls the
+decoder once per syndrome window (`qccd.compile.decode`), and the site's QEC-cycle layer
+(`qccd/site/qec_cycle.js`) lights, on that frame, the wire from every site where one of its
+ions was MEASURED down to the bus, along it to the decoder, and on to the memory.
+
+`tests/board_decode_browser.mjs` measures the picture rather than the page's own counts:
+lit-colour pixels on the rasterised stage the frame before and the frame of the decode,
+every ring against its site's own mark before and after a zoom, and what playing at the
+default speed shows.  A mutation that switches the highlight off must turn it red.  The
+stage now FRAMES the classical floor (`fit()` reads `STAGE_EXTENT`), or the outcomes would
+be seen leaving for somewhere off the edge of the picture.
+
+AND A READER CAN PUT ALL OF IT AWAY ("allow user to disable showing the decoder ... also
+including classical wires/memories").  The "Classical" box in the tools bar hides the wires,
+the decoder, the memory and a decode's lit path together, remembers that per viewer, and
+gives the frame back to the device unless the reader has moved the camera.
+`tests/classical_toggle_browser.mjs` checks it against the picture as well: unticked, on a
+decode frame, the stage rasterises to exactly the page with the layer cut out of it.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+PROBE = ROOT / "tests" / "board_decode_browser.mjs"
+TOGGLE = ROOT / "tests" / "classical_toggle_browser.mjs"
+from chrome_path import CHROME  # noqa: E402
+NODE = shutil.which("node")
+SCRIPTS = ROOT / "Codesign" / "scripts"
+
+# the classical layer is the site's (`qccd/site/qec_cycle.js`), which lives on the website
+# branch: in a checkout without it there is no page to look at
+pytest.importorskip("qccd.site.qec_cycle", reason="the site package is not in this tree")
+
+pytestmark = [pytest.mark.skipif(NODE is None or CHROME is None,
+                                 reason="node and Chrome are needed to look at the page"),
+              pytest.mark.skipif(not (SCRIPTS / "bb_studio.py").exists(),
+                                 reason="the leaderboard page builder is not in this tree")]
+
+
+def _entry():
+    """The smallest compiled small-code entry with a few sites, so the build is quick."""
+    best = None
+    for fam in ("steane", "five_qubit", "surface17", "repetition"):
+        man = ROOT / "SmallCode" / fam / "manifest.json"
+        if not man.exists():
+            continue
+        for e in json.loads(man.read_text(encoding="utf-8")):
+            if e.get("status") != "ok" or not e.get("prefix") or (e.get("sites") or 0) < 4:
+                continue
+            if not Path(str(e["prefix"]) + ".cooled.tsir.json").exists():
+                continue
+            if best is None or e.get("instructions", 1e9) < best.get("instructions", 1e9):
+                best = e
+    return best
+
+
+@pytest.fixture(scope="module")
+def page(tmp_path_factory):
+    entry = _entry()
+    if entry is None:
+        pytest.skip("no compiled small-code programme in this tree")
+    sys.path.insert(0, str(SCRIPTS))
+    import bb_studio as B
+    from qccd.site import qec_cycle
+    from qccd.site.build import HASH_JS, with_nav
+    out = tmp_path_factory.mktemp("board_decode")
+    res = B.build_one(dict(entry), out, max_frames=20000)
+    assert res["status"] == "ok", res
+    p = out / res["page"]
+    # the classical layer, exactly as the site build gives an entry page it
+    p.write_text(with_nav(p.read_text(encoding="utf-8"), 2, "board", "[]", app=True,
+                          extra=HASH_JS + qec_cycle.studio_block()),
+                 encoding="utf-8", newline="")
+    return p
+
+
+def probe(p: Path, shot: Path | None = None) -> dict:
+    args = [NODE, str(PROBE), str(p)] + ([str(shot)] if shot else [])
+    r = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", timeout=300)
+    assert r.returncode == 0, r.stderr
+    return json.loads(r.stdout.strip().splitlines()[-1])
+
+
+@pytest.fixture(scope="module")
+def seen(page):
+    return probe(page, page.with_suffix(".decode.png"))
+
+
+def test_the_programme_calls_the_decoder_and_says_so(seen):
+    assert seen["errors"] == [] and "fatal" not in seen, seen.get("fatal")
+    assert seen["decodes"], "the leaderboard programme has no decode frame"
+    for d in seen["decodes"]:
+        assert d["ions"] >= 1 and d["sites"] >= 1, d
+    assert seen["listing"] == "DECODE"
+
+
+def test_the_wires_to_the_decoder_light_on_the_decode_frame_and_only_there(seen):
+    px = seen["pixels"]
+    assert px["lit_elements_before"] == 0, px
+    assert px["lit_elements_during"] > 0, px
+    lit_gain = px["during"][0] - px["before"][0]
+    assert lit_gain > 200 and px["during"][0] >= 5 * max(1, px["before"][0]), px
+
+
+def test_every_ring_sits_on_its_site_through_a_zoom(seen):
+    reg = seen["registration"]
+    for when in ("before_zoom", "after_zoom"):
+        r = reg[when]
+        assert r and r["rings"] == r["sites"] == r["measured"] and r["rings"] >= 1, r
+        assert r["worst_px"] < 0.5, (when, r)
+
+
+def test_playing_lands_on_the_decode_frame_and_lights_it(seen):
+    pb = seen["playback"]
+    assert pb["samples_on_decode"] >= 1, pb
+    assert pb["lit_while_on"] == pb["samples_on_decode"], pb
+    assert pb["lit_while_off"] == 0, pb
+    # and goes on -- unless the decode is the programme's last frame, where play stops
+    assert pb["passed_it"] or pb["decode_frame"] == pb["last_frame"], pb
+
+
+def test_the_probe_would_see_a_highlight_that_never_comes_on(page, tmp_path):
+    """A test that cannot fail is not a test: switch the lit layer off and the pixel
+    assertion above must go red."""
+    html = page.read_text(encoding="utf-8")
+    needle = 'el.innerHTML = key ? buildLit(decodeSites(at, at.fi), geo) : "";'
+    assert needle in html, "the lit layer moved; update this mutation"
+    broken = tmp_path / page.name
+    broken.write_text(html.replace(needle, 'el.innerHTML = "";'), encoding="utf-8", newline="")
+    off = probe(broken)
+    px = off["pixels"]
+    assert not (px["during"][0] - px["before"][0] > 200
+                and px["during"][0] >= 5 * max(1, px["before"][0])), px
+
+
+# ------------------------------------------------------------------ putting it away
+
+def toggle_probe(p: Path) -> dict:
+    r = subprocess.run([NODE, str(TOGGLE), str(p)], capture_output=True, text=True,
+                       encoding="utf-8", timeout=300)
+    assert r.returncode == 0, r.stderr
+    return json.loads(r.stdout.strip().splitlines()[-1])
+
+
+@pytest.fixture(scope="module")
+def put_away(page):
+    return toggle_probe(page)
+
+
+def test_the_classical_half_goes_away_whole_and_leaves_nothing_behind(put_away):
+    s = put_away
+    assert s["errors"] == [] and "fatal" not in s, s.get("fatal")
+    # shown by default, on a decode frame, so the lit path is part of what has to go
+    assert s["decode_frame"] >= 0, s
+    assert s["shown"]["box"] is True and s["shown"]["extent"], s["shown"]
+    assert s["shown"]["layer"] > 0 and s["shown"]["lit"] > 0, s["shown"]
+    h = s["hidden"]
+    assert h["visible_px"] > 1000, h            # the layer is really there to take away
+    assert h["left_px"] == 0, h                 # ...and none of it is left: the device alone
+    assert h["state"]["layer"] == 0 and h["state"]["lit"] == 0, h
+    assert h["state"]["box"] is False and not h["state"]["extent"], h
+
+
+def test_putting_it_away_gives_the_frame_back_to_the_device(put_away):
+    r = put_away["refit"]
+    assert r["camera"] == r["device_fit"] != r["shown_camera"], r
+
+
+def test_the_choice_is_remembered_and_the_panel_box_is_the_same_setting(put_away):
+    m = put_away["remembered"]
+    assert m["stored"] == "0" and m["box"] is False, m
+    assert m["layer"] == 0 and m["lit"] == 0 and not m["extent"], m
+    p = put_away["panel"]
+    assert p["before"] is False and p["panel_after"] is True, p
+    assert p["after"]["box"] is True and p["after"]["layer"] > 0 and p["after"]["lit"] > 0, p
+    # and turning it back on frames the classical floor again, exactly as on first load
+    assert p["after"]["camera"] == put_away["shown"]["camera"], p
+
+
+def test_a_reader_who_has_zoomed_in_keeps_their_view(put_away):
+    z = put_away["zoomed"]
+    assert z["off"]["camera"] == z["on"]["camera"] == z["camera"], z
+    assert z["off"]["layer"] == 0 and z["on"]["layer"] > 0, z
+
+
+def test_the_probe_would_see_a_layer_left_behind(page, tmp_path):
+    """Unticking must CLEAR the layer, not merely stop redrawing it: leave it drawn and
+    the pixel comparison above must go red."""
+    html = page.read_text(encoding="utf-8")
+    needle = 'if (!LAYER.on) { el.innerHTML = ""; return; }'
+    assert needle in html, "the layer's off branch moved; update this mutation"
+    broken = tmp_path / page.name
+    broken.write_text(html.replace(needle, "if (!LAYER.on) { return; }"),
+                      encoding="utf-8", newline="")
+    assert toggle_probe(broken)["hidden"]["left_px"] > 1000

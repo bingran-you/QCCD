@@ -1,0 +1,798 @@
+"""Generated results: jobs, immutable snapshots, local submissions, publication approval.
+
+A LOCAL SUBMISSION freezes the exact inputs before any job starts: the device the
+workspace replays at that revision, the final program, the certified program and the
+certificate are written as a canonical bundle into `.qccd/snapshots/<id>/bundle/`,
+made read-only, and named by the bundle digest.  Grading reads only that directory, so
+editing the workspace afterwards cannot change the run's artifacts or its report -- the
+report is written next to the bundle, once, and its digest recorded.
+
+Jobs return an id at once and run in the service's worker threads; every external tool
+they run is a controlled subprocess (`procs.run_limited`) with a timeout and a kill that
+takes the whole tree.  A job whose process is gone after a restart is marked
+`internal_error` and not rerun -- rerunning uncertain work could duplicate effects.
+
+BOARDS.  Compiling, grading, submitting and the local leaderboard each name a board (a task
+release, `find_board`: its title or short name); a design's compiled program records the
+circuit it was compiled for, and a snapshot and a submission record the board and digest they
+were made for, so one workspace submits any design to any board.  `submit_design` is the one
+action a person or an agent takes: compile for the board, adopt, freeze, grade -- one job.
+
+PUBLICATION needs a person.  `prepare_publish` (any actor) shows the exact bundle;
+`approve_publish` (a person only) binds an approval to the bundle digest AND the
+publication parameters; `publish` re-hashes the bundle, checks both, and uploads -- a
+changed bundle or changed visibility needs a new approval.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import stat
+import threading
+import time
+import traceback
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import Any, Mapping
+
+from .bundle import BundleError, archive_bundle, read_bundle, write_bundle
+from .jsonsafe import canonical_bytes, digest, strict_loads
+from .store import dumps, loads
+
+__all__ = ["ResultsMixin", "JOB_KINDS", "JOB_RUNNERS"]
+
+#: Every job kind and the method that runs it.  A kind is started through a tool (features.py
+#: names the kinds each Feature starts; the gate test checks every kind here is reachable), and a
+#: kind with no entry is refused -- before this table, an unknown kind fell through to `evaluate`.
+JOB_RUNNERS = {"compile": "_job_compile", "evaluate": "_job_evaluate", "run": "_job_run", "submit": "_job_submit",
+               "ler": "_job_ler"}
+JOB_KINDS = tuple(JOB_RUNNERS)
+TERMINAL = ("succeeded", "failed", "cancelled", "timeout", "internal_error")
+
+
+def _now() -> float:
+    return time.time()
+
+
+class ResultsMixin:
+
+    def _results_init(self) -> None:
+        self._pool = ThreadPoolExecutor(max_workers=int(os.environ.get("QCCD_JOB_WORKERS", "2")),
+                                        thread_name_prefix="qccd-job")
+        self._cancel_events: dict = {}
+        self.snapshots_dir = self.root / ".qccd" / "snapshots"
+        self.snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+    # ------------------------------------------------------------------ boards
+
+    def board(self, ref: str | None = None):
+        """A board (task release) by its title or short name; none named: the workspace's default."""
+        from .core import WorkspaceError
+        from .tasks import ReleaseError, find_board
+        if not ref:
+            return self.release
+        try:
+            return find_board(ref, getattr(self, "release_dirs", None))
+        except ReleaseError as exc:
+            raise WorkspaceError("unknown_board", str(exc), status=404) from None
+
+    def boards(self) -> list:
+        from .tasks import list_boards
+        return [b.board() for b in list_boards(getattr(self, "release_dirs", None))]
+
+    # ------------------------------------------------------------------ jobs
+
+    def job(self, job_id: str) -> dict:
+        from .core import WorkspaceError
+        r = self.store.one("SELECT * FROM jobs WHERE id=?", (job_id,))
+        if r is None:
+            raise WorkspaceError("unknown_job", f"no job {job_id!r}", status=404)
+        d = dict(r)
+        for k in ("progress", "result", "actor"):
+            d[k] = loads(d[k])
+        d["cancel_requested"] = bool(d["cancel_requested"])
+        return d
+
+    def active_jobs(self) -> list:
+        return [_job_brief(self.job(r["id"])) for r in
+                self.store.all("SELECT id FROM jobs WHERE status IN ('queued','running') ORDER BY created_at")]
+
+    def jobs(self, limit: int = 50) -> list:
+        return [_job_brief(self.job(r["id"])) for r in
+                self.store.all("SELECT id FROM jobs ORDER BY created_at DESC LIMIT ?", (max(1, min(limit, 500)),))]
+
+    def start_job(self, actor: Mapping, kind: str, params: Mapping, *, request_id: str | None = None,
+                  origin_prompt_id: str | None = None) -> dict:
+        """Create a job and return at once.  `request_id` makes a retry return the same job."""
+        from .core import WorkspaceError, new_id
+        if kind not in JOB_KINDS:
+            raise WorkspaceError("bad_request", f"kind must be one of {JOB_KINDS}", status=422)
+        self._check_actor_may_write(actor, origin_prompt_id)
+        key = f"{actor.get('session') or actor.get('id')}:{request_id}" if request_id else None
+        if key:
+            prior = self.store.one("SELECT id FROM jobs WHERE idempotency_key=?", (key,))
+            if prior:
+                out = _job_brief(self.job(prior["id"]))
+                out["duplicate"] = True
+                return out
+        params = dict(params or {})
+        branch = self.resolve_draft(params.get("branch") or params.get("draft") or "main")
+        params.pop("draft", None)
+        b = self.branch(branch)
+        rev = params.get("revision", b["head"])
+        if not isinstance(rev, int) or not 0 <= rev <= b["head"]:
+            raise WorkspaceError("bad_request", f"revision {rev!r} is not a revision of {branch}", status=422)
+        params["branch"], params["revision"] = branch, rev
+        if kind == "evaluate":
+            prof = params.get("profile", "draft")
+            if prof not in ("draft", "reference"):
+                raise WorkspaceError("bad_request", "profile must be draft or reference", status=422)
+            params["profile"] = prof
+        if kind == "run":
+            self._check_run_params(params)
+        if kind == "ler":
+            self._check_ler_params(params)
+        rel = self.release
+        if kind in ("compile", "evaluate", "submit"):
+            rel = self.board(params.get("board"))
+            params["board"] = rel.id
+        jid = new_id("job")
+        lim = rel.manifest.get("limits") or {}
+        limit = float(params.get("timeout_s") or (lim.get("lean_timeout_s", 1800) +
+                                                 (lim.get("compile_timeout_s", 600) if kind == "submit" else 0)))
+        with self.store.tx() as db:
+            db.execute("INSERT INTO jobs(id, kind, snapshot_id, profile, status, progress, idempotency_key, "
+                       "origin_prompt_id, actor, created_at, deadline, result) VALUES(?,?,?,?, 'queued', ?, ?, ?, ?, ?, ?, ?)",
+                       (jid, kind, params.get("snapshot_id"), params.get("profile"),
+                        dumps({"stage": "queued", "message": "waiting for a worker"}), key, origin_prompt_id,
+                        dumps(dict(actor)), _now(), _now() + limit + 600, dumps({"params": params})))
+            self._emit(db, "job.updated", {"job_id": jid, "kind": kind, "status": "queued",
+                                           "origin_prompt_id": origin_prompt_id}, branch, rev)
+            if origin_prompt_id:
+                self._link_prompt(db, origin_prompt_id, "job", jid, actor)
+            else:
+                working = self._working_prompt(db, actor)
+                if working:
+                    self._link_prompt(db, working, "job", jid, actor)
+        ev = threading.Event()
+        self._cancel_events[jid] = ev
+        self._pool.submit(self._run_job, jid, kind, params, dict(actor), origin_prompt_id, ev)
+        return _job_brief(self.job(jid))
+
+    def cancel_job(self, actor: Mapping, job_id: str) -> dict:
+        """Request cancellation and report what actually happened: a queued job is
+        cancelled at once, a running one when its current subprocess is killed, and a
+        finished one cannot be."""
+        j = self.job(job_id)
+        if j["status"] in TERMINAL:
+            return {"job_id": job_id, "outcome": "already_finished", "status": j["status"]}
+        with self.store.tx() as db:
+            db.execute("UPDATE jobs SET cancel_requested=1 WHERE id=?", (job_id,))
+            if j["status"] == "queued":
+                db.execute("UPDATE jobs SET status='cancelled', finished_at=? WHERE id=? AND status='queued'",
+                           (_now(), job_id))
+            self._emit(db, "job.updated", {"job_id": job_id, "status": "cancelling" if j["status"] == "running"
+                                           else "cancelled", "by": dict(actor)})
+        ev = self._cancel_events.get(job_id)
+        if ev:
+            ev.set()
+        return {"job_id": job_id, "outcome": "cancel_requested" if j["status"] == "running" else "cancelled",
+                "status": self.job(job_id)["status"]}
+
+    def _progress(self, job_id: str, stage: str, message: str) -> None:
+        with self.store.tx() as db:
+            db.execute("UPDATE jobs SET progress=? WHERE id=?",
+                       (dumps({"stage": stage, "message": message[:300], "at": _now()}), job_id))
+            self._emit(db, "job.updated", {"job_id": job_id, "status": "running", "stage": stage,
+                                           "message": message[:300]})
+
+    def _run_job(self, jid, kind, params, actor, origin_prompt_id, cancel: threading.Event) -> None:
+        with self.store.tx() as db:
+            cur = db.execute("UPDATE jobs SET status='running', started_at=?, pid=?, owner='service' "
+                             "WHERE id=? AND status='queued'", (_now(), os.getpid(), jid))
+            if cur.rowcount != 1:
+                return
+            self._emit(db, "job.updated", {"job_id": jid, "status": "running", "kind": kind})
+        watcher = threading.Thread(target=self._watch_cancel, args=(jid, cancel), daemon=True)
+        watcher.start()
+        status, result, error = "internal_error", None, None
+        try:
+            runner = getattr(self, JOB_RUNNERS[kind])          # a KeyError is an internal error, never a guess
+            result = runner(jid, params, actor, origin_prompt_id, cancel)
+            status = result.pop("_status", "succeeded")
+        except Exception as exc:  # recorded, never swallowed
+            error = f"{type(exc).__name__}: {exc}"
+            result = {"traceback": traceback.format_exc()[-4000:]}
+            code = getattr(exc, "code", None)
+            status = "failed" if code else "internal_error"
+        if cancel.is_set() and status not in ("succeeded",):
+            status = "cancelled"
+        with self.store.tx() as db:
+            db.execute("UPDATE jobs SET status=?, result=?, error=?, finished_at=? WHERE id=?",
+                       (status, dumps(result), error, _now(), jid))
+            self._emit(db, "job.updated", {"job_id": jid, "status": status, "kind": kind,
+                                           "error": (error or "")[:300],
+                                           "summary": (result or {}).get("summary"),
+                                           "origin_prompt_id": origin_prompt_id})
+        self._cancel_events.pop(jid, None)
+
+    def _watch_cancel(self, jid: str, ev: threading.Event) -> None:
+        while not ev.is_set() and not getattr(self, "_closed", False):
+            try:
+                r = self.store.one("SELECT status, cancel_requested FROM jobs WHERE id=?", (jid,))
+            except Exception:          # the workspace was closed under us: nothing left to watch
+                return
+            if r is None or r["status"] in TERMINAL:
+                return
+            if r["cancel_requested"]:
+                ev.set()
+                return
+            time.sleep(0.5)
+
+    # ------------------------------------------------------------------ compile
+
+    def _job_compile(self, jid, params, actor, origin_prompt_id, cancel) -> dict:
+        """Compile a board's circuit for the design at one revision, with the REAL
+        toolchain: export -> qccdc_cli (rotate first on a design with a closed loop, else the
+        router) -> insert_cooling.  The artifacts are stored by digest; adopting them into the
+        design is a separate change set (`set_final_program`), so compiling never edits the
+        design behind anyone's back."""
+        from .core import WorkspaceError
+        from .evaluator import Toolchain
+        from .procs import run_limited
+        tc = Toolchain.discover()
+        if tc.qccdc is None:
+            raise WorkspaceError("toolchain_missing", "the compiler (qccdc_cli) is not installed: run "
+                                 "`qccd toolchain install`, or build Compiler/ocaml", status=424)
+        _refuse_withdrawn_compiler(tc)
+        branch, rev = params["branch"], params["revision"]
+        r = self.replayed(branch, rev)
+        if not r.ok:
+            raise WorkspaceError("design_invalid", "the design at that revision does not build", status=422)
+        work = self.root / ".qccd" / "runs" / jid
+        work.mkdir(parents=True, exist_ok=True)
+        (work / "device.arch.json").write_text(json.dumps(r.arch_doc), encoding="utf-8")
+        rel = self.board(params.get("board"))
+        (work / "circuit.qasm").write_bytes(rel.circuit_path.read_bytes())
+        self._progress(jid, "export", "expanding the device for the compiler")
+        ex = run_limited([tc.python, tc.bridge / "export_arch.py", work / "device.arch.json", "-o",
+                          work / "device.expanded.json"], cwd=work, timeout=300, cancel=cancel)
+        if not ex.ok:
+            return {"_status": "cancelled" if ex.status == "cancelled" else "failed",
+                    "summary": "export failed", "log": (ex.stderr or ex.stdout)[-2000:]}
+        want = params.get("compiler", "auto")
+        if want not in ("auto", "compile", "rotate"):
+            raise WorkspaceError("bad_request", "compiler must be auto, compile or rotate", status=422)
+        from ..compile.programs import closed_loops
+        modes = [want] if want != "auto" else (["rotate", "compile"] if closed_loops(r.arch) else ["compile"])
+        budget = float((rel.manifest.get("limits") or {}).get("compile_timeout_s", 600))
+        log, mode, cp = "", None, None
+        for m in modes:
+            self._progress(jid, "compile", f"compiling {rel.title} with qccdc_cli {m}")
+            for stale in ("prog.tsir.json", "prog.qcert.json"):
+                (work / stale).unlink(missing_ok=True)
+            cp = run_limited([tc.qccdc, m, work / "circuit.qasm", "--arch", work / "device.expanded.json", "-o",
+                              work / "prog"], cwd=work, timeout=budget, mem_mb=8192, cancel=cancel)
+            log += f"--- qccdc_cli {m}\n" + (cp.stdout + "\n" + cp.stderr)[-4000:]
+            if cp.status in ("cancelled", "timeout"):
+                return {"_status": cp.status, "summary": f"compile {cp.status}", "log": log[-6000:]}
+            if cp.ok and (work / "prog.tsir.json").exists() and \
+                    not json.loads((work / "prog.qcert.json").read_text(encoding="utf-8")).get("unrealised"):
+                mode = m
+                break
+        log = log[-6000:]
+        if mode is None:
+            return {"_status": "failed", "summary": f"the compiler could not place {rel.title} on this design: "
+                    + _compiler_reason(log), "log": log, "refusal": _compiler_reason(log)}
+        self._progress(jid, "cooling", "inserting cooling (R7)")
+        co = run_limited([tc.python, tc.bridge / "insert_cooling.py", work / "prog.tsir.json", "--arch",
+                          work / "device.arch.json", "-o", work / "prog.cooled.tsir.json"],
+                         cwd=work, timeout=600, cancel=cancel)
+        if not (work / "prog.cooled.tsir.json").exists():
+            return {"_status": "cancelled" if co.status == "cancelled" else "failed",
+                    "summary": "cooling insertion failed", "log": (co.stdout + co.stderr)[-2000:]}
+        self._progress(jid, "rules", "checking the compiled program against the rules")
+        fault = _compiler_fault(_replay_for_rules(work, (rel.manifest.get("physics") or {}).get("rank_table", "qccdsim_jones")),
+                                tc, design=self._design_title_of(branch), program=rel.title)
+        if fault:
+            return {**fault, "log": log[-2000:]}
+        raw = (work / "prog.tsir.json").read_bytes()
+        cooled = (work / "prog.cooled.tsir.json").read_bytes()
+        certb = (work / "prog.qcert.json").read_bytes()
+        d_raw = self.put_artifact(canonical_bytes(strict_loads(raw)), "application/json", "certified program")
+        d_cool = self.put_artifact(canonical_bytes(strict_loads(cooled)), "application/json", "final program (cooled)")
+        d_cert = self.put_artifact(canonical_bytes(strict_loads(certb)), "application/json", "certificate")
+        n_instr = len(strict_loads(cooled).get("instructions", []))
+        final_ref = {"artifact": d_cool, "certified": d_raw, "certificate": d_cert,
+                     "compiled_for": r.arch_digest(), "compiler": mode,
+                     "board": rel.id, "circuit_digest": rel.manifest["circuit"]["digest"],
+                     "label": f"{rel.title}: qccdc {mode}, r{rev}, {n_instr} instructions"}
+        return {"summary": f"compiled {rel.title} at r{rev}: {n_instr} instructions (cooled); certificate stored",
+                "final_program": final_ref, "log": log[-2000:], "cooling_log": (co.stdout + co.stderr)[-1000:],
+                "adopt_with": {"type": "set_final_program", **final_ref}}
+
+    # ------------------------------------------------------------------ snapshots
+
+    def freeze_snapshot(self, branch: str, revision: int, actor: Mapping, *, title: str = "",
+                        board: str | None = None) -> dict:
+        """Write the immutable bundle for one revision.  Refuses a design with no
+        compiled final program: the official track grades artifacts, not intentions."""
+        from .core import WorkspaceError, new_id
+        rev = self.revision(branch, revision)
+        r = self.replayed(branch, revision)
+        if not r.ok:
+            raise WorkspaceError("design_invalid", f"{branch}@r{revision} does not build: "
+                                 f"{(r.problems or [{}])[0].get('message')}", status=422)
+        fp = rev.state.final_program
+        rel = self.board(board)
+        if not fp or not fp.get("artifact"):
+            raise WorkspaceError("no_final_program", "the design has no final hardware program: run a compile "
+                                 "job and adopt its result (set_final_program) first", status=409)
+        if fp.get("circuit_digest") and fp["circuit_digest"] != rel.manifest["circuit"]["digest"]:
+            raise WorkspaceError("program_for_another_board",
+                                 f"the design's program was compiled for another board, not {rel.title}: "
+                                 f"compile it for {rel.title} first (submit_design does that)", status=409)
+        prog = strict_loads(self.get_artifact(fp["artifact"]))
+        certified = strict_loads(self.get_artifact(fp["certified"])) if fp.get("certified") else None
+        cert = strict_loads(self.get_artifact(fp["certificate"])) if fp.get("certificate") else None
+        sid = new_id("snap")
+        d = self.snapshots_dir / sid
+        d.mkdir(parents=True)
+        prov = {"workspace_id": self.id, "branch": branch, "revision": revision,
+                "input_digest": rev.input_digest, "arch_digest": r.arch_digest(),
+                "compiled_for": fp.get("compiled_for"), "compiler": fp.get("compiler")}
+        pres = {"title": title[:200], "studio": rev.state.to_studio(None)}
+        b = write_bundle(d / "bundle", task_id=rel.id, task_digest=rel.digest,
+                         device=r.arch_doc, program=prog, certified_program=certified, certificate=cert,
+                         presentation=pres, provenance=prov)
+        _freeze_dir(d / "bundle")
+        with self.store.tx() as db:
+            db.execute("INSERT INTO snapshots(id, branch, revision, input_digest, bundle_digest, dir, created_at, "
+                       "task_release, task_digest) VALUES(?,?,?,?,?,?,?,?,?)",
+                       (sid, branch, revision, rev.input_digest, b.digest, str(d.relative_to(self.root)), _now(),
+                        rel.id, rel.digest))
+            self._emit(db, "snapshot.created", {"snapshot_id": sid, "bundle_digest": b.digest,
+                                                "revision": revision, "actor": dict(actor)}, branch, revision)
+        return {"snapshot_id": sid, "bundle_digest": b.digest, "branch": branch, "revision": revision,
+                "files": b.manifest["files"], "stale_program": fp.get("compiled_for") not in (None, r.arch_digest())}
+
+    def snapshot(self, sid: str) -> dict:
+        from .core import WorkspaceError
+        r = self.store.one("SELECT * FROM snapshots WHERE id=?", (sid,))
+        if r is None:
+            raise WorkspaceError("unknown_snapshot", f"no snapshot {sid!r}", status=404)
+        return dict(r)
+
+    # ------------------------------------------------------------------ evaluate / submit
+
+    def submit_local(self, actor: Mapping, *, branch: str = "main", revision: int | None = None,
+                     profile: str = "reference", origin_prompt_id: str | None = None,
+                     request_id: str | None = None, title: str = "", board: str | None = None) -> dict:
+        """Freeze, then grade with the shared reference evaluator.  Returns at once with
+        the submission and job ids."""
+        from .core import WorkspaceError, new_id
+        self._check_actor_may_write(actor, origin_prompt_id)
+        if request_id:
+            prior = self.store.one("SELECT response FROM idempotency WHERE key=?", (f"submit:{request_id}",))
+            if prior:
+                out = loads(prior["response"])
+                out["duplicate"] = True
+                return out
+        rel = self.board(board)
+        rev = self.branch(branch)["head"] if revision is None else revision
+        snap = self.freeze_snapshot(branch, rev, actor, title=title, board=rel.id)
+        sub_id = new_id("sub")
+        with self.store.tx() as db:
+            db.execute("INSERT INTO submissions(id, snapshot_id, job_id, profile, task_release, task_digest, status, "
+                       "origin_prompt_id, actor, created_at) VALUES(?,?,NULL,?,?,?, 'grading', ?, ?, ?)",
+                       (sub_id, snap["snapshot_id"], profile, rel.id, rel.digest, origin_prompt_id,
+                        dumps(dict(actor)), _now()))
+        job = self.start_job(actor, "evaluate", {"branch": branch, "revision": rev, "snapshot_id": snap["snapshot_id"],
+                                                 "profile": profile, "submission_id": sub_id, "board": rel.id},
+                             origin_prompt_id=origin_prompt_id)
+        with self.store.tx() as db:
+            db.execute("UPDATE submissions SET job_id=? WHERE id=?", (job["job_id"], sub_id))
+            out = {"submission_id": sub_id, "job_id": job["job_id"], "snapshot_id": snap["snapshot_id"],
+                   "bundle_digest": snap["bundle_digest"], "revision": rev, "branch": branch,
+                   "design": self.design_title(self.branch(branch)), "board": rel.title,
+                   "profile": profile, "status": "grading",
+                   "label": "Local result - not published"}
+            if request_id:
+                db.execute("INSERT INTO idempotency(key, request_digest, response, created_at) VALUES(?,?,?,?)",
+                           (f"submit:{request_id}", digest([branch, rev, profile, rel.id, rel.digest]), dumps(out),
+                            _now()))
+            self._emit(db, "submission.updated", {"submission_id": sub_id, "status": "grading",
+                                                  "revision": rev, "bundle_digest": snap["bundle_digest"],
+                                                  "origin_prompt_id": origin_prompt_id}, branch, rev)
+            if origin_prompt_id:
+                self._link_prompt(db, origin_prompt_id, "submission", sub_id, actor)
+        return out
+
+    def _job_evaluate(self, jid, params, actor, origin_prompt_id, cancel) -> dict:
+        from .evaluator import grade
+        profile = params.get("profile", "draft")
+        sid = params.get("snapshot_id")
+        tmp_snap = None
+        if not sid:
+            snap = self.freeze_snapshot(params["branch"], params["revision"], actor, title="validation")
+            sid = snap["snapshot_id"]
+            tmp_snap = sid
+        s = self.snapshot(sid)
+        d = self.root / s["dir"]
+        run = {"job_id": jid, "snapshot_id": sid, "submission_id": params.get("submission_id")}
+        rel = self._bundle_board(d / "bundle")
+        report = grade(rel, d / "bundle", profile, workdir=self.root / ".qccd" / "runs" / jid,
+                       cancel=cancel, progress=lambda st, m: self._progress(jid, st, m), run=run)
+        name = f"report.{profile}.{jid}.json"
+        data = json.dumps(report, indent=1, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        path = d / name
+        fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o444)
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        rdig = digest(report)
+        status = "cancelled" if any(st["status"] == "cancelled" for st in report["stages"]) else "succeeded"
+        elig = report["eligibility"]["eligible"]
+        if params.get("submission_id"):
+            with self.store.tx() as db:
+                db.execute("UPDATE submissions SET status=?, report_digest=? WHERE id=?",
+                           ("cancelled" if status == "cancelled" else ("eligible" if elig else "ineligible"),
+                            rdig, params["submission_id"]))
+                self._emit(db, "submission.updated", {"submission_id": params["submission_id"],
+                                                      "status": "eligible" if elig else "ineligible",
+                                                      "report_digest": rdig,
+                                                      "metrics": {k: v["value"] for k, v in report["metrics"].items()},
+                                                      "origin_prompt_id": origin_prompt_id})
+        summary = (f"{profile} grade for {rel.title} of r{params['revision']}: "
+                   + ("ELIGIBLE" if elig else "not eligible (" + "; ".join(report["eligibility"]["reasons"][:3]) + ")"))
+        return {"_status": status, "summary": summary, "report_path": str(path.relative_to(self.root)),
+                "report_digest": rdig, "eligible": elig, "snapshot_id": sid, "temporary_snapshot": bool(tmp_snap),
+                "stages": {st["id"]: st["status"] for st in report["stages"]},
+                "metrics": {k: v["value"] for k, v in report["metrics"].items()}}
+
+    def _bundle_board(self, bundle_dir: Path):
+        """The board a frozen bundle was made for -- the exact release its manifest names, digest checked."""
+        from .core import WorkspaceError
+        from .tasks import ReleaseError, find_release
+        task = (read_bundle(bundle_dir).manifest.get("task") or {})
+        try:
+            rel = find_release(task.get("id") or self.release.id, getattr(self, "release_dirs", None))
+        except ReleaseError as exc:
+            raise WorkspaceError("unknown_board", f"the bundle names a board this QCCD does not have: {exc}",
+                                 status=409) from None
+        if task.get("digest") and task["digest"] != rel.digest:
+            raise WorkspaceError("release_mismatch", f"the bundle was made for another edition of {rel.title}",
+                                 status=409)
+        return rel
+
+    # ------------------------------------------------------------------ submit a design to a board, in one go
+
+    def submit_design(self, actor: Mapping, *, design: str = "main", board: str | None = None,
+                      profile: str = "reference", origin_prompt_id: str | None = None,
+                      request_id: str | None = None, title: str = "") -> dict:
+        """What a person means by "submit this design to that board": compile the board's circuit for
+        the design (unless its program already is that), adopt it as the design's final program,
+        freeze, grade.  One job; the submission is listed at once and follows it."""
+        from .core import WorkspaceError
+        rel = self.board(board)
+        branch = self.resolve_draft(design)
+        if profile not in ("draft", "reference"):
+            raise WorkspaceError("bad_request", "profile must be draft or reference", status=422)
+        job = self.start_job(actor, "submit", {"branch": branch, "board": rel.id, "profile": profile,
+                                               "title": title[:200]},
+                             request_id=request_id, origin_prompt_id=origin_prompt_id)
+        return {"job_id": job["job_id"], "design": self.design_title(self.branch(branch)), "board": rel.title,
+                "status": job["status"], "duplicate": job.get("duplicate", False),
+                "label": "Local result - not published",
+                "next": "follow it ONCE with qccd_get_job(job_id, wait_s=50): it waits through the compile and "
+                        "the grade (usually under a minute) and returns the verdict as `grade`.  If it is still "
+                        "running then, tell them the card in their chat follows it to the verdict, and end your "
+                        "turn; do not keep polling."}
+
+    def _job_submit(self, jid, params, actor, origin_prompt_id, cancel) -> dict:
+        from .core import WorkspaceError
+        rel = self.board(params["board"])
+        branch = params["branch"]
+        head = self.head(branch)
+        fp = head.state.final_program or {}
+        r = self.replayed(branch, head.revision)
+        fresh = (fp.get("artifact") and fp.get("circuit_digest") == rel.manifest["circuit"]["digest"]
+                 and fp.get("compiled_for") == r.arch_digest())
+        rev = head.revision
+        compiled = reused = None
+        if not fresh:
+            reused = self._run_to_adopt(branch, rel, r.arch_digest(), head.revision)
+            if reused is not None:
+                adopt = reused["adopt_with"]
+                self._progress(jid, "adopt", f"adopting the program the run compiled for this design "
+                                             f"({rel.title}), instead of compiling it again")
+            else:
+                compiled = self._job_compile(jid, {**params, "revision": head.revision}, actor, origin_prompt_id,
+                                             cancel)
+                if compiled.get("_status", "succeeded") != "succeeded":
+                    return compiled
+                adopt = compiled["adopt_with"]
+                self._progress(jid, "adopt", f"adopting the {rel.title} program as the design's final program")
+            cs = self.apply_change_set({"branch": branch, "expected_revision": head.revision,
+                                        "request_id": f"submit-{jid}", "mode": "apply",
+                                        "summary": f"the compiled program for {rel.title}",
+                                        "origin_prompt_id": origin_prompt_id,
+                                        "operations": [adopt]}, actor)
+            if cs.get("status") != "committed":
+                raise WorkspaceError("adopt_failed", f"the compiled program was not adopted: {cs.get('status')}",
+                                     status=409)
+            rev = cs["revision"]
+        self._progress(jid, "freeze", "freezing the design and its program")
+        out = self.submit_local(actor, branch=branch, revision=rev, profile=params.get("profile", "reference"),
+                                origin_prompt_id=origin_prompt_id, title=params.get("title") or "",
+                                board=rel.id)
+        return {"summary": f"{out['design']} submitted to {rel.title} (r{rev}); grading as job {out['job_id']}",
+                "submission_id": out["submission_id"], "grading_job": out["job_id"], "revision": rev,
+                "compiled": bool(compiled), "from_run": (reused or {}).get("run_id"),
+                "board": rel.title, "design": out["design"]}
+
+    def _run_to_adopt(self, branch: str, rel, arch_digest: str, revision: int) -> dict | None:
+        """A finished run that compiled this board's circuit for this very device: its program, its
+        certified program and its certificate, as the change that adopts them.  Compiling again would
+        repeat the same export, compiler and cooling on the same inputs (~25 s for BB); what is
+        adopted is graded from the frozen bundle either way.  The circuit must be the board's, text for
+        text (line endings aside: a checkout may carry them either way), and the device the one the
+        design has now."""
+        want = rel.circuit_text().replace("\r\n", "\n")
+        for row in self.store.all("SELECT id FROM jobs WHERE kind='run' AND status='succeeded' "
+                                  "ORDER BY created_at DESC LIMIT 20"):
+            run = (self.job(row["id"]).get("result") or {}).get("run") or {}
+            d, arts = run.get("design") or {}, run.get("artifacts") or {}
+            if d.get("draft") != branch or d.get("digest") != arch_digest or run.get("compiler") not in ("rotate", "compile"):
+                continue
+            # a run from before the compiler-fault check could have succeeded with an illegal program
+            if ((run.get("performance") or {}).get("rules") or {}).get("failed"):
+                continue
+            if not all(arts.get(k) for k in ("program", "certified", "certificate", "circuit")):
+                continue
+            try:
+                if self.get_artifact(arts["circuit"]).decode("utf-8").replace("\r\n", "\n") != want:
+                    continue
+                n_instr = len(strict_loads(self.get_artifact(arts["program"])).get("instructions", []))
+            except Exception:
+                continue
+            ref = {"artifact": arts["program"], "certified": arts["certified"], "certificate": arts["certificate"],
+                   "compiled_for": arch_digest, "compiler": run["compiler"], "board": rel.id,
+                   "circuit_digest": rel.manifest["circuit"]["digest"],
+                   "label": f"{rel.title}: qccdc {run['compiler']}, r{revision}, {n_instr} instructions "
+                            f"(compiled by a run)"}
+            return {"run_id": row["id"], "adopt_with": {"type": "set_final_program", **ref}}
+        return None
+
+    def submission(self, sub_id: str) -> dict:
+        from .core import WorkspaceError
+        r = self.store.one("SELECT * FROM submissions WHERE id=?", (sub_id,))
+        if r is None:
+            raise WorkspaceError("unknown_submission", f"no submission {sub_id!r}", status=404)
+        d = dict(r)
+        d["actor"] = loads(d["actor"])
+        snap = self.snapshot(d["snapshot_id"])
+        d["snapshot"] = snap
+        d["report"] = self.report_for(sub_id)
+        head = self.head(snap["branch"])
+        d["stale"] = head.input_digest != snap["input_digest"]
+        d["label"] = "Local result - not published"
+        return d
+
+    def report_for(self, sub_id: str) -> dict | None:
+        r = self.store.one("SELECT * FROM submissions WHERE id=?", (sub_id,))
+        if r is None or not r["job_id"]:
+            return None
+        j = self.job(r["job_id"])
+        path = ((j.get("result") or {}) or {}).get("report_path")
+        if not path:
+            return None
+        data = (self.root / path).read_bytes()
+        rep = json.loads(data)
+        if r["report_digest"] and digest(rep) != r["report_digest"]:
+            from .core import WorkspaceError
+            raise WorkspaceError("corrupt_report", f"{path} does not match its recorded digest", status=500)
+        return rep
+
+    def submissions(self, limit: int = 50) -> list:
+        out = []
+        for r in self.store.all("SELECT id FROM submissions ORDER BY created_at DESC LIMIT ?", (max(1, min(limit, 500)),)):
+            s = self.submission(r["id"])
+            rep = s["report"] or {}
+            out.append({"submission_id": s["id"], "snapshot_id": s["snapshot_id"], "status": s["status"],
+                        "profile": s["profile"], "board": self._board_title(s["task_release"]),
+                        "design": self._design_title_of(s["snapshot"]["branch"]),
+                        "task_release": s["task_release"], "revision": s["snapshot"]["revision"],
+                        "branch": s["snapshot"]["branch"], "bundle_digest": s["snapshot"]["bundle_digest"],
+                        "stale": s["stale"], "eligible": (rep.get("eligibility") or {}).get("eligible"),
+                        "metrics": {k: v.get("value") for k, v in (rep.get("metrics") or {}).items()},
+                        "rank_by": rep.get("rank_by"), "evaluator": (rep.get("evaluator") or {}).get("version"),
+                        "created_at": s["created_at"], "label": s["label"]})
+        return out
+
+    def _board_title(self, release_id: str) -> str:
+        from .tasks import ReleaseError, find_release
+        try:
+            return find_release(release_id, getattr(self, "release_dirs", None)).title
+        except ReleaseError:
+            return release_id
+
+    def _design_title_of(self, branch: str) -> str:
+        try:
+            return self.design_title(self.branch(branch))
+        except Exception:
+            return branch
+
+    def leaderboard(self, board: str | None = None) -> dict:
+        """The local leaderboard of one board: this workspace's graded submissions to it, ranked by
+        its metric, eligible first -- never mixed across boards or evaluator versions."""
+        rel = self.board(board)
+        rows = [s for s in self.submissions(500) if s["task_release"] == rel.id]
+        key = rel.manifest.get("rank_by")
+        better = next((m.get("better") for m in rel.manifest.get("metrics", []) if m["name"] == key), "low")
+        def sortkey(s):
+            v = s["metrics"].get(key)
+            v = float("inf") if v is None else (v if better == "low" else -v)
+            return (0 if s["eligible"] else 1, v)
+        rows.sort(key=sortkey)
+        return {"task": rel.id, "board": rel.title, "rank_by": key, "better": better, "rows": rows,
+                "label": "Local results - not published"}
+
+    def latest_result(self, branch: str) -> dict | None:
+        r = self.store.one("SELECT s.id FROM submissions s JOIN snapshots n ON n.id=s.snapshot_id "
+                           "WHERE n.branch=? ORDER BY s.created_at DESC LIMIT 1", (branch,))
+        if r is None:
+            return None
+        s = self.submission(r["id"])
+        rep = s["report"] or {}
+        return {"submission_id": s["id"], "status": s["status"], "revision": s["snapshot"]["revision"],
+                "stale": s["stale"], "eligible": (rep.get("eligibility") or {}).get("eligible"),
+                "metrics": {k: v.get("value") for k, v in (rep.get("metrics") or {}).items()},
+                "label": s["label"]}
+
+    # ------------------------------------------------------------------ publication
+
+    def prepare_publish(self, actor: Mapping, submission_id: str, *, visibility: str = "public",
+                        display_name: str = "") -> dict:
+        """The review of exactly what would be uploaded.  Creates nothing."""
+        from .core import WorkspaceError
+        if visibility not in ("public", "unlisted", "private"):
+            raise WorkspaceError("bad_request", "visibility must be public, unlisted or private", status=422)
+        s = self.submission(submission_id)
+        b = read_bundle(self.root / s["snapshot"]["dir"] / "bundle")
+        if b.digest != s["snapshot"]["bundle_digest"]:
+            raise WorkspaceError("bundle_changed", "the snapshot's bundle no longer matches its digest", status=409)
+        rel = self._bundle_board(self.root / s["snapshot"]["dir"] / "bundle")
+        params = {"visibility": visibility, "display_name": display_name[:80], "task": rel.id}
+        rep = s["report"] or {}
+        return {"submission_id": submission_id, "task": {"id": rel.id, "digest": rel.digest}, "board": rel.title,
+                "bundle_digest": b.digest, "params": params, "params_digest": digest(params),
+                "files": [{"role": k, "path": v["path"], "digest": v["digest"], "bytes": v["bytes"]}
+                          for k, v in b.manifest["files"].items()],
+                "local_report": {"eligible": (rep.get("eligibility") or {}).get("eligible"),
+                                 "reasons": (rep.get("eligibility") or {}).get("reasons"),
+                                 "metrics": {k: v.get("value") for k, v in (rep.get("metrics") or {}).items()},
+                                 "profile": rep.get("profile")},
+                "excluded": ["optimizer source", "agent conversations", "the workspace database",
+                             "credentials", "unrelated files"],
+                "requires": "a person approves this exact digest and these parameters in Studio or with "
+                            "`qccd publish --approve` at a terminal; an agent cannot approve"}
+
+    def approve_publish(self, actor: Mapping, submission_id: str, bundle_digest: str, params: Mapping) -> dict:
+        from .core import WorkspaceError, new_id
+        if actor.get("kind") != "human":
+            raise WorkspaceError("forbidden", "only a person can approve a publication", status=403)
+        review = self.prepare_publish(actor, submission_id, visibility=params.get("visibility", "public"),
+                                      display_name=params.get("display_name", ""))
+        if review["bundle_digest"] != bundle_digest:
+            raise WorkspaceError("digest_mismatch", "the approved digest is not this submission's bundle", status=409)
+        extra = set(params) - {"visibility", "display_name"}
+        if extra:
+            raise WorkspaceError("bad_request", f"unknown publication parameters {sorted(extra)}", status=422)
+        aid = new_id("ap")
+        with self.store.tx() as db:
+            db.execute("INSERT INTO approvals(id, submission_id, bundle_digest, params_digest, params, approved_by, "
+                       "created_at) VALUES(?,?,?,?,?,?,?)", (aid, submission_id, bundle_digest,
+                                                             review["params_digest"], dumps(review["params"]),
+                                                             dumps(dict(actor)), _now()))
+            self._emit(db, "publication.approved", {"approval_id": aid, "submission_id": submission_id,
+                                                    "bundle_digest": bundle_digest, "params": review["params"]})
+        return {"approval_id": aid, "bundle_digest": bundle_digest, "params": review["params"],
+                "params_digest": review["params_digest"]}
+
+    def publish(self, approval_id: str, uploader) -> dict:
+        """Upload an approved bundle.  `uploader(archive_bytes, meta) -> dict` is the
+        credentialed transport (never available to graders or to agents)."""
+        from .core import WorkspaceError
+        r = self.store.one("SELECT * FROM approvals WHERE id=?", (approval_id,))
+        if r is None:
+            raise WorkspaceError("unknown_approval", f"no approval {approval_id!r}", status=404)
+        if r["used_at"]:
+            raise WorkspaceError("approval_used", "this approval was already used; approve again to resubmit",
+                                 status=409)
+        s = self.submission(r["submission_id"])
+        b = read_bundle(self.root / s["snapshot"]["dir"] / "bundle")
+        if b.digest != r["bundle_digest"]:
+            raise WorkspaceError("digest_mismatch", "the bundle on disk is not the one that was approved", status=409)
+        params = loads(r["params"])
+        if digest(params) != r["params_digest"]:
+            raise WorkspaceError("params_mismatch", "approval parameters were altered", status=409)
+        archive = archive_bundle(b)
+        resp = uploader(archive, {"bundle_digest": b.digest, "task": s["task_release"], **params})
+        with self.store.tx() as db:
+            db.execute("UPDATE approvals SET used_at=?, publication=? WHERE id=? AND used_at IS NULL",
+                       (_now(), dumps(resp), approval_id))
+            self._emit(db, "publication.submitted", {"approval_id": approval_id, "submission_id": s["id"],
+                                                     "bundle_digest": b.digest, "response": resp})
+        return {"approval_id": approval_id, "bundle_digest": b.digest, "server": resp}
+
+
+def _job_brief(j: Mapping) -> dict:
+    res = j.get("result") or {}
+    return {"job_id": j["id"], "kind": j["kind"], "status": j["status"], "progress": j.get("progress"),
+            "summary": res.get("summary"), "origin_prompt_id": j.get("origin_prompt_id"),
+            "created_at": j["created_at"], "started_at": j.get("started_at"), "finished_at": j.get("finished_at"),
+            "error": j.get("error"), "cancel_requested": j.get("cancel_requested")}
+
+
+def _compiler_reason(log: str) -> str:
+    import re
+    m = re.search(r"(unroutable[^\n]*|Unroutable[^\n]*|unrealised[^\n]*|too small[^\n]*|cannot[^\n]*|exception[^\n]*)", log)
+    return (m.group(1) if m else log[-300:]).strip()
+
+
+def _refuse_withdrawn_compiler(tc) -> None:
+    """Stop before compiling with a compiler release that was withdrawn (toolchain.RETIRED_QCCDC):
+    what it makes breaks a rule, and the person would see the illegal program as their design's."""
+    from .core import WorkspaceError
+    from .toolchain import retired, upgrade_hint
+    why = retired(tc.qccdc)
+    if why:
+        raise WorkspaceError("toolchain_withdrawn", f"{why}. Nothing was compiled: {upgrade_hint()}", status=424)
+
+
+def _compiler_fault(res, tc, *, design: str, program: str) -> dict | None:
+    """A compiled program that breaks a rule is a fault in the COMPILER, not a result.
+
+    The compiler's contract is a legal program for the device or a refusal.  Its output used to
+    be replayed, animated and graded as it came, so an illegal program reached the person as
+    "your design is not eligible: R22", with the animation showing ions moving in different
+    directions in one cycle -- the compiler's error presented as theirs.  This is checked on the
+    program exactly as it would be shown and submitted (cooled), and every rule the replay
+    reports is a property of the program: the design's own rules (R19-R21) are not replayed.
+    Returns the failed job's result, or None when the program passes."""
+    faults = [v for v in res.rules.violations if v.severity == "error"]
+    if not faults:
+        return None
+    rules = sorted({v.rule for v in faults})
+    first = faults[0]
+    from .evaluator import _exe_digest
+    return {"_status": "failed",
+            "summary": f"the compiler made a program for {program} on {design} that breaks rule "
+                       f"{', '.join(rules)} ({len(faults)} violation(s); the first, at instruction "
+                       f"{first.instr_id}: {first.message}). That is a fault in the compiler, not in "
+                       f"{design}, so the program is not shown, adopted or graded. The compiler used: "
+                       f"{tc.qccdc}; `qccd toolchain status` says which one it is",
+            "compiler_fault": {"rules": rules, "violations": len(faults),
+                               "examples": [str(v) for v in faults[:5]],
+                               "compiler": str(tc.qccdc), "compiler_digest": _exe_digest(tc.qccdc)}}
+
+
+def _replay_for_rules(work: Path, table: str):
+    """Replay the cooled program in `work` against `work/device.arch.json` with every rule on."""
+    from ..arch.device import Architecture
+    from ..cost.models import corrected_model
+    from ..ir.tsir import TSIR
+    from ..verify.replay import replay
+    arch = Architecture.from_json(json.loads((work / "device.arch.json").read_text(encoding="utf-8")))
+    prog = TSIR.from_json(json.loads((work / "prog.cooled.tsir.json").read_text(encoding="utf-8")))
+    return replay(prog, arch, corrected_model(table), check_rules=True)
+
+
+def _freeze_dir(d: Path) -> None:
+    for p in d.iterdir():
+        try:
+            os.chmod(p, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
+        except OSError:
+            pass

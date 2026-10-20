@@ -25,7 +25,15 @@ def trap_hops(arch: dict, max_transit: int = 3) -> list[dict]:
     """Every ordered pair of traps one machine cycle apart.
 
     An ion never rests on a junction -- R2 allows at most one on a degree->=3 node at any
-    instant -- so a hop leaves a trap, crosses only non-trap nodes, and lands on a trap.
+    instant -- so a hop leaves a trap, crosses only junctions, and lands on a trap.
+
+    A junction here is what R18 says it is: a bare junction node, or a SITE where three or
+    more rails meet.  Such a site is still a place a hop may land (a device with no room
+    elsewhere rests ions there), and it is also a place a hop may cross: crossing is what
+    a junction is for, and the compiler crosses rather than rests whenever it can (a
+    hexagon lattice with sites for corners left ions parked on them, 2026-09-29).  This
+    widens the hop set by a fact read off the segment list, never by anything the
+    compiler says; whether the junction was FREE to cross is R1/R2, replayed elsewhere.
     """
     geom = arch["geometry"]
     kind = {n["id"]: n.get("kind", "site") for n in geom["nodes"]}
@@ -45,10 +53,10 @@ def trap_hops(arch: dict, max_transit: int = 3) -> list[dict]:
             for nbr, seg in adj.get(node, []):
                 if seg in used:
                     continue
-                if kind.get(nbr) == "site":
-                    if nbr != src and (nbr not in found or len(used) + 1 < found[nbr]):
-                        found[nbr] = len(used) + 1
-                else:
+                is_site = kind.get(nbr) == "site"
+                if is_site and nbr != src and (nbr not in found or len(used) + 1 < found[nbr]):
+                    found[nbr] = len(used) + 1
+                if nbr != src and (not is_site or len(adj.get(nbr, [])) >= 3):
                     walk(nbr, used + [seg], depth + 1)
 
         walk(src, [], 0)
@@ -57,16 +65,13 @@ def trap_hops(arch: dict, max_transit: int = 3) -> list[dict]:
     return out
 
 
-def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("prefix", help="the compiler's -o prefix (reads <prefix>.qcert.json)")
-    ap.add_argument("--arch", required=True, help="the EXPANDED architecture document")
-    ap.add_argument("-o", "--out", required=True)
-    args = ap.parse_args(argv)
+def build(cert: dict, arch: dict) -> dict:
+    """The checker's input: the certificate's fields, and the device facts read from the
+    EXPANDED architecture `arch` (`export_arch.expand`).
 
-    cert = json.loads(Path(args.prefix + ".qcert.json").read_text(encoding="utf-8"))
-    arch = json.loads(Path(args.arch).read_text(encoding="utf-8"))
-
+    One definition: `check_cert.py --qcheck` rebuilds the input with this and refuses a
+    file that differs, so the Lean verdict it reports is about THIS certificate on THIS
+    device and not about whatever input it was handed."""
     gate_sites = sorted(n for n, c in arch["node_caps"].items() if c.get("gate"))
     hops = trap_hops(arch)
     # The cyclic node order of each closed loop, so the checker can replay a rotation
@@ -78,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
         if l.get("closed", l.get("kind") == "ring")
     }
 
-    doc = {
+    return {
         "circuit": cert["circuit"],
         "arch": cert["arch"],
         "n_qubits": cert["n_qubits"],
@@ -94,6 +99,19 @@ def main(argv: list[str] | None = None) -> int:
         "hops": hops,
         "loops": loops,
     }
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("prefix", help="the compiler's -o prefix (reads <prefix>.qcert.json)")
+    ap.add_argument("--arch", required=True, help="the EXPANDED architecture document")
+    ap.add_argument("-o", "--out", required=True)
+    args = ap.parse_args(argv)
+
+    cert = json.loads(Path(args.prefix + ".qcert.json").read_text(encoding="utf-8"))
+    arch = json.loads(Path(args.arch).read_text(encoding="utf-8"))
+    doc = build(cert, arch)
+    gate_sites, hops, loops = doc["gate_sites"], doc["hops"], doc["loops"]
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(doc) + "\n", encoding="utf-8")
     print(f"{cert['circuit']} on {cert['arch']}: {len(cert['gates'])} witnesses, "
