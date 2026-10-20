@@ -344,58 +344,89 @@ under it.
 ## 7. The same files, outside this page
 
 A proof in this page and a run of `qcheck` decide the same `check` on the same input. To run
-`qcheck` yourself:
+`qcheck` yourself you need the workspace's command, `qccd`, and Lean. Every word in the commands
+below is typed as shown, except where a file you saved is: that path is yours.
 
-**Step 1: get the checker.** It is a Lean program, built from the repository's Lean sources.
-Lean's installer, elan, fetches the Lean it is pinned to (`leanprover/lean4:v4.29.0-rc2`) the
-first time it is needed: install elan (on macOS, `brew install elan-init`; elsewhere, see
-[github.com/leanprover/elan](https://github.com/leanprover/elan)). Then clone the repository's
-`compiler` branch (its default branch, `main`, does not have the checker yet):
+**Step 1: Lean, and the workspace.** Install Lean's installer, elan: on macOS
+`brew install elan-init`; on Linux and Windows as
+[github.com/leanprover/elan](https://github.com/leanprover/elan) says (and step 2's command,
+run before elan is installed, prints the way for each platform). Then open a new terminal and
+install the workspace from the repository's `compiler` branch (its default branch, `main`, does
+not have the checker yet). On macOS or Linux:
 
 ```
 git clone -b compiler https://github.com/yezhuoyang/QCCD
+cd QCCD
+python3.13 -m venv .venv && source .venv/bin/activate     # any Python 3.10 or newer
+pip install -e ".[agent]"
 ```
 
-and run `lake build` in its **checker package**. The compiler's README in the repository says
-where that is (its section "Build and run"), and so does the workspace's `qccd toolchain`
-(lesson H4). The checker needs no Mathlib; once Lean is installed, the build takes seconds. It
-makes one program, `qcheck` (`qcheck.exe` on Windows). This is the same on Windows, Linux and
-macOS.
+On Windows, in PowerShell:
 
-**Step 2: get the file.** Save [algo_ghz.qcheck.json](data/algo_ghz.qcheck.json), or any
+```
+git clone -b compiler https://github.com/yezhuoyang/QCCD
+cd QCCD
+py -m venv .venv
+.venv\Scripts\activate
+pip install -e ".[agent]"
+```
+
+**Step 2: build the checker.**
+
+```
+qccd toolchain build-checker
+```
+
+builds `qcheck` from the clone's Lean sources -- Lean core only, no Mathlib -- runs it once on a
+certificate it must accept and one it must reject, and from then on the workspace uses it. The
+first time, elan downloads the Lean the checker is pinned to (`leanprover/lean4:v4.29.0-rc2`).
+It prints (the `...` stand for where the checker is, on your computer)
+
+```
+building the checker in ... (about a minute the first time; it does not need Mathlib) ...
+built the checker (checked: it accepted and rejected a test certificate): ...
+the workspace uses it from now on; `qccd toolchain check <file>.qcheck.json` runs it
+```
+
+Without Lean it says how to install elan instead.
+
+**Step 3: get the file.** Save [algo_ghz.qcheck.json](data/algo_ghz.qcheck.json), or any
 row's file from the panel above.
 
-**Step 3: run it.** The program the build made, on the file you saved:
+**Step 4: run it** on the file you saved:
 
 ```
-qcheck algo_ghz.qcheck.json
+qccd toolchain check algo_ghz.qcheck.json
 ```
 
-(Give each its full path, or run it from the folder it is in.) On the published file it prints
+This runs the checker the workspace uses and passes its output and its exit status through. On
+the published file it prints
 
 ```
 qcheck circuit on chain4
   8 circuit ops, 4 gate witnesses, 3 moves, 0 rotations, 4 qubits
   ACCEPTED -- the program follows its certificate: mapping, transport, co-location of
-  each op's own ions, order (QCCDC.Cert.check_sound).  It names no gate: ...
+  each op's own ions, order (QCCDC.Cert.check_sound).  It names no gate: which gate fires
+  is decided by comparing the emitted pulses with the circuit (the semantic check), and
+  R10 needs both.
 ```
 
-and two more lines, which say that which gate fires is decided by comparing the emitted pulses
-with the circuit, and that R10 needs both.
-
-**Step 4: read the verdict.** `ACCEPTED` and exit status 0 mean `check` returned `true` on
+**Step 5: read the verdict.** `ACCEPTED` and exit status 0 mean `check` returned `true` on
 that input, so by `check_sound` the input satisfies `Implements`. `REJECTED` and exit status 1
-come with `diagnose`'s list of the conditions that failed. Exit status 2 means the command was
-used wrongly or the file is not JSON.
+come with `diagnose`'s list of the conditions that failed. Exit status 2 means the file is
+missing or cannot be read as a checker input.
+
+When this lesson was written, steps 1 to 4 were run as written on Windows, from a fresh clone,
+and printed what is quoted here; they were not run on macOS or Linux.
 
 A prebuilt `qcheck` is published for macOS on Apple silicon only, pinned with its size and
-SHA-256 in the repository's toolchain manifest. The workspace's `qccd toolchain install` fetches it
-there together with the compiler; on Windows and Linux it says there is none and to build it as
-above. When this lesson was written, that published binary had been built before two changes to
-the checker (`OwnIons`, condition 8, and the strict order of condition 11), and the pinned
-compiler had no macOS build, so on a Mac the command stopped before fetching either. So build the
-checker yourself, as above, on every platform: then it is the checker of the sources in front of
-you, and of lesson F1. `qccd toolchain status` says which checker the workspace uses.
+SHA-256 in the repository's toolchain manifest, and `qccd toolchain install` fetches it there
+together with the compiler. When this lesson was written, that published binary had been built
+before two changes to the checker (`OwnIons`, condition 8, and the strict order of condition 11),
+and the pinned compiler had no macOS build, so on a Mac `qccd toolchain install` stopped before
+fetching either. So build the checker yourself, as above, on every platform: then it is the
+checker of the sources in front of you, and of lesson F1. `qccd toolchain status` says which
+checker the workspace uses.
 
 ## 8. What you have checked, and what you have not
 

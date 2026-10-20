@@ -22,7 +22,8 @@ open QCCDC.Cert
 /-!
 ## 1. Once: the repository, the compiler, the checker
 
-From a terminal, on macOS or Linux:
+You need Lean's installer, elan, for the checker (lesson H1, step 1, says how to install it).
+Then, from a terminal, on macOS or Linux:
 
 ```
 git clone -b compiler https://github.com/yezhuoyang/QCCD
@@ -30,6 +31,7 @@ cd QCCD
 python3.13 -m venv .venv && source .venv/bin/activate     # any Python 3.10 or newer
 pip install -e ".[agent]"
 qccd toolchain install
+qccd toolchain build-checker
 ```
 
 On Windows, in PowerShell:
@@ -41,6 +43,7 @@ py -m venv .venv
 .venv\Scripts\activate
 pip install -e ".[agent]"
 qccd toolchain install
+qccd toolchain build-checker
 ```
 
 `pip install -e ".[agent]"` installs the workspace, with what its grader needs (qiskit, stim and
@@ -51,27 +54,32 @@ circuit. Windows and Linux on x86-64 have a prebuilt compiler. When this lesson 
 pinned version had none for macOS; on a Mac the command says so and says how to build the compiler
 from the repository's OCaml sources.
 
-**The checker.** On Windows and Linux there is no prebuilt `qcheck`: `qccd toolchain install`
-says so and names the folder of the repository's checker package. Build it there:
+**The checker.** On Windows and Linux there is no prebuilt `qcheck`, and `qccd toolchain install`
+ends by saying so: "no prebuilt checker for this platform; build it from source instead", with
+how to install elan and "run `qccd toolchain build-checker`". That command builds the checker
+from the clone's Lean sources, runs it once on a certificate it must accept and one it must
+reject, and from then on the workspace uses it:
 
 ```
-lake build
+built the checker (checked: it accepted and rejected a test certificate): ...
+the workspace uses it from now on; `qccd toolchain check <file>.qcheck.json` runs it
 ```
 
-(It needs Lean's installer, elan; see lesson H1.) Then
+Build it on a Mac too (lesson H1 says why). Then
 
 ```
 qccd toolchain status
 ```
 
-lists the compiler `in use` (installed) and, on its `checker` line, the `qcheck` the build made
-(built in this checkout). Without a checker that line says so and names the folder to run
-`lake build` in -- on a Mac too. A grade without `qcheck` reports the Lean stage `unsupported`,
-which is never eligible.
+lists the compiler `in use` (installed) and, on its `checker` line, the checker you built
+(built in this checkout). Before you build it, that line reads "none: reference grades report the
+Lean stage `unsupported` (`qccd toolchain install`, or `qccd toolchain build-checker`)" -- and a
+grade with the Lean stage `unsupported` is never eligible.
 
-When this lesson was written, the Windows lines of this section and all of the next were run as
-written, in PowerShell, starting from an empty folder. The macOS and Linux lines differ only in how
-the environment is made and activated; they were not run on macOS or Linux.
+When this lesson was written, the Windows lines of this section and all of the next, and the
+checks of sections 4 and 6, were run as written, in PowerShell, from a fresh clone, a fresh
+environment and an empty home folder for the toolchain. The macOS and Linux lines differ only in
+how the environment is made and activated; they were not run on macOS or Linux.
 
 ## 2. A workspace, a compile, a grade
 
@@ -157,8 +165,9 @@ Three things tie your grade to the Compilation page's GHZ chain.
   way: the same certificate, field for field.
 * **The checker's input.** The Lean stage built its input from your bundle's device and
   certificate; rebuilt the same way, it equals the published
-  [algo_ghz.qcheck.json](data/algo_ghz.qcheck.json). So `qcheck algo_ghz.qcheck.json` (lesson H1)
-  checks exactly what your grade's Lean stage checked, and lesson H1's proofs are about it.
+  [algo_ghz.qcheck.json](data/algo_ghz.qcheck.json). So `qccd toolchain check algo_ghz.qcheck.json`
+  (lesson H1, step 4) checks exactly what your grade's Lean stage checked, and lesson H1's proofs
+  are about it.
 * **The circuit.** `circuit_sha256` in the semantics stage is the SHA-256 of the board's circuit
   file, the same bytes the Compilation page compiled.
 
@@ -173,7 +182,9 @@ and checker input came out equal to the page's files, and its R10 verdict the sa
 
 The Compilation page's verdicts, and the computed marks of lesson H2's boards, come from the
 semantic check run *together with* the proved checker, which ends in one field, `R10`, decided by
-one chain of tests.
+one chain of tests. (Before the chain, the semantic check reads the certificate's shape: every
+field it uses, with its type. A malformed certificate, a move whose cycle is written `20.0` say,
+fails R10 there, by name, and never reaches the chain. The model below starts after that step.)
 Here is that chain, with its inputs as Lean data. A list of problems is empty where the verdict
 says `"ok"`; `qcheck` is `some true` when the proved checker accepted, `some false` when it
 rejected, and `none` when it was not run; `same` is O2: `some true` for `ok`, `some false` for a
@@ -303,7 +314,8 @@ def ghzLate : Input :=
 /-!
 {{figure ghzLate at=8}}
 
-`qcheck` on the edited file says
+Save the edited copy under a name of your own -- `algo_ghz_late.qcheck.json`, say -- and check it
+with `qccd toolchain check algo_ghz_late.qcheck.json`. It says
 
 ```
 qcheck circuit on chain4
