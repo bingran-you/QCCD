@@ -283,6 +283,9 @@ def page(built: dict, examples_by_rule: dict, PAGE: str, STYLE: str, papers_by_s
                  + (f'<p class="src">sources: {_sources(r.source)}</p>' if r.source else "")
                  + f'<p class="src chips">in the rule sets: {chips}</p>{dev}{cards}</section>')
 
+    # -- the machine level: a floorplan of places, and a program scheduled on it
+    b += _machine_section(all_params)
+
     # -- your own
     example = ('ruleset "my-machine"\n'
                'title "A machine without broadcast control"\n'
@@ -308,6 +311,55 @@ def page(built: dict, examples_by_rule: dict, PAGE: str, STYLE: str, papers_by_s
                        extra_css="main{max-width:1120px}" + CSS, body="\n".join(b))
 
 
+#: the machine level's rule sets, in the order the page shows them
+MACHINE_SETS = (("floorplan", "A floorplan's rules"), ("machine", "A schedule's rules"))
+MACHINE_GROUPS = (("floorplan", "Words about a floorplan"),
+                  ("machine", "Words about a program scheduled on it"))
+
+
+def _machine_section(all_params) -> list[str]:
+    """F1-F9 and G1-G14: the same language, one level up."""
+    b = ['<h2 id="machine">One level up: the machine</h2>',
+         '<p class="sub">A fault-tolerant machine is built from <b>places</b> -- each a small device '
+         'whose every op is checked by the rules above, then used as a box with doors -- joined by '
+         '<b>roads</b> that carry bundles of ions and <b>wires</b> that carry bits. Where the places '
+         'stand is its <b>floorplan</b>, and a logical program run on it is a schedule of ops at places '
+         'and bundles on roads, many at once. The same language judges both, with its own words. The '
+         'floorplan rules (F) hold before any program runs; the schedule rules (G) hold on every run, '
+         'and two of them, G5 and G13, are why work may run in parallel: a place does one op at a time '
+         'and a road carries one bundle at a time, so whatever runs at once holds different things. '
+         'The gadget design pages show every one of these rules, decided, beside the machine they '
+         'judge.</p>']
+    for g, title in MACHINE_GROUPS:
+        terms = [t for t in TERMS.values() if t.group == g]
+        if not terms:
+            continue
+        b.append(f'<h3>{title}</h3><table class="vocab">')
+        for t in sorted(terms, key=lambda t: (not t.domain, t.signature.lower())):
+            name = t.name.split("(")[0]
+            anchor = f' id="w-{name}"' if t.name == name else ""
+            b.append(f'<tr><td{anchor}><code>{html.escape(t.signature)}</code></td>'
+                     f'<td>{html.escape(t.meaning)}</td></tr>')
+        b.append('</table>')
+    for n, label in MACHINE_SETS:
+        rs = load(n)
+        b.append(f'<h3 id="set-{n}">{html.escape(label)} '
+                 f'<span class="st"><a href="sets/{n}.rules" download>{n}.rules</a></span></h3>'
+                 f'<p class="sub">{html.escape(rs.about)}</p>')
+        for r in sorted(rs.rules, key=lambda r: rule_order(r.id)):
+            text = (f"when {r.when_text}:\n" if r.when is not None else "") + r.text
+            b.append(f'<section class="rule" id="{r.id}"><h3>{r.id} <span class="st">'
+                     f'{html.escape(r.title)}</span>{"<span class=core>core</span>" if r.core else ""}</h3>'
+                     f'<pre class="assert">{highlight(text, all_params | set(rs.params))}</pre>'
+                     f'<p class="checks">{html.escape(r.about)}</p>'
+                     + (f'<p class="src">sources: {_sources(r.source)}</p>' if r.source else "")
+                     + '</section>')
+    return b
+
+
 def downloads() -> list[tuple[str, bytes]]:
-    """Each shipped rule set, resolved into the one file the compiler is given."""
-    return [(f"rules/sets/{n}.rules", rs.text().encode("utf-8")) for n, _, rs in _sets()]
+    """Each shipped rule set, resolved into the one file the compiler is given -- and the
+    machine level's two."""
+    out = [(f"rules/sets/{n}.rules", rs.text().encode("utf-8")) for n, _, rs in _sets()]
+    out += [(f"rules/sets/{n}.rules", load(n).text().encode("utf-8")) for n, _ in MACHINE_SETS]
+    return out
