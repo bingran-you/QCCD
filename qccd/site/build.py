@@ -602,6 +602,26 @@ def lessons() -> tuple[list[dict], list[dict]]:
     return parts, less
 
 
+#: An absolute path, as a board's record writes it on whichever machine built it: a drive
+#: letter, a POSIX home, or a UNC share.
+_ABS_PATH = re.compile(r"^(?:[A-Za-z]:[\\/]|/(?:home|Users|root|tmp|c)/|\\\\)")
+
+
+def public_paths(obj):
+    """A board's record as it is published: every absolute path in it -- `arch`, `prefix`,
+    `qasm`, or a `Path` that `default=str` would spell out -- becomes the file's own name.
+    The name says which artifact a row came from; the path would say whose disk it was on."""
+    if isinstance(obj, dict):
+        return {k: public_paths(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [public_paths(v) for v in obj]
+    if isinstance(obj, Path):
+        return obj.name
+    if isinstance(obj, str) and _ABS_PATH.match(obj):
+        return re.split(r"[\\/]+", obj.rstrip("\\/"))[-1]
+    return obj
+
+
 def _entry_ok(r: dict) -> bool:
     return r.get("status") == "ok" and not r.get("rules_failed")
 
@@ -1932,14 +1952,15 @@ def build(out: Path) -> int:
         put(f"board/{t['id']}/index.html", lb.declare_board_controls((src / "index.html").read_text(encoding="utf-8")),
             2, "board", extra=FOOTER_BLOCK + BOARD_SKIN)
         # the published manifest carries only the listed designs; the seed directory keeps
-        # the full record, disqualified rows included
-        (dst / "manifest.json").write_text(json.dumps(t["rows"], indent=1, default=str) + "\n",
+        # the full record, disqualified rows included.  Where a row names a file on the
+        # machine that built it, the published copy names the file and not the path
+        (dst / "manifest.json").write_text(json.dumps(public_paths(t["rows"]), indent=1, default=str) + "\n",
                                            encoding="utf-8", newline="\n")
         if (src / "rows.json").exists():
             out_keys = {r["key"] for r in t["rows"]}
             raw = json.loads((src / "rows.json").read_text(encoding="utf-8"))
             kept = [r for r in raw if not isinstance(r, dict) or r.get("key") is None or r["key"] in out_keys]
-            (dst / "rows.json").write_text(json.dumps(kept, indent=1, default=str) + "\n",
+            (dst / "rows.json").write_text(json.dumps(public_paths(kept), indent=1, default=str) + "\n",
                                            encoding="utf-8", newline="\n")
         for r in t["rows"]:
             if r.get("status") != "ok" or not r.get("page"):

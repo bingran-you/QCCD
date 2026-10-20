@@ -672,3 +672,14 @@ two tests in `tests/test_comments_api.py`. `tests/site.mjs` answers `/api/progre
 index and proven identical outside the course section; the sync block inserted before
 `</body>` of every live page carrying the course (330); the API file swapped and the unit
 restarted. Backups in `/root/qccd-site-backups/progress-*`.
+
+**Later the same day: the build machine's paths were in the published data.** Reported by a
+peer session: each `board/<task>/manifest.json` row named its `arch`, `prefix` and `qasm` by
+their place on this machine (`C:\Users\<name>\...`, 251 of them over seven boards), and a
+whole-site scan found the same in 96 gadget leaf files, whose programs carried their full
+provenance log (absolute `root`, repository files, lines and quoted source). No HTML page had
+any (`render.py`'s `FORBIDDEN` and `provenance.thin` already hold those). Now `build.py`'s
+`public_paths` publishes a row's file by its name, and `qccd/gadget/build.py` writes leaf data
+through `thin`. Fixed in place on the server (each file re-serialised byte-exactly before the
+change); a scan of all 663 live text files finds none, with originals from the backup as the
+control.
