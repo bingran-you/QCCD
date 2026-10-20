@@ -2499,7 +2499,7 @@ function priceHead() {
 }
 function priceNote() {
   if (!READY || !PRICE) return '';
-  if (PRICE.blocked) return 'recompile in Python';
+  if (PRICE.blocked) return 'compile it again to price it';
   if (!EDITS.length && !PROG.length) return '';
   // THE FIFTH STATE.  The per-frame self-check compares each re-priced frame against the
   // cost PYTHON shipped for it; an AUTHORED programme has no such frames, so there is
@@ -2515,22 +2515,22 @@ function priceNote() {
     // a programme written HERE has no tsir pair to download: its return leg to Python is
     // the saved snapshot, which `qccd open` replays and prices from first principles
     if (AUTHORED) {
-      return 'no per-frame oracle: these frames were never priced by Python. ' +
+      return 'no per-frame reference: the checker never priced these frames. ' +
              'Save (ctrl+S) and run: python -m qccd open ' +
              ((STATE && STATE.name) || 'design') + '.studio.json';
     }
-    return 'no per-frame oracle: these frames were never priced by Python. ' +
+    return 'no per-frame reference: the checker never priced these frames. ' +
            'Download the pair and run: python -m qccd run ' + A.name +
            '.arch.json --tsir ' + A.name + '.tsir.json';
   }
   if (PRICE.frameDrift === 0) {
     return 're-priced client-side; every one of ' + fmt(PRICE.frameChecked) +
-           ' frames still agrees with the Python verifier';
+           ' frames still agrees with the checker';
   }
   if (!EDITS.some(function (o) { return priceAffecting(o); })) {
     return 'price unchanged: this model ignores the geometry you changed';
   }
-  return 're-priced client-side · re-verify in Python: ' +
+  return 're-priced in the browser · check it again with the checker: ' +
          'python -m qccd run ' + A.name + ' --program ' + P.name;
 }
 function priceAffecting(op) {
@@ -4493,6 +4493,7 @@ var HINTS = {
   'region:prog':  { t: '3 \u00b7 Program', d: 'The hardware programme one instruction per row, and the circuit it was compiled from, beside the animation: the executing instruction is marked and the next ones are in view. Hardware, Gates or Both.' },
   'progview': { t: 'Hardware \u00b7 Gates \u00b7 Both', d: 'What the Program pane shows: the hardware instructions, the circuit statements they realise, or both stacked. Only a compiled page has a circuit.' },
   'progpin': { t: 'Beside the animation', d: 'Keep the programme in its own column next to the canvas, the whole height, or put it back among the panels to give the canvas the width.' },
+  'ruleset': { t: 'The paper’s rules', d: 'This schedule was written for another machine model: a paper’s. Its rule set, judged rule by rule when the page was built, comes first; hover a rule for its first counterexample or for why it does not apply. The badges after it are this website’s own rules, which the paper did not assume.' },
   // the picture, element by element
   'el:site':       { t: 'Trapping site', d: 'A pocket in the electric field where ions sit still. Each site holds a few ions (its capacity), and its zone says what may happen there: a gate, a measurement, cooling.', k: 'press the tile, then click the canvas' },
   'el:junction':   { t: 'Junction', d: 'A crossing where rails meet. Ions pass through it on the way somewhere else and never rest in it, and every crossing heats the ion a little.', k: 'press the tile, then click the canvas' },
@@ -4594,7 +4595,7 @@ var HINTS = {
   'guide:exit': { t: 'Close the walk-through', d: 'Back to the page as it was, with nothing dimmed. Hint brings it back where you left off.' },
   'learn:solution': { t: 'Solution', d: 'Show one way to do it, applied to the canvas so you can read it back.' },
   'learn:next': { t: 'Next', d: 'On to the next lesson.' },
-  'learn:verdict': { t: 'Python\u2019s verdict', d: 'Some rules are not checked in the browser. For these lessons the page carries the verdict Python computed on this exact programme when the page was built \u2014 the rule, its state, and the verifier\u2019s own sentences.' },
+  'learn:verdict': { t: 'The checker\u2019s verdict', d: 'Some rules are not checked in the browser. For these lessons the page carries the verdict the checker computed on this exact programme when the page was built \u2014 the rule, its state, and the verifier\u2019s own sentences.' },
   'p:init': { t: 'p.init', d: 'Puts named ions on named sites: p.init({"d0": "S0"}). The first line of every programme; a device starts empty.' },
   'p:shuttle': { t: 'p.shuttle', d: 'Pushes one ion along a path of site ids, one rail per step: p.shuttle("d0", ["S0", "S1", "S2"]). A third argument names the movement class (default: shuttle).' },
   'p:move': { t: 'p.move', d: 'One ion, one hop: p.move("d0", "S0", "S1"). The same thing p.shuttle does for one rail.' },
@@ -5188,7 +5189,7 @@ var CHECKS = {
     var v = shippedVerdict(id, which);
     if (!v) return { ok: false, why: 'no shipped verdict for ' + id, have: null, facts: {} };
     var s = (v.focus && v.focus.rule === rule) ? v.focus.state : verdictState(v.rules, rule);
-    return { ok: s === state, why: rule + ' is ' + s + ' in Python\u2019s verdict', have: s,
+    return { ok: s === state, why: rule + ' is ' + s + ' in the checker\u2019s verdict', have: s,
              facts: { rule: rule, state: s, gateError: v.metrics ? v.metrics.gate_error_sum : undefined } };
   },
   // the price is withheld: the programme asks for something the device cannot price
@@ -5550,8 +5551,8 @@ function renderLearn() {
 }
 function renderVerdict(vd) {
   var V = shippedVerdict(vd['case'], vd.which);
-  if (!V) return '<div class="learn-verdict" data-hint="learn:verdict"><div class="learn-exh">Python\u2019s verdict</div><div class="mut">this page carries no verdict for case ' + esc2(vd['case']) + '</div></div>';
-  var h = '<div class="learn-verdict" data-hint="learn:verdict"><div class="learn-exh">Python\u2019s verdict on the ' +
+  if (!V) return '<div class="learn-verdict" data-hint="learn:verdict"><div class="learn-exh">The checker\u2019s verdict</div><div class="mut">this page carries no verdict for case ' + esc2(vd['case']) + '</div></div>';
+  var h = '<div class="learn-verdict" data-hint="learn:verdict"><div class="learn-exh">The checker\u2019s verdict on the ' +
           (vd.which === 'fixed' ? 'repaired' : 'loaded') + ' programme \u00b7 computed when this page was built \u00b7 ' + esc2(V.model || '') + ' model</div>';
   var f = V.focus, i;
   if (f) {
@@ -6420,7 +6421,7 @@ function boot() {
   // The engine keeps no copy, so this must happen before the first `serialize()`.
   if (!D.schema) {
     WHY_NOT = 'this page was emitted without the schema, so the browser cannot tell ' +
-              'which documents the Python loader will accept';
+              'which documents the checker will accept';
     return;
   }
   try { Q.setSchema(D.schema); E.setBounds(D.schema.bounds); }
@@ -6459,7 +6460,7 @@ function boot() {
       if (Q.LAYOUT_CONSTS[k] !== consts[k]) {
         WHY_NOT = 'the engine and this page disagree about the layout constant ' + k +
                   ' (' + Q.LAYOUT_CONSTS[k] + ' vs ' + consts[k] + '), so the picture it ' +
-                  'would draw is not the picture Python measured';
+                  'would draw is not the picture the checker measured';
         return;
       }
     }
@@ -7427,7 +7428,7 @@ function evaluateNow(model) {
       RULES.checked = [];
       RULES.passed = [];
       RULES.withdrawn = "this page's own rule counts disagree with the verifier that " +
-                        'produced it; trust Python, not this page';
+                        'produced it; trust the checker, not this page';
     }
   }
 }
@@ -10946,7 +10947,7 @@ function renderWrite() {
   var f = $('pwFoot');
   if (f) {
     f.innerHTML = AUTHORED
-      ? 'this programme was written here. <b>No Python replay exists to check it against</b>, ' +
+      ? 'this programme was written here. <b>The checker has not replayed it</b>, ' +
         'so the per-frame oracle does not apply: <code>frameChecked</code> is ' +
         ((PRICE && PRICE.frameChecked) || 0) + '. Download the pair and run ' +
         '<code>python -m qccd run &lt;name&gt;.arch.json --tsir &lt;name&gt;.tsir.json</code>.'
@@ -10985,8 +10986,8 @@ function renderReport() {
     h += '<div class="mut">' + (
       PRICE.frameChecked
         ? 'per-frame self-check: ' + PRICE.frameChecked + ' frames compared against the ' +
-          'numbers Python shipped, worst drift ' + fmt(PRICE.frameDrift, 6)
-        : '<b>no per-frame oracle</b>: these frames were not priced by Python, so there is ' +
+          'numbers the checker shipped, worst drift ' + fmt(PRICE.frameDrift, 6)
+        : '<b>no per-frame reference</b>: the checker did not price these frames, so there is ' +
           'nothing to compare them against. The arithmetic is parity-tested; <i>this ' +
           'programme</i> is not.') + '</div>';
   } else {
@@ -11015,10 +11016,10 @@ function renderReport() {
   if (RULES && RULES.oracle) {
     h += '<div class="mut">' + (RULES.oracle.ok
       ? '<span class="badge ok">self-check</span> all ' + RULES.oracle.n +
-        ' browser-set rule counts match the ones Python shipped with this page.'
+        ' browser-set rule counts match the ones the checker shipped with this page.'
       : '<span class="badge bad">self-check FAILED</span> ' +
         esc2(RULES.oracle.drift.join('; ')) +
-        ' &mdash; the verdicts are withdrawn; trust Python, not this page.') + '</div>';
+        ' &mdash; the verdicts are withdrawn; trust the checker, not this page.') + '</div>';
   }
   h += '<div>' + cov.map(function (c) {
     var cls = { checked: 'ok', failed: 'bad', partial: 'warn', unchecked: 'unchecked' }[c.state];

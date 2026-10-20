@@ -599,8 +599,12 @@ def _semantics_stage(st: _Stage, tc: Toolchain, cw: Path, limits: Mapping, cance
     o1 = verdict.get("o1_transport")
     o2 = str(verdict.get("o2_semantics", ""))
     unreal = verdict.get("unrealised_ops", 0)
+    # each qubit's operations in the circuit's order, even where they commute: a verdict
+    # without the field comes from a check_cert older than the rule and cannot vouch for it
+    order = verdict.get("order", "not checked")
     detail = {"o1_transport": o1, "o2_semantics": o2, "method": verdict.get("method"),
-              "unrealised_ops": unreal, "circuit_sha256": verdict.get("circuit_sha256")}
+              "unrealised_ops": unreal, "order": order,
+              "circuit_sha256": verdict.get("circuit_sha256")}
     if o1 != "ok":
         for p in (o1 if isinstance(o1, list) else [str(o1)]):
             st.diag("SEM.O1", f"transport/co-location: {p}")
@@ -608,7 +612,10 @@ def _semantics_stage(st: _Stage, tc: Toolchain, cw: Path, limits: Mapping, cance
         st.diag("SEM.UNREALISED", f"{unreal} circuit ops are not realised by the program")
     if "MISMATCH" in o2:
         st.diag("SEM.O2_MISMATCH", f"the program does not implement the task circuit: {o2}")
-    if o1 != "ok" or unreal or "MISMATCH" in o2:
+    if order != "ok":
+        for p in (order if isinstance(order, list) else [str(order)]):
+            st.diag("SEM.ORDER", f"a qubit's operations run out of the circuit's order: {p}")
+    if o1 != "ok" or unreal or "MISMATCH" in o2 or order != "ok":
         st.done("failed", "O1 transport replay; O2 pulses vs trusted circuit", **detail)
     elif o2.startswith("ok"):
         st.done("passed", "O1 transport replay of the certificate; O2 " + str(verdict.get("method")), **detail)

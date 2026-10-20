@@ -55,6 +55,12 @@ let usage () =
       up to one gate per gate zone per round.  Also `compile`'s last fallback, after the
       general router and rigid rotation have both declined (not under --no-rotate).
 
+  qccdc compile|rotate|racetrack ... --rules <ruleset.rules>
+      plan with this rule set instead of the standard one: R13's max_chain bounds a gate
+      chain (no bound without R13), and without R22 a cycle may carry unlike motions.
+      Every rule of the set is checked on the output afterwards (qccd.ruleset); give the
+      resolved file, with every rule written out.
+
   qccdc pulses-selftest
       differential-test the pulse table against the unitaries it claims to implement
 
@@ -447,6 +453,18 @@ let try_racetrack ?init inp arch_path out (k : unit -> 'a) : 'a =
 
 let () =
   let argv = Array.to_list Sys.argv |> List.tl in
+  (match arg_after "--rules" argv with
+   | Some path -> (
+     try
+       Qccdc.Rules.load path;
+       Printf.eprintf "  planning with %s
+" (Qccdc.Rules.describe ())
+     with
+     | Qccdc.Rules.Bad m -> Printf.eprintf "%s
+" m; exit 2
+     | Sys_error m -> Printf.eprintf "cannot read the rule set: %s
+" m; exit 2)
+   | None -> ());
   match argv with
   | "rotate" :: inp :: rest -> (
     match (arg_after "--arch" rest, arg_after "-o" rest) with

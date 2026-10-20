@@ -4873,9 +4873,9 @@ function _report(chk, frames, priced, ctx, fatal) {
   // WHAT THIS PAGE CANNOT CHECK, enumerated with its reason.  Silence is not acceptable
   // and neither is a green tick: an un-run rule is a THIRD state.
   skipped.R4d = 'the channel-membership map has to be rebuilt from the edited wiring; ' +
-                'ControlPlane.drivable is deliberately not mirrored, so R4d needs Python';
+                'the browser does not decide which channel drives which site, so R4d is checked when the page is built';
   skipped.R7b = 'no architecture declares a per-zone duty-cycle budget, so there is ' +
-                'nothing to check anywhere -- Python lists R7b as unimplemented too';
+                'nothing to check anywhere -- the checker cannot decide R7b either';
   skipped.R9 = "the programme's cost and step claims describe the device this page was " +
                'built for, not this one; after an edit the only honest verdict is "not ' +
                'applicable"';
@@ -4884,9 +4884,9 @@ function _report(chk, frames, priced, ctx, fatal) {
                 'the page carries no circuit, only compiled output';
   skipped.R23 = 'whether an ion rests on a junction is judged against the room off the ' +
                 'junctions, counted as the compiler counts it, and the loops the programme ' +
-                'rotates; that is not mirrored here yet, so R23 needs Python';
-  skipped.R16 = 'gate error against n-bar is not mirrored client-side, and adding it ' +
-                'without a parity bucket would introduce a number with no oracle';
+                'rotates; that is not carried into the browser yet, so R23 is checked when the page is built';
+  skipped.R16 = 'gate error against n-bar is not computed in the browser, so R16 is ' +
+                'checked when the page is built';
   partial.R15 = 'quanta are composed additively here, which R15 says is an upper bound; ' +
                 'the interference term needs a secular-phase model the corpus does not supply';
   vacuous['R4-concurrency'] = 'no instruction carries t0/t1, so nothing overlaps in time ' +

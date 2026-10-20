@@ -254,7 +254,7 @@ def build_view_model(
             f["gate"] = instr.gate
         meta = instr.meta or {}
         for key in ("batch", "check", "kind", "round", "group", "phase", "trigger",
-                    "hops", "window"):
+                    "hops", "window", "gate_swaps"):
             if key in meta:
                 f[key] = meta[key]
         if isinstance(meta.get("call"), int) and not isinstance(meta.get("call"), bool):
@@ -3482,6 +3482,25 @@ function ruleBadges(){
     `<div>`+cov.map(c=>`<span class="badge ${cls[c.state]}" data-hint="rule:${esc(c.rule)}" title="${esc(c.statement||c.rule)}">`+
       `${c.rule}${c.count?' '+c.count:''}</span>`).join('')+`</div>`;
 }
+// A PAPER'S RULE SET.  A page that plays a paper's schedule carries that paper's rules, judged
+// when the page was built, rule by rule (`D.ruleset`); they come first, because they are the
+// rules the schedule was written for.  The badges after them are this website's machine.
+function rulesetBlock(){
+  const R = D.ruleset;
+  if(!R || !R.results) return '';
+  const res = R.results;
+  const hold = res.filter(r=>r.verdict==='holds'), fail = res.filter(r=>r.verdict==='fails');
+  const cls = {holds:'ok', fails:'bad'};
+  const tip = r => r.id+' '+r.verdict+(r.examples&&r.examples.length?': '+r.examples[0]:'')+
+                   (r.reason?': '+r.reason:'');
+  return `<div class="mut" style="margin-bottom:6px" data-hint="ruleset">judged by `+
+    `<b>${esc(R.title||R.ruleset)}</b>: ${hold.length} of ${res.length} rules hold`+
+    (fail.length ? ` &middot; <b>${fail.length} failing</b>` : '')+`</div>`+
+    `<div>`+res.map(r=>`<span class="badge ${cls[r.verdict]||'unchecked'}" title="${esc(tip(r))}">`+
+      `${esc(r.id)}${r.count?' '+r.count:''}</span>`).join('')+`</div>`+
+    (R.note ? `<div class="mut" style="margin:8px 0 4px">${esc(R.note)}</div>` : '')+
+    `<h3 style="margin-top:12px">This website's rules</h3>`;
+}
 function renderSide(){
 const evd = D.evidence || {replayed_cycles: P.frames.length};
 // THE DEVICE ON THE CANVAS, not the one the page was built with: `A.hardware` is fixed at
@@ -3489,7 +3508,7 @@ const evd = D.evidence || {replayed_cycles: P.frames.length};
 // Report priced at 33 (found walking lesson A5, 2026-10-17).  The editor reprices it live.
 const hw = (window.EDITOR && EDITOR.hardware && EDITOR.hardware()) || A.hardware;
 document.getElementById('side').innerHTML =
-  `<h3>Rules</h3>`+
+  `<h3>Rules</h3>`+ rulesetBlock() +
   (evd.replayed_cycles === 0 && !P.frames.length
     ? `<div class="mut">no programme has been replayed, so none of the `+
       `${(evd.rules_all||[]).length||27} rules has been evaluated. Write one in the `+
@@ -3521,16 +3540,16 @@ document.getElementById('side').innerHTML =
   `<div class="note">`+
   (drift<1e-6
     ? (EV.self_check_ions === 0
-        ? `<span class="badge unchecked">no self-check</span> no Python replay accompanies `+
-          `this page, so there is nothing to check this one against. The cost figures come `+
-          `from the browser's own <code>priceFrames</code>, which is parity-tested against `+
-          `Python but has not been run against <b>this</b> programme in Python.`
+        ? `<span class="badge unchecked">no self-check</span> the checker did not replay this `+
+          `programme when the page was built, so there is nothing to compare this page's replay `+
+          `with. The cost figures are the browser's own, which are tested to agree with the `+
+          `checker's, but have not been compared on <b>this</b> programme.`
         : `<span class="badge ok">self-check</span> this page's own replay of `+
-          `${D.checksum_components.join(' + ')} agrees with the Python verifier to `+
+          `${D.checksum_components.join(' + ')} agrees with the checker's replay to `+
           `${drift.toExponential(1)} quanta per ion, over ${EV.self_check_ions} ion(s).`)
     : `<span class="badge bad">self-check FAILED</span> the page disagrees with the `+
       `verifier by ${drift.toFixed(4)} quanta on <code>${driftIon}</code>. Trust the `+
-      `Python numbers, not this animation.`)+
+      `checker's numbers, not this animation.`)+
   (P.truncated?`<br><span class="badge warn">truncated</span> only the first ${P.frames.length} instructions are animated.`:'')+
   `<br>scale ${L.sx.toFixed(1)}&times;${L.sy.toFixed(1)} px/unit &middot; nearest sites `+
   `${L.g.toFixed(1)} px apart &middot; ion radius ${L.r_ion.toFixed(1)} px`+
@@ -4801,6 +4820,7 @@ def render_html(
     source: dict | None = None,
     open_pane: str | None = None,
     tech=None,
+    ruleset: dict | None = None,
 ) -> Path:
     """Write the self-contained page.  Returns the path written.
 
@@ -4812,6 +4832,9 @@ def render_html(
                             template_stems=template_stems, metal=metal,
                             source=source, tech=tech)
     view["open_pane"] = open_pane
+    if ruleset:
+        # absent unless given, so every other page is byte-identical to before
+        view["ruleset"] = ruleset
     html = _TEMPLATE.replace("__TITLE__", f"{arch.name} - {prog.name}")
     html = html.replace("__STAMP__", page_stamp())
     html = html.replace("__CSSVARS__", css_vars())

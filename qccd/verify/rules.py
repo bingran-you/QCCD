@@ -111,7 +111,7 @@ RULE_STATEMENTS: Mapping[str, str] = {
     "R21": "rails are planar: a rail meets only the nodes it ends at, and rails cross only at a shared node",
     "R22": "one transport cycle is one waveform: every moving ion performs the same motion; a site may only opt out",
     "R23": "a junction is crossed, not rested on: no ion ends a cycle where three or more rails meet "
-           "while the traps off the junctions have room, unless a rotating loop carries it there",
+           "while the traps off the junctions have room, unless a conveyor carries it there",
 }
 
 

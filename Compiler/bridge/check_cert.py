@@ -246,6 +246,56 @@ def check_witnesses(cert: dict, prog: TSIR) -> list[str]:
     return problems
 
 
+def check_program_transport(cert: dict, prog: TSIR) -> list[str]:
+    """Does the programme move ions exactly as its certificate says?  The problems, empty if so.
+
+    The proved checker replays the CERTIFICATE's moves, and the witnesses are checked against
+    that replay; nothing else tied those moves to the programme's own transport, so a
+    programme could move an ion the certificate keeps still (or the other way round) and O1
+    would still hold of the certificate.  Here the two are set side by side: every ion makes
+    the same moves in the same order -- from the same site, to the same site, along the same
+    rails when both name them -- and the same loops are turned by the same amounts in the
+    same order.
+
+    Order, not time: a certificate's `t` is the compiler's own clock, on which a rotation by
+    k slots takes k cycles and one cycle may hold several instructions, so it is not an
+    instruction number.  Where an ion is when it gates is held to the programme by the rules
+    (R6b, at the replayed position) and to the certificate by O1.
+    """
+    got: dict[str, list] = {}
+    got_rot: list = []
+    for ins in prog.instructions:
+        if ins.type != "simd":
+            continue
+        tpl = ins.template or {}
+        if tpl.get("kind") == "loop_shift":
+            got_rot.append((str(tpl.get("loop")), int(tpl.get("delta", 0))))
+        for q in ins.participants:
+            got.setdefault(str(q.ion), []).append((str(q.src), str(q.dst), tuple(q.via or ())))
+    want: dict[str, list] = {}
+    for m in sorted(cert.get("moves", []), key=lambda m: int(m["t"])):
+        want.setdefault(str(m["ion"]), []).append((str(m["from"]), str(m["to"]), tuple(m.get("via") or ())))
+    want_rot = [(str(r["loop"]), int(r["delta"]))
+                for r in sorted(cert.get("rotations", []), key=lambda r: int(r["t"]))]
+    problems: list[str] = []
+    for ion in sorted(set(got) | set(want)):
+        g, w = got.get(ion, []), want.get(ion, [])
+        if len(g) != len(w):
+            problems.append(f"{ion} makes {len(g)} moves in the programme and {len(w)} in the certificate")
+            continue
+        for k, (a, b) in enumerate(zip(g, w)):
+            if a[:2] != b[:2] or (a[2] and b[2] and a[2] != b[2]):
+                problems.append(f"{ion}'s move {k + 1}: the programme {a[0]} -> {a[1]} via {list(a[2])}, "
+                                f"the certificate {b[0]} -> {b[1]} via {list(b[2])}")
+                break
+        if len(problems) >= 6:
+            return problems
+    if got_rot != want_rot:
+        problems.append(f"the programme turns the loops {got_rot[:4]}{'...' if len(got_rot) > 4 else ''}, "
+                        f"the certificate {want_rot[:4]}{'...' if len(want_rot) > 4 else ''}")
+    return problems
+
+
 def check_program_order(cert: dict, prog: TSIR) -> list[str]:
     """Does every qubit run its own ops in the circuit's order?  The problems, empty if so.
 
@@ -884,7 +934,10 @@ def main(argv: list[str] | None = None) -> int:
     binding = check_binding(cert, qc, src)
     verdict["binding"] = "ok" if not binding else binding[:6]
 
-    o1 = check_o1(cert, arch) + check_witnesses(cert, prog)
+    # the certificate's moves are the programme's own: what O1 proves of the one holds of the other
+    transport = check_program_transport(cert, prog)
+    verdict["transport"] = "ok" if not transport else transport[:6]
+    o1 = check_o1(cert, arch) + check_witnesses(cert, prog) + [f"programme vs certificate: {x}" for x in transport]
     o1_all = [f"certificate vs QASM: {b}" for b in binding] + o1
     verdict["o1_transport"] = "ok" if not o1_all else o1_all[:6]
 

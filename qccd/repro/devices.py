@@ -167,9 +167,13 @@ TABLES: dict[str, dict[str, Any]] = {
                         "junction_us": {"2": 0, "3": 100, "4": 120},
                         "note": "as the artifact prices it: s = 80 + 5 + 80 = 165 us per step, a "
                                 "gate swap of 3 gate times per ancilla per step"},
+    # a move through a junction is split 80, rail 5, entry 50, exit 50, rail 5, merge 80 =
+    # 270 us; the Studio overlaps the first rail with the junction, so the junction is
+    # declared at 105 (as for TISCC below) and the move costs the paper's 270, not 265
     "jones2025": {"source": "2510.23519", "shuttle_us": 5, "split_us": 80, "merge_us": 80,
-                  "junction_us": {"3": 100, "4": 100},
-                  "note": "Table 1; a junction passage is an entry and an exit of 50 us each"},
+                  "junction_us": {"3": 105, "4": 105},
+                  "note": "Table 1; a junction passage is an entry and an exit of 50 us each, "
+                          "and a move through one costs 80 + 5 + 50 + 50 + 5 + 80 = 270 us"},
     "schoenberger2024": {"source": "2311.03454", "shuttle_us": 0.5, "split_us": 0.25,
                          "merge_us": 0.25, "junction_us": {"2": 0, "3": 0, "4": 0},
                          "note": "abstract time steps, one per transition (one per loop iteration "

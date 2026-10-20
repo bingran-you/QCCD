@@ -196,6 +196,63 @@ def _accepts_chain(fn) -> bool:
     )
 
 
+def conveyed_paths(prog: TSIR, arch: Architecture) -> frozenset[str]:
+    """The named loops and open paths this programme moves as a conveyor (R23's exemption).
+
+    A conveyor carries every ion on it through every slot, so a slot where three rails meet
+    is not a place a router chose to park an ion.  Two spellings of a conveyor step: the
+    rotation template (`loop_shift`), and a transport cycle that moves EVERY ion standing on
+    one named path along it, with a shift class the device declares for a path (its
+    `orbit` names a loop or "rail", not "any" or "spurs") -- the conveyor rails of a
+    transversal-CNOT station, say, whose sites each have a rung to a gate trap and so meet
+    three rails.  One ion shuttled along a loop past others is not a conveyor step, and
+    neither is an odd-even sort, which moves pairs.
+    """
+    dev = arch.device
+    out: set[str] = set()
+    pos: dict[str, str] = {}
+    for ins in prog.instructions:
+        if ins.type == "init":
+            pos.update(ins.placement)
+            continue
+        if ins.type != "simd":
+            continue
+        tpl = ins.template or {}
+        if tpl.get("kind") == "loop_shift":
+            loop = str(tpl.get("loop"))
+            out.add(loop)
+            delta = int(tpl.get("delta", 0) or 0)
+            if loop in dev.loops and delta:
+                step = 1 if delta > 0 else -1
+                for _ in range(abs(delta)):
+                    shift = dev.shift_map(loop, step)
+                    pos = {i: shift.get(n, n) for i, n in pos.items()}
+            continue
+        parts = ins.participants
+        if parts and ins.cls:
+            try:
+                spec = arch.simd_class(ins.cls)
+            except KeyError:
+                spec = {}
+            if spec.get("type") == "shift" and spec.get("orbit") not in (None, "any", "spurs"):
+                loops: set = set()
+                for p in parts:
+                    try:
+                        loops.update(seg.loop for seg in _segments_for(arch, p))
+                    except (KeyError, ReplayError):
+                        loops.add(None)
+                if len(loops) == 1 and None not in loops:
+                    loop = str(next(iter(loops)))
+                    if loop in dev.loops:
+                        on = set(dev.loops[loop].nodes)
+                        riders = {i for i, n in pos.items() if n in on}
+                        if riders <= {p.ion for p in parts}:
+                            out.add(loop)
+        for p in parts:
+            pos[p.ion] = p.dst
+    return frozenset(out)
+
+
 def replay(
     prog: TSIR,
     arch: Architecture,
@@ -243,9 +300,7 @@ def replay(
     rule_config = dict(rule_config or {})
     # R23 exempts the slots of a loop the programme rotates, which is a fact about the whole
     # programme and has to be known before its first cycle is judged.
-    rule_config.setdefault("rotated_loops", frozenset(
-        str(i.template.get("loop")) for i in prog.instructions
-        if i.template and i.template.get("kind") == "loop_shift"))
+    rule_config.setdefault("rotated_loops", conveyed_paths(prog, arch))
 
     def _bump(ion: str, component: str, value: float) -> None:
         if value == 0.0:

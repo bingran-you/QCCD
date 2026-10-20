@@ -26,6 +26,14 @@ PROFILES = {"QCCDSIM": models.QCCDSIM, "QCCDSIM_PHYSICAL": models.QCCDSIM_PHYSIC
             "TISCC": models.TISCC, "JONES": models.JONES, "CYCLONE": models.CYCLONE}
 
 
+#: Each profile's rule set (qccd/ruleset/library): what the paper's model assumes, written as
+#: rules.  The timed checker's profile and the rule set say the same thing; the rule set is
+#: what the pages print, rule by rule.
+RULESETS = {"QCCDSIM": "qccdsim", "QCCDSIM_PHYSICAL": "qccdsim-physical",
+            "QCCDSIM_GATESET": "qccdsim-gateset", "TISCC": "tiscc", "JONES": "jones",
+            "CYCLONE": "cyclone"}
+
+
 def ours_profile(name: str):
     """The profile one of OUR schedules is held to: the paper's, with the circuit's order.
 
@@ -41,6 +49,23 @@ def ours_profile(name: str):
     if p is models.QCCDSIM_GATESET:
         return models.QCCDSIM
     return dataclasses.replace(p, circuit_order="strict")
+
+
+def judge_by_rules(set_name: str, sched: TimedSchedule, *, law, circ, strict: bool,
+                   ours: bool = False) -> dict:
+    """The run judged by its rule set, rule by rule: what the paper's page prints.  For one
+    of OUR schedules the set keeps each qubit's order exactly (`keeping_order`)."""
+    from ..ruleset import check as rcheck, keeping_order, load
+    from ..ruleset.schedule import schedule_execution
+    rs = load(set_name)
+    if ours:
+        rs = keeping_order(rs)
+    chain = rs.params.get("chain_order")
+    exe = schedule_execution(sched, chain_order=getattr(chain, "value", None), duration=law,
+                             strict_clock=strict, circuit=circ)
+    rep = rcheck(rs, exe)
+    return {"ruleset": rs.name, "title": rs.title, "ok": rep.ok,
+            "results": [r.to_json() for r in rep.results]}
 
 
 CACHE = ROOT.parent / "out" / "repro_cache"
@@ -140,6 +165,7 @@ def check_run(paper: dict, run: dict) -> dict:
     profile = PROFILES[run["profile"]]
     circ = _circuit(base, run.get("circuit"))
     rep = check(sched, profile, duration=law, circuit=circ, observers=observers)
+    rules = judge_by_rules(RULESETS[run["profile"]], sched, law=law, circ=circ, strict=False)
     measured = {"makespan_us": rep.metrics["makespan_us"],
                 "last_start_us": rep.metrics["last_start_us"],
                 "moves": rep.metrics["counts"].get("move", 0)}
@@ -161,7 +187,7 @@ def check_run(paper: dict, run: dict) -> dict:
             compare.setdefault(kind, {})[metric] = row
     return {
         "id": run["id"], "label": run.get("label", run["id"]), "profile": profile.name,
-        "checks": rep.checks, "ok": rep.ok, "violations": rep.summary()["violations"],
+        "checks": rep.checks, "ok": rep.ok, "rules": rules, "violations": rep.summary()["violations"],
         "first_violations": rep.summary()["first"], "notes": dict(rep.notes),
         "measured": measured, "counts": rep.metrics["counts"], "compare": compare,
         "source": sched.source, "seconds": round(time.time() - t0, 2),
@@ -196,7 +222,8 @@ def check_ours(paper: dict, o: dict, by: dict) -> dict:
         law, observers, extra = _law_and_observers(spec, sched, raw)
         prof = ours_profile(name)
         rep = check(sched, prof, duration=law, circuit=circ, observers=observers, strict=True)
-        profiles[prof.name] = {"checks": rep.checks, "ok": rep.ok,
+        rules = judge_by_rules(RULESETS[name], sched, law=law, circ=circ, strict=True, ours=True)
+        profiles[prof.name] = {"checks": rep.checks, "ok": rep.ok, "rules": rules,
                                          "violations": rep.summary()["violations"],
                                          "first_violations": rep.summary()["first"]}
         measured = {"makespan_us": rep.metrics["makespan_us"],

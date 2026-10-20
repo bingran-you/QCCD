@@ -112,11 +112,14 @@ PAPERS: list[dict] = [
         "venue": "DATE 2022", "year": 2022, "arxiv": "2111.07961",
         "artifact": {"url": "https://github.com/ashsaki/MTS-QCCD-Compiler", "commit": "489a097",
                      "license": "Apache-2.0"},
-        "what": "QCCDSim's six-trap line (L6) with 15 ions per trap (+2), five benchmarks; the "
-                "metric is the number of shuttles (adjacent-trap moves).",
+        "what": "QCCDSim's six-trap line (L6): six traps in a row, each with a capacity of 17 "
+                "ions -- the 15 the compiler places in it at the start, and 2 places kept free "
+                "for ions passing through. Five benchmarks; the metric is the number of shuttles "
+                "(moves of one ion from a trap to the next).",
         "model": {"profile": "QCCDSIM_PHYSICAL", "law": "qccdsim"},
         "figures": [{"run": "mts-sqrt-seed0", "layout": "qccdsim_linear",
-                     "caption": "L6 with 15 ions per trap (+2 for traffic)"}],
+                     "caption": "L6: six traps of capacity 17 (15 placed at the start, 2 kept "
+                                "free for passing ions)"}],
         "runs": [
             *[{"id": f"qccdsim-{b}", "file": f"qccdsim-{b}.schedule.json.gz", "importer": "qccdsim",
                "profile": "QCCDSIM", "law": "qccdsim", "circuit": {"kind": "qasm", "file": f},
@@ -259,7 +262,7 @@ PAPERS: list[dict] = [
              "importer_args": {"nrows": 6, "ncols": 6}, "profile": "TISCC", "law": "tiscc",
              "circuit": {"kind": "pairs", "file": "idle_551.zz.json"},
              "expect": {"tool": {"makespan_us": 9613.0}},
-             "label": "one d=5 error-correction round (TISCC -x 5 -z 5 -t 1 -o idle)"},
+             "label": "one d=5 error-correction round, idling"},
             {"id": "idle_661", "file": "idle_661.spec", "importer": "tiscc",
              "importer_args": {"nrows": 8, "ncols": 8}, "profile": "TISCC", "law": "tiscc",
              "circuit": {"kind": "pairs", "file": "idle_661.zz.json"},
@@ -295,18 +298,31 @@ NOTES: dict[str, list[dict]] = {
     "saki2022": [
         {"title": "The published code and the paper's table",
          "text": "The compiler's public repository dates from 2023, after the paper. Run on the "
-                 "paper's five benchmarks (L6, 15 ions per trap) it reproduces the paper's own "
+                 "paper's five benchmarks (L6, 15 ions placed per trap) it reproduces the paper's own "
                  "shuttle counts for QFT (196) and QuadraticForm (164). For Supremacy it gives "
                  "261 against the printed 223 and for SquareRoot 339 against 355, the same for all "
                  "ten seeds we ran; for QAOA its result depends on an unseeded shuffle and ranges "
                  "from 903 to 1,021 across ten seeds, against 957."},
+        {"title": "How the fidelity is computed",
+         "text": "The fidelity under each Muzzle run is the estimate its code prints, recomputed by "
+                 "our replay with the same model. It is the product, over every two-qubit gate, of "
+                 "max(0.0001, 1 - t/1,000,000 - A(N)(2n + 1)). Here t = 172 us is the gate's "
+                 "duration (QCCDSim's law for a trap of capacity 17: 13.33 x 17 - 54, rounded "
+                 "down); N is the number of ions in the gate's trap when it starts, and A(N) = "
+                 "max(0.0001, 0.0001 N / ln N - 0.00053) is the error that grows with the chain; n "
+                 "is the motional energy of that trap, in quanta. An ion leaving a trap after a "
+                 "reorder takes its share of the trap's energy plus 0.01, every move from one rail "
+                 "to the next adds 0.001 to what it carries, and arriving adds what it carries plus "
+                 "0.01 to the trap it joins. A gate swap counts as three gates. Nothing else is in "
+                 "the model: no single-qubit gate, measurement, idle time or cooling. The paper's "
+                 "table prints no fidelity, so the paper's column shows a dash."},
         {"title": "The baseline column",
          "text": "QCCDSim reproduces the paper's baseline column exactly for four benchmarks. For "
                  "SquareRoot it gives 727 shuttles where the table prints 717; the table's own "
                  "reduction (372 shuttles, 51.17 %) implies 727."},
         {"title": "Passing through a full trap",
          "text": "Every one of the compiler's five schedules routes an ion through a trap that is "
-                 "already full (its capacity is 15 + 2): once each for Supremacy, SquareRoot and "
+                 "already full (it holds its capacity, 17 ions): once each for Supremacy, SquareRoot and "
                  "QFT, twice for QAOA (seed 0) and three times for QuadraticForm. In SquareRoot, "
                  "for example, trap T1 holds 18 ions for 676 µs while ion 17 passes through; the "
                  "compiler's own record of the chain shows the 18th ion. The shuttle counts are "
@@ -340,15 +356,15 @@ NOTES: dict[str, list[dict]] = {
                  "In the d = 3 schedule, data qubit 17 (the artifact's ion D70) meets X-check "
                  "ancilla 25 (M80) in routing pass 2, before Z-check ancilla 18 (M61) in pass 3; "
                  "the circuit has the opposite order. Rebuilt "
-                 "in stim with the CX gates in the router's order, the noiseless circuit has "
-                 "non-deterministic Z detectors on the grid at d = 2, 3, 6 and 12, while stim's own "
-                 "order, rebuilt the same way, has none; the linear and switch schedules keep the "
+                 "with the CX gates in the router's order, the noiseless circuit has "
+                 "non-deterministic Z detectors on the grid at d = 2, 3, 6 and 12, while the paper's "
+                 "circuit file's own order, rebuilt the same way, has none; the linear and switch schedules keep the "
                  "circuit's order. The artifact's error-rate simulation follows the circuit's "
                  "original order, so its logical error rates are for the circuit as written; the "
                  "4,085 µs is the time of the reordered schedule."},
         {"title": "Two timing models in Table 2",
-         "text": "Table 2's switch row (5,325 µs at d = 3) comes out of the artifact only at its 2024 "
-                 "commit 6d4b467, where a junction entry or exit takes 100 µs; the current code, "
+         "text": "Table 2's switch row (5,325 µs at d = 3) comes out of the artifact only in its 2024 "
+                 "version, where a junction entry or exit takes 100 µs; the current code, "
                  "with 50 µs, gives 3,690 µs, while its grid rows are reproduced by the current code. "
                  "The routing-operation counts agree under both."},
         {"title": "Table 2 at d = 6",
@@ -575,7 +591,7 @@ OURS: dict[str, dict] = {
         "how": "The same grid, the same placement of qubits in traps, the paper's operation times and "
                "its rule that an operation holds every component it names (a split or merge also holds "
                "the junction at the far end of its segment, an entry or exit holds the junction and the "
-               "segment). Every qubit meets its CNOT partners in stim's order, even where two CNOTs "
+               "segment). Every qubit meets its CNOT partners in the order of the paper's circuit file, even where two CNOTs "
                "commute: the order is the circuit's, not ours to change. Each ancilla visits its data in "
                "that order instead of going home after every gate: straight from one data qubit to the "
                "next when both lie around the same end of its trap, and through its own empty trap when "
@@ -589,7 +605,7 @@ OURS: dict[str, dict] = {
                  for d in (2, 3, 6, 12)],
         "found": "The paper's own grid schedules fail the circuit check: a data qubit meets two of its "
                  "CNOTs in an order the circuit does not allow. Ours keep every qubit's CNOTs in exactly "
-                 "the circuit's order, with the same operations. In stim's order one kind of check ancilla "
+                 "the circuit's order, with the same operations. In that order one kind of check ancilla "
                  "meets both data qubits around one end of its trap and then both around the other (6 "
                  "trips), while the other kind alternates ends (8 trips); those tours set the round's "
                  "length, about the same at every distance. The table gives the start of the last "

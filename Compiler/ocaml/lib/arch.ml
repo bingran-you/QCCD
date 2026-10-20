@@ -225,15 +225,16 @@ let junctions a = List.filter (fun id -> match node a id with Some n -> n.is_jun
 (* R13's bound: a two-qubit gate in a chain of more than ~15 ions degrades sharply, so a
    trap that will ever host a gate may hold at most this many.  R1's capacity can be far
    larger -- `stationary_chain`'s `register` zone declares 32 -- and placing against R1
-   alone puts 16 ions in a trap and violates R13 at the very first gate. *)
-let gate_chain_limit = 15
+   alone puts 16 ions in a trap and violates R13 at the very first gate.  The bound is the
+   rule set's (`Rules`): R13's `max_chain`, or none when the rule set has no R13. *)
+let gate_chain_limit () = !Rules.chain_limit
 
 let eff_capacity a id =
   match node a id with
   | None -> 0
   | Some n ->
     if n.is_junction then min n.capacity 1
-    else min n.capacity gate_chain_limit
+    else match gate_chain_limit () with Some l -> min n.capacity l | None -> n.capacity
 
 let gate_sites a = List.filter (fun id -> match node a id with Some n -> n.can_gate | None -> false) a.node_order
 

@@ -130,11 +130,13 @@ let sigctx (a : Arch.t) : sigctx =
 (* `stationary_chain` declares `control.model = "direct"` -- every electrode is its own
    channel, so a cycle may legitimately ask two ions to do different things and R22 does
    not apply.  Splitting there would inflate the schedule to satisfy a rule that is not
-   being checked. *)
+   being checked.  The same holds on any device when the rule set has no R22 (`Rules`). *)
 let control_model (a : Arch.t) =
-  match Arch.mem "control" a.raw with
-  | Some c -> Arch.str_or "model" "simd_classes" c
-  | None -> "simd_classes"
+  if not !Rules.uniform_motion then "direct"   (* the rule set has no R22 *)
+  else
+    match Arch.mem "control" a.raw with
+    | Some c -> Arch.str_or "model" "simd_classes" c
+    | None -> "simd_classes"
 
 let index_in (seq : string array) (x : string) =
   let r = ref None in

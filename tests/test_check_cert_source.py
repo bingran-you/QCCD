@@ -612,3 +612,30 @@ def test_a_pulse_the_checker_cannot_model_is_never_skipped(cc):
         cc.tableau_from_program(prog, cert, 2)
     with pytest.raises(NotImplementedError):
         cc.program_unitary(prog, cert, 2)
+
+
+@pytest.mark.parametrize("edit", ["the certificate drops the move", "the certificate moves another ion too",
+                                  "the programme carries the ion elsewhere"])
+def test_a_programme_that_moves_ions_other_than_its_certificate_says_fails(cc, bell, edit, tmp_path):
+    """The proved checker replays the certificate's moves; the programme's own transport must be
+    those moves, or what O1 proves of the one says nothing of the other (2026-10-19)."""
+    for ext in (".tsir.json", ".qcert.json"):
+        shutil.copy(str(bell["prefix"]) + ext, tmp_path / ("prog" + ext))
+    cert = json.loads((tmp_path / "prog.qcert.json").read_text(encoding="utf-8"))
+    prog = json.loads((tmp_path / "prog.tsir.json").read_text(encoding="utf-8"))
+    if edit == "the certificate drops the move":
+        cert["moves"] = []
+    elif edit == "the certificate moves another ion too":
+        m = cert["moves"][0]
+        other = next(i for i in cert["init"] if i != m["ion"])
+        cert["moves"].append({"t": m["t"] + 50, "ion": other, "from": cert["init"][other],
+                              "to": m["from"], "via": m.get("via", [])})
+    else:
+        p = next(p for i in prog["instructions"] if i["type"] == "simd" for p in i["participants"])
+        p["to"], p["via"] = "C3", []
+    (tmp_path / "prog.qcert.json").write_text(json.dumps(cert), encoding="utf-8")
+    (tmp_path / "prog.tsir.json").write_text(json.dumps(prog), encoding="utf-8")
+    rc, v = r10(cc, tmp_path / "prog", bell["qasm"], bell["arch"])
+    assert v["transport"] != "ok" and v["R10"] == "FAILED", v
+    rc, v = r10(cc, bell["prefix"], bell["qasm"], bell["arch"])
+    assert v["transport"] == "ok", v
