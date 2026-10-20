@@ -100,7 +100,9 @@ def test_the_lean_parts_are_the_tutorial_and_nothing_a_reader_reads_calls_it_a_b
     assert letters == [chr(ord("E") + i) for i in range(len(letters))] and "R" not in letters, letters
     assert all(p["part"] in progress.LEAN_BADGES and p["part"] in progress.LEAN_ART for p in lean), letters
     for p in lean:
-        assert f'id="part-{p["part"]}"' in page
+        assert page.count(f'id="part-{p["part"]}"') == 1, p["part"]
+    # the studio's own parts are not the Lean parts (tutorial.js links on to E-J in `continues`)
+    assert not {q["id"] for q in parts} & set(letters), [q["id"] for q in parts]
     assert re.findall(r'<a class="lesson chap" id="lesson-([A-Z]\d+)"', page) == [L["id"] for L in live]
     # one count: the studio's lessons and every live chapter's exercises
     total = len(less) + sum(len(L["exercises"]) for L in live)

@@ -598,7 +598,11 @@ def lessons() -> tuple[list[dict], list[dict]]:
         return [], []
     src = TUTORIAL_JS.read_text(encoding="utf-8")
     s = lambda x: x.replace("\\'", "'")
-    parts = [{"id": a, "title": s(b)} for a, b in re.findall(r"\{ id: '([A-Z])', title: '((?:[^'\\]|\\.)*)'", src)]
+    # the studio's own parts only: `parts: [...]`, not the `continues` list that links on to
+    # the Lean parts (those are drawn from qccd/site/book.py by progress.py, once)
+    own = re.search(r"\n {2}parts: \[(.*?)\n {2}\]", src, re.S)
+    parts = [{"id": a, "title": s(b)}
+             for a, b in re.findall(r"\{ id: '([A-Z])', title: '((?:[^'\\]|\\.)*)'", own.group(1) if own else src)]
     less = [{"id": a, "part": b, "title": s(c)}
             for a, b, c in re.findall(r"\{ id: '([A-Z]\d+)', part: '([A-Z])', title: '((?:[^'\\]|\\.)*)'", src)]
     return parts, less
