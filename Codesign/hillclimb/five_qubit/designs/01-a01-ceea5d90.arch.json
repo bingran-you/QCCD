@@ -78,7 +78,7 @@
    "shim_per_dac": 100
   }
  },
- "description": "a01: 6-trap 3x2 rectangle cycle, broadcast wiring (33 DACs), no named loop, climbed caps/zones/positions (planar)",
+ "description": "a01: 6-trap planar irregular hexagon cycle (climbed from a 3x2 rectangle), broadcast wiring (33 DACs), no named loop, climbed caps/zones/positions",
  "geometry": {
   "generator": "explicit",
   "nodes": [
