@@ -34,7 +34,7 @@ import urllib.request
 from pathlib import Path
 
 __all__ = ["manifest", "platform_key", "qcheck_version", "QCHECK_SOURCES", "installed", "installed_qcheck", "installed_path", "install", "status",
-           "ToolchainError", "RETIRED_QCCDC", "retired", "upgrade_hint"]
+           "ToolchainError", "RETIRED_QCCDC", "retired", "upgrade_hint", "build_checker", "run_checker"]
 
 #: compiler releases withdrawn because they emit programs that break a rule: the SHA-256 of
 #: each published binary (unpacked) -> its version.  A machine that installed one keeps it
@@ -76,6 +76,11 @@ for _v in ("35bf68427d9c", "02bceb9117e7", "c7c535380bfb"):
                         "compiles to a program that does not implement it (R10)")
 
 MANIFEST = Path(__file__).with_name("toolchain.json")
+#: the checker's own package: Lean core only, no Mathlib (its lakefile says why)
+CHECKER_DIR = Path(__file__).resolve().parents[2] / "Compiler" / "lean" / "checker"
+ELAN_HINT = ("install Lean with elan -- macOS: `brew install elan-init`; Linux: "
+             "`curl https://elan.lean-lang.org/elan-init.sh -sSf | sh`; Windows: the installer at "
+             "https://github.com/leanprover/elan -- then open a new terminal")
 #: what `qcheck` is built from (Compiler/lean/checker/lakefile.toml): its version is a digest of
 #: these paths' git object ids, so a change to the Pulse proofs beside them does not stale it
 QCHECK_SOURCES = ("Compiler/lean/Main.lean", "Compiler/lean/QCCDC/Cert", "Compiler/lean/lean-toolchain",
@@ -86,8 +91,8 @@ _TOOLS = {"qccdc_cli": ("qccdc", "qccdc_cli"), "qcheck": ("qcheck", "qcheck")}
 
 def _source_hint(tool: str = "qccdc_cli") -> str:
     if tool == "qcheck":
-        return ("build it from source instead: install Lean with elan (macOS: `brew install elan-init`), then "
-                "in Compiler/lean/checker run `lake build` (about a minute; it does not need Mathlib)")
+        return ("build it from source instead: " + ELAN_HINT + ", and run `qccd toolchain build-checker` "
+                "(about a minute; it does not need Mathlib)")
     brew = "`brew install opam`, " if sys.platform == "darwin" else ""
     return ("build it from source instead: install OCaml 5.3 with opam (" + brew + "`opam init`, "
             "`opam switch create 5.3.0`), then `opam install dune yojson.2.2.2` and, in Compiler/ocaml, "
@@ -328,6 +333,54 @@ def install(*, force: bool = False, man: dict | None = None, say=print) -> dict:
     else:
         out["qcheck"] = {"status": "not_available", "hint": _source_hint("qcheck")}
     return out
+
+
+def _lake() -> str | None:
+    import shutil
+    found = shutil.which("lake")
+    if found:
+        return found
+    p = Path.home() / ".elan" / "bin" / ("lake.exe" if os.name == "nt" else "lake")
+    return str(p) if p.is_file() else None
+
+
+def build_checker(*, say=print, lake: str | None = None) -> Path:
+    """Build `qcheck` from this checkout's source and run it once -- on a certificate it must
+    accept and one it must reject -- before calling it built.  The workspace then uses it: a
+    checker built in the checkout comes before an installed one (`evaluator.Toolchain.discover`).
+    The first build downloads the Lean version the package pins (`lean-toolchain`)."""
+    if not (CHECKER_DIR / "lakefile.toml").is_file():
+        raise ToolchainError(f"the checker's source is not here ({CHECKER_DIR}): this needs a full checkout")
+    lake = lake or _lake()
+    if lake is None:
+        raise ToolchainError("Lean is not installed: " + ELAN_HINT + ", and run this again")
+    say(f"building the checker in {CHECKER_DIR} (about a minute the first time; it does not need Mathlib) ...")
+    try:
+        cp = subprocess.run([lake, "build", "qcheck"], cwd=CHECKER_DIR, capture_output=True, text=True,
+                            timeout=3600)
+    except OSError as exc:
+        raise ToolchainError(f"could not run {lake} ({exc})") from None
+    if cp.returncode != 0:
+        raise ToolchainError("the build failed:\n" + (cp.stdout + cp.stderr)[-2000:])
+    exe = CHECKER_DIR / ".lake" / "build" / "bin" / ("qcheck.exe" if os.name == "nt" else "qcheck")
+    if not exe.is_file():
+        raise ToolchainError(f"the build said it succeeded but left no checker at {exe}")
+    _smoke(exe, "qcheck")
+    return exe
+
+
+def run_checker(path, *, qcheck: Path | None = None) -> int:
+    """Run the checker the workspace uses on one `.qcheck.json`: its own output, its own exit
+    code (0 accepted, 1 rejected, 2 unreadable)."""
+    if qcheck is None:
+        from .evaluator import Toolchain
+        qcheck = Toolchain.discover().qcheck
+    if qcheck is None:
+        raise ToolchainError("there is no checker here: run `qccd toolchain install`, or "
+                             "`qccd toolchain build-checker` to build it from source")
+    if not Path(path).is_file():
+        raise ToolchainError(f"no such file: {path}")
+    return subprocess.run([str(qcheck), str(path)]).returncode
 
 
 def status(man: dict | None = None) -> dict:

@@ -39,7 +39,7 @@ def main (args : List String) : IO UInt32 := do
       if check inp then
         IO.println "  ACCEPTED -- the program follows its certificate: mapping, transport, co-location of"
         IO.println "  each op's own ions, order (QCCDC.Cert.check_sound).  It names no gate: which gate fires"
-        IO.println "  is decided by comparing the emitted pulses with the circuit (bridge/check_cert.py), and"
+        IO.println "  is decided by comparing the emitted pulses with the circuit (the semantic check), and"
         IO.println "  R10 needs both."
         pure 0
       else

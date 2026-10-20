@@ -193,3 +193,34 @@ def test_the_cli_reports_status(tmp_path):
     assert r.returncode == 0, r.stderr
     s = json.loads(r.stdout)
     assert s["version"] == toolchain.manifest()["qccdc_cli"]["version"] and s["installed"] is None
+
+
+# -- the checker from source: one command to build it, one to run it ----------------------------
+
+def test_without_lean_build_checker_says_how_to_get_it(monkeypatch):
+    monkeypatch.setattr(toolchain, "_lake", lambda: None)
+    with pytest.raises(ToolchainError, match="Lean is not installed: install Lean with elan"):
+        toolchain.build_checker(say=lambda *_: None)
+    # and where nothing is published, install points at the same command
+    assert "qccd toolchain build-checker" in toolchain._source_hint("qcheck")
+
+
+def test_check_runs_the_checker_in_use_and_passes_on_its_verdict(tmp_path):
+    if BUILT_QCHECK is None:
+        pytest.skip("no checker built in this checkout (`qccd toolchain build-checker`)")
+    ok, bad = tmp_path / "ok.qcheck.json", tmp_path / "bad.qcheck.json"
+    ok.write_text('{"circuit": "c", "arch": "none", "n_qubits": 0}', encoding="utf-8")
+    bad.write_text('{"circuit": "c", "arch": "none", "n_qubits": 2, "map": {"0": "a", "1": "b"}, '
+                   '"init": {"a": "S0", "b": "S0"}, "circuit_ops": [{"i": 0, "name": "cx", "qubits": [0, 1]}]}',
+                   encoding="utf-8")
+    env = {**os.environ, "QCCD_QCHECK": str(BUILT_QCHECK)}
+
+    def check(*args):
+        return subprocess.run([sys.executable, "-m", "qccd.workspace", "toolchain", "check", *map(str, args)],
+                              cwd=REPO, capture_output=True, text=True, timeout=60, env=env)
+    a, r, gone = check(ok), check(bad), check(tmp_path / "nope.json")
+    assert a.returncode == 0 and "ACCEPTED" in a.stdout, a.stdout + a.stderr
+    assert r.returncode == 1 and "REJECTED" in r.stdout, r.stdout + r.stderr
+    assert gone.returncode == 2 and "no such file" in gone.stderr
+    # what the checker says names no source file: a reader may quote it whole
+    assert ".py" not in a.stdout and "bridge/" not in a.stdout

@@ -839,7 +839,7 @@ Claude Code 2.1.199 is installed but its channel was not exercised live.
   this investigation are fixed: `_pid_alive` treated *access denied* as dead, and a service
   spawned inside an agent's job object could die with it (it now spawns with job breakaway).
 - **No prebuilt compiler for Intel Macs**, and a prebuilt Lean checker only for macOS on Apple
-  silicon. Elsewhere `lake build` in `Compiler/lean/checker` makes `qcheck` in about a minute;
+  silicon. Elsewhere `qccd toolchain build-checker` makes `qcheck` in about a minute;
   until then local reference grades stay `unsupported` at the certificate stage.
   `tests/test_workspace_toolchain.py` fails when `Compiler/ocaml`, or a source `qcheck` is built
   from, changes without a new release (`deploy/toolchain/README.md`).
@@ -892,6 +892,7 @@ py -m venv .venv
 pip install -e ".[agent]"
 
 qccd toolchain install     # the prebuilt compiler, and on macOS the proved checker too
+qccd toolchain build-checker   # elsewhere: build the proved checker from source (needs Lean)
 ```
 
 `qccd toolchain install` fetches `qccdc_cli` for Windows or Linux on x86-64 or macOS on Apple
@@ -901,9 +902,13 @@ far -- from qccd.academy. It refuses each download unless its size and SHA-256 m
 (the compiler on a test circuit, the checker on a certificate it must accept and one it must
 reject). `qccd toolchain status` says which compiler and checker are in use: `QCCD_QCCDC` /
 `QCCD_QCHECK` first, then one built in the checkout, then the installed one. Where no `qcheck`
-is published, `lake build` in `Compiler/lean/checker` builds it in about a minute without
-Mathlib (Compiler/README.md); without it a reference grade reports the Lean stage
-`unsupported`, which is never eligible. An Intel Mac builds the compiler from source. How a
+is published, `qccd toolchain build-checker` builds it from source in about a minute without
+Mathlib (it runs `lake build` in `Compiler/lean/checker`, so it needs Lean, installed with
+elan; the command says how if it is missing), runs it once on a certificate it must accept and
+one it must reject, and the workspace uses it from then on; without it a reference grade reports
+the Lean stage `unsupported`, which is never eligible. `qccd toolchain check
+<file>.qcheck.json` runs the checker in use on one certificate, with its own output and exit
+code (0 accepted, 1 rejected). An Intel Mac builds the compiler from source. How a
 release is built and published: `deploy/toolchain/README.md`.
 
 **One workspace, end to end.** Two kinds of words below. **Yours to name, anything you

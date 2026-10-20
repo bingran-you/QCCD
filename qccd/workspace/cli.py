@@ -265,8 +265,27 @@ def cmd_trace(a) -> int:
 
 def cmd_toolchain(a) -> int:
     """The prebuilt compiler (toolchain.py): `install` fetches the one for this computer,
-    checked against the SHA-256 pinned in the repository; `status` says what is in use."""
-    from .toolchain import ToolchainError, install, status
+    checked against the SHA-256 pinned in the repository; `status` says what is in use;
+    `build-checker` builds the proved checker from source; `check FILE` runs it."""
+    from .toolchain import ToolchainError, build_checker, install, run_checker, status
+    if a.action == "build-checker":
+        try:
+            exe = build_checker()
+        except ToolchainError as exc:
+            print(f"qccd toolchain build-checker: {exc}", file=sys.stderr)
+            return 1
+        print(f"built the checker (checked: it accepted and rejected a test certificate): {exe}")
+        print("the workspace uses it from now on; `qccd toolchain check <file>.qcheck.json` runs it")
+        return 0
+    if a.action == "check":
+        if not a.file:
+            print("usage: qccd toolchain check <file>.qcheck.json", file=sys.stderr)
+            return 2
+        try:
+            return run_checker(a.file)
+        except ToolchainError as exc:
+            print(f"qccd toolchain check: {exc}", file=sys.stderr)
+            return 2
     if a.action == "status":
         s = status()
         if a.json:
@@ -284,7 +303,7 @@ def cmd_toolchain(a) -> int:
         c = (s.get("qcheck") or {}).get("in_use")
         print("checker   " + (f"{c['path']}  ({c['from']})" if c else
                               "none: reference grades report the Lean stage `unsupported` "
-                              "(`qccd toolchain install`, or `lake build` in Compiler/lean/checker)"))
+                              "(`qccd toolchain install`, or `qccd toolchain build-checker`)"))
         return 0
     try:
         r = install(force=a.force)
@@ -791,7 +810,8 @@ def build_parser() -> argparse.ArgumentParser:
             q.add_argument("path")
             q.add_argument("--preview", action="store_true")
     p = sub.add_parser("toolchain", help="the prebuilt compiler and checker: install them, or see which are in use")
-    p.add_argument("action", choices=["install", "status"])
+    p.add_argument("action", choices=["install", "status", "build-checker", "check"])
+    p.add_argument("file", nargs="?", default=None, help="check: the .qcheck.json to check")
     p.add_argument("--force", action="store_true", help="download and check it again")
     p.add_argument("--json", action="store_true")
     p = sub.add_parser("agent")
