@@ -30,8 +30,8 @@ from qccd.site import book
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECKER = ROOT / "Compiler" / "lean" / "checker"
-LIVE = [(v["n"], c) for v in json.loads((book.BOOK / "book.json").read_text(encoding="utf-8"))["volumes"]
-        for c in v["chapters"] if c.get("status") == "live"]
+LIVE = [(pt["part"], c) for pt in json.loads((book.BOOK / "book.json").read_text(encoding="utf-8"))["parts"]
+        for c in pt["lessons"] if c.get("status") == "live"]
 
 def _lean_available() -> bool:
     return shutil.which("lake") is not None and (CHECKER / ".lake" / "build" / "lib" / "lean" / "QCCDC").is_dir()
@@ -82,7 +82,7 @@ def lean():
 
 @pytest.mark.parametrize("vol,c", LIVE, ids=[c["slug"] for _, c in LIVE])
 def test_the_solved_chapter_passes_every_exercise(lean, vol, c, tmp_path):
-    ch = book.parse_chapter(book.BOOK / c["source"], c["slug"])
+    ch = book.parse_chapter(book.BOOK / c["source"], c["slug"], c.get("store"))
     assert ch.exercises, "a live chapter without exercises"
     src = (book.BOOK / c["source"]).read_text(encoding="utf-8").replace("\r\n", "\n")
     msgs = run_lean(src + book.grader(ch), tmp_path)
@@ -99,7 +99,7 @@ def test_the_solved_chapter_passes_every_exercise(lean, vol, c, tmp_path):
 
 @pytest.mark.parametrize("vol,c", LIVE, ids=[c["slug"] for _, c in LIVE])
 def test_the_readers_chapter_leaves_every_exercise_open(lean, vol, c, tmp_path):
-    ch = book.parse_chapter(book.BOOK / c["source"], c["slug"])
+    ch = book.parse_chapter(book.BOOK / c["source"], c["slug"], c.get("store"))
     reader = "\n\n".join(book.reader_code(b) for b in ch.blocks if b.kind == "code") + "\n"
     msgs = run_lean(reader + book.grader(ch), tmp_path)
     start = grader_lines(reader)
@@ -120,7 +120,7 @@ def test_the_page_carries_the_lean_byte_for_byte(tmp_path):
     exercise solved with its statement unchecked."""
     book.build(tmp_path, studio=False)
     for vol, c in LIVE:
-        ch = book.parse_chapter(book.BOOK / c["source"], c["slug"])
+        ch = book.parse_chapter(book.BOOK / c["source"], c["slug"], c.get("store"))
         page = (tmp_path / "book" / f'{c["slug"]}.html').read_text(encoding="utf-8")
         blob = re.search(r'<script type="application/json" id="bookdata">(.*?)</script>', page, re.S).group(1)
         data = json.loads(blob)
@@ -136,7 +136,7 @@ def test_the_figures_draw_what_lean_replays(lean, tmp_path):
     about them: the Bell pair holds; the late move's CNOT finds q0 in C1; the teleport's move is
     no hop; the foreign witness is co-located but not the op's own ions."""
     vol, c = LIVE[0]
-    ch = book.parse_chapter(book.BOOK / c["source"], c["slug"])
+    ch = book.parse_chapter(book.BOOK / c["source"], c["slug"], c.get("store"))
     src = (book.BOOK / c["source"]).read_text(encoding="utf-8").replace("\r\n", "\n")
     names = re.findall(r"\{\{figure\s+([A-Za-z_][A-Za-z0-9_']*)", src)
     assert {"bell", "bellLate", "bellTeleport", "bellForeign"} <= set(names), names
@@ -175,11 +175,41 @@ def test_a_published_certificate_with_rotations_draws_them(lean, tmp_path):
     assert fig["rots"] and all(len(r) == 3 and isinstance(r[2], int) for r in fig["rots"]), fig["rots"]
 
 
+def test_the_tutorials_lean_parts_keep_their_shape_and_their_progress_ids():
+    """The Learn page (qccd/site/progress.py) reads tutorial_parts(); a reader's solved exercises
+    are stored under these ids, so they never change."""
+    parts = book.tutorial_parts()
+    assert [p["part"] for p in parts] == ["E", "F", "G", "H", "I"]
+    f1 = [l for p in parts for l in p["lessons"] if l["id"] == "F1"][0]
+    assert f1["href"] == "../book/2.1-certificates.html" and f1["live"] is True
+    assert f1["exercises"] == [f"book:V2.1.ex{i}" for i in range(1, 9)]
+    assert f1["stars"] == [1, 1, 1, 1, 2, 2, 3, 3] and f1["story"]
+    for p in parts:
+        assert set(p) == {"part", "title", "about", "lessons", "coming"}
+        for l in p["lessons"]:
+            assert set(l) == {"id", "title", "story", "href", "exercises", "stars", "live"}
+            assert re.fullmatch(r"[A-Z][0-9]{1,2}", l["id"])
+
+
+def test_a_lesson_page_reads_as_the_tutorial_not_a_book(tmp_path):
+    """No reader-visible 'book', volume or chapter: the Lean lessons are part of the tutorial."""
+    book.build(tmp_path, studio=False)
+    for part, c in LIVE:
+        page = (tmp_path / "book" / f'{c["slug"]}.html').read_text(encoding="utf-8")
+        text = re.sub(r"<script\b.*?</script>|<style\b.*?</style>", " ", page, flags=re.S)
+        text = re.sub(r"<[^>]+>", " ", text)                 # tags and their attributes (URLs) go
+        bad = re.findall(r"(?i)\bbook\b|\bvolume\b|\bchapter\b", text)
+        assert not bad, bad
+        assert f"Part {part}" in text and c["id"] in text and "Tutorial" in text
+    index = (tmp_path / "book" / "index.html").read_text(encoding="utf-8")
+    assert "../learn/#part-F" in index and "refresh" in index
+
+
 def test_every_exercise_has_a_progress_id_the_server_accepts():
     """qccd-86's progress API widens to `^(?:[A-Z][0-9]{1,2}|[a-z]+:[A-Za-z0-9._-]{1,48})$`."""
     rx = re.compile(r"^(?:[A-Z][0-9]{1,2}|[a-z]+:[A-Za-z0-9._-]{1,48})$")
     for _, c in LIVE:
-        ch = book.parse_chapter(book.BOOK / c["source"], c["slug"])
+        ch = book.parse_chapter(book.BOOK / c["source"], c["slug"], c.get("store"))
         for e in ch.exercises:
             assert rx.match(e["id"]), e["id"]
 
@@ -188,7 +218,7 @@ def test_a_tampered_statement_is_caught_by_the_grader(lean, tmp_path):
     """Control: weaken one exercise's statement in the reader's text and give it a real proof;
     the grader's restatement must fail, so a changed statement is never counted as solved."""
     vol, c = LIVE[0]
-    ch = book.parse_chapter(book.BOOK / c["source"], c["slug"])
+    ch = book.parse_chapter(book.BOOK / c["source"], c["slug"], c.get("store"))
     e = ch.exercises[0]
     reader = "\n\n".join(book.reader_code(b) for b in ch.blocks if b.kind == "code") + "\n"
     tampered = reader.replace(e["statement"] + " by\n  sorry", f"theorem {e['name']} : True := by\n  trivial", 1)

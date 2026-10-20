@@ -139,7 +139,8 @@ def exercise_parts(code: str, name: str) -> dict:
             "after": after, "expected": " ".join(expected.split()), "binders": binders, "type": typ}
 
 
-def parse_chapter(path: Path, slug: str) -> Chapter:
+def parse_chapter(path: Path, slug: str, store: str | None = None) -> Chapter:
+    """`store` names the progress ids (`book:V<store>.ex<n>`); it defaults to the slug's number."""
     blocks = split_blocks(path.read_text(encoding="utf-8"))
     title = ""
     ch = Chapter(slug=slug, title="")
@@ -157,7 +158,7 @@ def parse_chapter(path: Path, slug: str) -> Chapter:
             parts = exercise_parts(b.text, pending["name"])
             ex = dict(pending, **{k: parts[k] for k in ("statement", "expected", "before", "after")},
                       solution=parts["proof"])
-            ex["id"] = f"book:V{slug.split('-')[0]}.ex{ex['n']}"
+            ex["id"] = f"book:V{store or slug.split('-')[0]}.ex{ex['n']}"
             b.exercise = ex
             ch.exercises.append(ex)
             pending = None
@@ -184,7 +185,7 @@ def reader_code(b: Block) -> str:
 def grader(ch: Chapter) -> str:
     """The hidden block run after the reader's text.  One `example` and one `#print axioms`
     per exercise, each on its own line, so the page reads every verdict off its line."""
-    out = ["", "-- the book's grader: not part of the chapter"]
+    out = ["", "-- the tutorial's grader: not part of the lesson"]
     for e in ch.exercises:
         # a restated statement names its binders and uses none of them: not the reader's lint
         out.append(f"set_option linter.unusedVariables false in example : {e['expected']} := @{e['name']}")
@@ -360,7 +361,7 @@ def figure_html(name: str, params: str) -> str:
     attrs = "".join(f' data-{k}="{html.escape(v)}"' for k, v in kv.items() if k in ("at", "show"))
     return (f'<figure class="leanfig" data-name="{html.escape(name)}"{attrs}>'
             '<div class="figwait">This figure is drawn from Lean\'s own replay of '
-            f'<code>{html.escape(name)}</code>; it appears when Lean has checked the chapter.</div></figure>')
+            f'<code>{html.escape(name)}</code>; it appears when Lean has checked the lesson.</div></figure>')
 
 
 CERTS_PANEL = ('<div class="certs" id="certs"><div class="act"><button type="button" id="certsgo" disabled>'
@@ -369,7 +370,7 @@ CERTS_PANEL = ('<div class="certs" id="certs"><div class="act"><button type="but
 
 # ----------------------------------------------------------------------------- pages
 
-def chapter_body(ch: Chapter, vol: int, n: int, book: dict) -> str:
+def chapter_body(ch: Chapter, part: dict, lesson: dict) -> str:
     cells, k = [], 0
     for b in ch.blocks:
         if b.kind == "prose":
@@ -395,7 +396,7 @@ def chapter_body(ch: Chapter, vol: int, n: int, book: dict) -> str:
         cells.append(f'<div class="cell"{attrs}><textarea rows="1" spellcheck="false" autocapitalize="off" autocomplete="off"'
                      f' aria-label="Lean code">{html.escape(code)}</textarea><div class="msgs" aria-live="polite"></div></div>')
         k += 1
-    data = {"slug": ch.slug, "vol": vol, "chapter": n, "title": ch.title,
+    data = {"slug": ch.slug, "part": part["part"], "lesson": lesson["id"], "title": ch.title,
             "exercises": [{"n": e["n"], "stars": e["stars"], "name": e["name"], "id": e["id"]} for e in ch.exercises],
             "grader": grader(ch), "allowed": list(ALLOWED_AXIOMS),
             # what the browser's Lean puts in front of the reader's text, in place of the
@@ -406,12 +407,13 @@ def chapter_body(ch: Chapter, vol: int, n: int, book: dict) -> str:
             "devices": devices(),
             "cases": ([{k: v for k, v in c.items() if not k.startswith("_")} for c in published_cases()]
                       if any("{{certificates}}" in b.text for b in ch.blocks if b.kind == "prose") else [])}
-    head = (f'<p class="crumbs"><a href="index.html">{html.escape(book["title"])}</a> &rsaquo; '
-            f'Volume {vol} &rsaquo; Chapter {n}</p>')
+    head = (f'<p class="crumbs"><a href="../learn/#part-{part["part"]}">Tutorial</a> &rsaquo; '
+            f'Part {part["part"]} &middot; {html.escape(part["title"])} &rsaquo; {lesson["id"]}</p>')
     bar = ('<div id="leanbar" role="status"><span class="dot"></span><span class="what">Lean is loading'
            '</span><span class="prog"></span><span class="score"></span></div>')
     return (head + bar + '<article id="chapter">' + "\n".join(cells) + "</article>"
             + '<aside id="goals" hidden><div class="gh">Goals at the cursor</div><pre></pre></aside>'
+            + ENGINE_NOTE
             + f'<script type="application/json" id="bookdata">{script_json(data)}</script>')
 
 
@@ -422,103 +424,67 @@ def script_json(data) -> str:
     return json.dumps(data, ensure_ascii=False).replace("</", "<\\/").replace("<!--", "<\\u0021--")
 
 
-def index_body(book: dict) -> str:
-    vols = []
-    for v in book["volumes"]:
-        rows = []
-        for c in v["chapters"]:
-            live = c.get("status") == "live"
-            name = html.escape(c["title"])
-            link = f'<a href="{c["slug"]}.html">{name}</a>' if live else name
-            state = '<span class="cstate live">ready</span>' if live else '<span class="cstate">planned</span>'
-            prog = f' <span class="cprog" data-chapter="{c.get("slug", "")}"></span>' if live else ""
-            rows.append(f'<li><span class="cn">{v["n"]}.{c["n"]}</span> {link} {state}{prog}</li>')
-        vols.append(f'<section class="vol"><h2 id="v{v["n"]}">Volume {v["n"]}: {html.escape(v["title"])}</h2>'
-                    f'<p>{html.escape(v["about"])}</p><ul class="chapters">{"".join(rows)}</ul></section>')
-    intro = ('<p>A book in the style of <i>Software Foundations</i>: every chapter is a Lean file, '
-             'and the Lean runs here, in your browser. Read a chapter, edit any of its code, and do its '
-             'exercises; Lean checks each one as you type. Nothing you write leaves your computer.</p>'
-             '<p>The first time a chapter opens, your browser downloads Lean itself (about 57&nbsp;MB, '
-             'kept for next time). A desktop browser is needed; on a phone the chapters read but may not run.</p>')
-    engine = ('<p class="sub" style="margin-top:28px">The Lean in these pages is Lean&nbsp;4 '
-              '(Apache-2.0), compiled to WebAssembly by the '
-              '<a href="https://github.com/cauli/lean4-wasm-in-browser">cauli/lean4</a> browser build '
-              '(Lean 4.33, Apache-2.0), hosted here byte for byte. The proved checker it loads is the '
-              'repository\'s <code>QCCDC.Cert</code>, carried to that Lean by a mechanical port '
-              '(<code>tools/book/port_checker.py</code>): module syntax, and two tail-recursive '
-              'functions each proved equal to the one it replaces. The port gives the same verdict as the '
-              'repository\'s checker on every published certificate.</p>')
-    return (f'<h1>{html.escape(book["title"])}</h1><p class="sub">{dash(html.escape(book["subtitle"]))}</p>'
-            + intro + "".join(vols) + engine)
+ENGINE_NOTE = ('<p class="enginenote">The Lean on this page is Lean&nbsp;4 (Apache-2.0), compiled to '
+               'WebAssembly by the <a href="https://github.com/cauli/lean4-wasm-in-browser">cauli/lean4</a> '
+               'browser build (Lean 4.33, Apache-2.0), hosted here byte for byte. The proved checker it loads is '
+               "the repository's <code>QCCDC.Cert</code>, carried to that Lean by a mechanical port "
+               '(<code>port_checker.py</code> in the repository): module syntax, and two tail-recursive functions each '
+               "proved equal to the one it replaces; it gives the repository checker's verdict on every "
+               'published certificate. The first time a lesson in this part opens, your browser downloads Lean '
+               '(about 58&nbsp;MB, kept for next time); a desktop browser is needed.</p>')
 
 
-LEARN_CSS = """<style>
-.bookintro{font:15px var(--sans);color:var(--ink2)}
-.bvol{margin:14px 0 6px}
-.bvol h3{font:600 15px var(--sans);color:var(--head);margin:0 0 4px}
-.bvol h3 small{font-weight:400;color:var(--ink3)}
-ul.bch{list-style:none;padding:0;margin:0}
-ul.bch li{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--line);font:14.5px var(--sans)}
-ul.bch .cn{font:12.5px var(--mono);color:var(--ink3);min-width:2.4em}
-ul.bch li.planned{color:var(--ink3)}
-ul.bch .soon{font:600 11px var(--sans);text-transform:uppercase;letter-spacing:.04em;color:var(--ink3)}
-ul.bch .bprog{margin-left:auto;font:12.5px var(--sans);color:var(--ink2);min-width:9em;text-align:right}
-ul.bch .bbar{width:110px;height:6px;border-radius:3px;background:#efeee9;overflow:hidden}
-ul.bch .bbar i{display:block;height:100%;width:0;background:#2f8f5b}
-ul.bch li.done .bprog{color:#1d6b40;font-weight:600}
-#booksum{font:13.5px var(--sans);color:var(--ink2);margin:10px 0 0}
-</style>"""
-
-LEARN_JS = """<script src="../book/book-progress.js"></script>
-<script>
-(function(){
-  // the book's chapters on the Learn page: each one's exercises solved, on this browser or the
-  // reader's account (book-progress.js), painted whenever that changes
-  if(!window.QCCDBOOK) return;
-  function paint(s){
-    var all = 0, got = 0;
-    [].forEach.call(document.querySelectorAll('ul.bch li[data-ids]'), function(li){
-      var ids = JSON.parse(li.getAttribute('data-ids')), n = ids.filter(function(i){ return s.done[i]; }).length;
-      all += ids.length; got += n;
-      li.querySelector('.bprog').textContent = n + ' of ' + ids.length + ' exercises';
-      li.querySelector('.bbar i').style.width = (ids.length ? 100 * n / ids.length : 0) + '%';
-      li.classList.toggle('done', ids.length > 0 && n === ids.length);
-    });
-    var sum = document.getElementById('booksum');
-    if(sum) sum.textContent = got + ' of ' + all + ' exercises done' + (s.user ? ', kept on your account.'
-      : s.status === 'anon' ? ', kept in this browser. Sign in to keep them on your account.' : '.');
-  }
-  QCCDBOOK.subscribe(paint); paint(QCCDBOOK.state());
-})();
-</script>"""
+def outline() -> dict:
+    return json.loads((BOOK / "book.json").read_text(encoding="utf-8"))
 
 
-def learn_section() -> str:
-    """The book on the Learn page, between the course and the reference: every volume and
-    chapter, and for each live chapter the reader's exercises solved -- the same progress the
-    chapter page records (book-progress.js), on their account when they are signed in."""
-    if not (BOOK / "book.json").exists():
-        return ""
-    book = json.loads((BOOK / "book.json").read_text(encoding="utf-8"))
-    vols = []
-    for v in book["volumes"]:
-        rows = []
-        for c in v["chapters"]:
-            num = f'<span class="cn">{v["n"]}.{c["n"]}</span>'
-            if c.get("status") == "live":
-                ids = [e["id"] for e in parse_chapter(BOOK / c["source"], c["slug"]).exercises]
-                rows.append(f'<li data-ids="{html.escape(json.dumps(ids))}">{num}'
-                            f'<a href="../book/{c["slug"]}.html">{html.escape(c["title"])}</a>'
-                            f'<span class="bprog">{len(ids)} exercises</span><span class="bbar"><i></i></span></li>')
-            else:
-                rows.append(f'<li class="planned">{num}{html.escape(c["title"])} <span class="soon">planned</span></li>')
-        vols.append(f'<div class="bvol"><h3>Volume {v["n"]}: {html.escape(v["title"])} '
-                    f'<small>{html.escape(v["about"])}</small></h3><ul class="bch">{"".join(rows)}</ul></div>')
-    return (LEARN_CSS + '<h2 id="the-book">The book</h2>'
-            f'<p class="bookintro"><a href="../book/"><b>{html.escape(book["title"])}</b></a>: '
-            f'{dash(html.escape(book["subtitle"]))}. Every chapter is Lean that runs in the page, with exercises '
-            'Lean checks as you type; what you solve is kept here, on your account when you are signed in.</p>'
-            + "".join(vols) + '<p id="booksum"></p>' + LEARN_JS)
+def tutorial_parts() -> list[dict]:
+    """The tutorial's Lean parts (E-I), for the Learn page's table of contents
+    (qccd/site/progress.py): per part its letter, title and blurb, its live lessons with the
+    progress ids of their exercises and each exercise's stars, and the titles still to come.
+
+        [{"part": "F", "title": ..., "about": ...,
+          "lessons": [{"id": "F1", "title": ..., "story": ..., "href": "../book/2.1-certificates.html",
+                       "exercises": ["book:V2.1.ex1", ...], "stars": [1, 1, 1, 1, 2, 2, 3, 3], "live": True}],
+          "coming": ["The specification, condition by condition", ...]}, ...]"""
+    out = []
+    for part in outline()["parts"]:
+        lessons, coming = [], []
+        for les in part["lessons"]:
+            if les.get("status") != "live":
+                coming.append(les["title"])
+                continue
+            ch = parse_chapter(BOOK / les["source"], les["slug"], les.get("store"))
+            lessons.append({"id": les["id"], "title": les["title"], "story": les.get("story") or lesson_story(ch),
+                            "href": f'../book/{les["slug"]}.html',
+                            "exercises": [e["id"] for e in ch.exercises],
+                            "stars": [e["stars"] for e in ch.exercises], "live": True})
+        out.append({"part": part["part"], "title": part["title"], "about": part["about"],
+                    "lessons": lessons, "coming": coming})
+    return out
+
+
+def lesson_story(ch: Chapter) -> str:
+    """The lesson's first sentence of prose after its title and its italic note: the line the
+    tutorial's cards show under a title."""
+    for b in ch.blocks:
+        if b.kind != "prose":
+            continue
+        for para in re.split(r"\n\s*\n", b.text):
+            t = " ".join(para.split())
+            if not t or t.startswith("#") or t.startswith("*"):
+                continue
+            m = re.match(r"(.+?[.!?])(\s|$)", t)
+            return dash(m.group(1) if m else t)
+    return ""
+
+
+def redirect_html(target: str) -> str:
+    """/book/ is the address of the tutorial's Lean lessons, not a page of its own."""
+    return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Tutorial - QCCD studio</title>'
+            f'<meta http-equiv="refresh" content="0; url={target}"><link rel="canonical" href="{target}">'
+            f'</head><body><script>location.replace({json.dumps(target)})</script>'
+            f'<p>The tutorial is on the <a href="{target}">Learn page</a>.</p></body></html>')
 
 
 def studio_pages(dst: Path) -> list[Path]:
@@ -575,22 +541,21 @@ def studio_pages(dst: Path) -> list[Path]:
 
 def build(out: Path, packs: Path | None = None, studio: bool = True) -> list[Path]:
     from .build import PAGE, STYLE            # the site's own document page and stylesheet
-    book = json.loads((BOOK / "book.json").read_text(encoding="utf-8"))
+    parts = outline()["parts"]
     css = (ASSETS / "book.css").read_text(encoding="utf-8")
     dst = out / "book"
     dst.mkdir(parents=True, exist_ok=True)
     written = []
-    page = PAGE.format(title=f'{html.escape(book["title"])} - QCCD studio', style=STYLE, extra_css=css,
-                       body=index_body(book))
-    (dst / "index.html").write_text(page.replace("__FOOTER__", ""), encoding="utf-8")
+    first = next((pt["part"] for pt in parts if any(l.get("status") == "live" for l in pt["lessons"])), "A")
+    (dst / "index.html").write_text(redirect_html(f"../learn/#part-{first}"), encoding="utf-8")
     written.append(dst / "index.html")
-    for v in book["volumes"]:
-        for c in v["chapters"]:
+    for part in parts:
+        for c in part["lessons"]:
             if c.get("status") != "live":
                 continue
-            ch = parse_chapter(BOOK / c["source"], c["slug"])
-            body = chapter_body(ch, v["n"], c["n"], book)
-            page = PAGE.format(title=f'{html.escape(ch.title)} - {html.escape(book["title"])}', style=STYLE,
+            ch = parse_chapter(BOOK / c["source"], c["slug"], c.get("store"))
+            body = chapter_body(ch, part, c)
+            page = PAGE.format(title=f'{c["id"]} {html.escape(ch.title)} - QCCD studio', style=STYLE,
                                extra_css=css, body=body)
             # the Lean runtime first (it defines window.Book), the figures, then the page
             page = page.replace("</body>", '<script src="engine/book-runtime.js" defer></script>'

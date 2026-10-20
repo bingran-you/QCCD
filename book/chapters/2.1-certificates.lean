@@ -3,8 +3,8 @@ import QCCDC.Cert.Sound
 /-!
 # Certificates: the Bell pair, proved
 
-*Volume 2, chapter 1. You need parts A and B of the studio course (sites, rails, shuttles,
-gates). You do not need to know Lean; this chapter teaches the little it uses.*
+*Part F, lesson F1. You need Parts A and B of this tutorial (sites, rails, shuttles, gates).
+You do not need to know Lean; this lesson teaches the little it uses.*
 
 Our compiler is a search. It decides which ion carries which qubit, where each ion starts,
 which ions move when, and where each gate fires. Nobody proves a search like that correct,
@@ -13,7 +13,7 @@ and we do not try to. Instead, every time it compiles a circuit, the compiler al
 **checker** then decides whether that account holds, and the checker is proved correct once,
 in Lean. If the checker accepts, the account is right, whatever search produced it.
 
-This chapter takes one real certificate, the Bell pair compiled for the four-site register
+This lesson takes one real certificate, the Bell pair compiled for the four-site register
 `chain4` (it is on the Compilation page), and does with it everything the checker does. The
 Lean below runs in this page. Edit any of it; the checker is the real one.
 -/
@@ -318,8 +318,8 @@ certificate's rows from Lean under it.
 {{certificates}}
 
 A large certificate (the BB[[144,12,12]] rounds run to thousands of moves) is too big for the
-kernel to compute in a browser in reasonable time. For those the book uses the compiled checker,
-whose answer is trusted because `check_sound` is proved about the same function. Volume 4 does
+kernel to compute in a browser in reasonable time. For those the tutorial uses the compiled checker,
+whose answer is trusted because `check_sound` is proved about the same function. Part H does
 that for every board on the site.
 
 ## 8. What the checker does not see
@@ -328,16 +328,16 @@ that for every board on the site.
 it never says *which* gate the laser pulses make. A compiler that wrote a CX where the circuit
 says CZ, at the right place and time, would pass every condition above. The second half of
 the verdict called R10 is a different check: it composes the emitted pulses back into a
-circuit and compares that with the source. It is computed, not proved, and it is Volume 3.
+circuit and compares that with the source. It is computed, not proved, and it is Part G.
 
 The checker also sees only the certificate, never the programme. Two computed checks tie
 the programme to it: every witness must name a real instruction of the programme, of the right
 kind, on the right ions; and the programme's own transport, ion by ion and loop turn by loop
 turn, must equal the certificate's moves and rotations. Whether each move is physically legal
 (capacities, junctions, heating) is a third question, answered by the rules, which the rule
-language of Volume 1 states one assertion at a time.
+language of Part E states one assertion at a time.
 
-A proof is exactly as strong as what it is about. Everything this chapter proved is about the
+A proof is exactly as strong as what it is about. Everything this lesson proved is about the
 certificate; what ties it to the programme and to the circuit is computed, and the trusted
-base of the whole verdict is listed at the end of Volume 2.
+base of the whole verdict is listed at the end of Part F.
 -/

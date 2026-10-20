@@ -123,3 +123,4 @@ ul.chapters .cn{font:13px var(--mono);color:var(--ink3);min-width:2.4em}
 .cprog{font:12px var(--sans);color:var(--ink2)}
 @media (max-width:640px){.certs .row{grid-template-columns:1fr auto}.certs .row .what,.certs .row a{display:none}
   #goals{left:12px;right:12px;width:auto}}
+.enginenote{font:12.5px/1.5 var(--sans);color:var(--ink3);margin:34px 0 0;border-top:1px solid var(--line);padding-top:10px}

@@ -67,7 +67,7 @@
     var reset = document.createElement('button');
     reset.type = 'button';
     reset.textContent = 'Reset';
-    reset.title = 'Put this block back as the chapter wrote it';
+    reset.title = 'Put this block back as the lesson wrote it';
     reset.addEventListener('click', function () { ta.value = cell._orig; edited(cell, k); });
     tools.appendChild(reset);
     ed.appendChild(tools);
@@ -180,7 +180,7 @@
     running = true; pending = false;
     var doc = documentText();
     lastDoc = doc;
-    status('busy', 'Lean is checking the chapter…');
+    status('busy', 'Lean is checking the lesson…');
     rt.check(doc).then(function (res) {
       running = false;
       if (res && res.superseded) { if (pending) schedule(50); return; }
@@ -197,7 +197,7 @@
       var graderSeen = msgs.some(function (m) { return m.line >= graderAt; });
       if (data.exercises.length && !graderSeen) {
         show(msgs, true);
-        status('failed', 'Lean could not read the whole chapter: there is a syntax error, most likely in the block you changed last.');
+        status('failed', 'Lean could not read the whole lesson: there is a syntax error, most likely in the block you changed last.');
         if (lastEdited) {
           lastEdited.classList.add('bad');
           var d = document.createElement('div');
@@ -211,11 +211,11 @@
       }
       show(msgs, false);
       drawFigures(msgs);
-      status('ready', 'Lean checked the chapter', (res.ms != null ? (res.ms / 1000).toFixed(1) + ' s' : ''));
+      status('ready', 'Lean checked the lesson', (res.ms != null ? (res.ms / 1000).toFixed(1) + ' s' : ''));
       if (pending) schedule(50);
     }, function (err) {
       running = false;
-      status('failed', 'Lean could not check the chapter: ' + (err && err.message || err));
+      status('failed', 'Lean could not check the lesson: ' + (err && err.message || err));
     });
   }
 
@@ -466,7 +466,7 @@
   // ---------------------------------------------------------------- start
   casesPanel();
   if (!rt) {
-    status('failed', 'Lean did not load on this page. The chapter reads as written; its exercises need Lean.');
+    status('failed', 'Lean did not load on this page. The lesson reads as written; its exercises need Lean.');
     return;
   }
   if (!window.crossOriginIsolated) {
