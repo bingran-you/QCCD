@@ -613,6 +613,144 @@ def _diagrams() -> dict[str, str]:
                + text(98, 14, "swap_operands", 5.2, "#182230", weight=700, mono=True)
                + good(98, 30, 5.5) + text(98, 44, "checker", 5.8, GOOD, weight=700)
                + bad(98, 56, 5.5) + text(98, 70, "semantics", 5.8, BAD, weight=700))
+    # ---- I: build your own verified compiler ---------------------------------------------------
+    def strip(x, y, w=28, faded=1.0):
+        """A circuit: two wires, h, two cx, a measurement."""
+        g = (f'<g opacity="{faded}"><rect x="{_n(x)}" y="{_n(y)}" width="{_n(w + 4)}" height="18" rx="2.5" fill="#fff" stroke="#d0d5dd" stroke-width="1"/>'
+             f'<path d="M{_n(x + 2)} {_n(y + 6)}H{_n(x + w + 2)}M{_n(x + 2)} {_n(y + 13)}H{_n(x + w + 2)}" stroke="#98a2b3" stroke-width=".8"/>'
+             f'<rect x="{_n(x + 4)}" y="{_n(y + 3.5)}" width="5" height="5" rx="1" fill="{D1}"/>')
+        for cx_ in (x + 13, x + 19):
+            g += (f'<path d="M{_n(cx_)} {_n(y + 6)}V{_n(y + 15)}" stroke="{GATE}" stroke-width=".9"/><circle cx="{_n(cx_)}" cy="{_n(y + 6)}" r="1.3" fill="{GATE}"/>'
+                  f'<circle cx="{_n(cx_)}" cy="{_n(y + 13)}" r="2.2" fill="#fff" stroke="{GATE}" stroke-width=".9"/>')
+        g += f'<rect x="{_n(x + 24)}" y="{_n(y + 3.5)}" width="5" height="12" rx="1" fill="#fff" stroke="{MEAS}" stroke-width=".9"/></g>'
+        return g
+
+    compile_box = lambda x, y, w=24, h=18: (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="3.5" fill="#1e2761"/>'
+                                            + text(x + w / 2, y + h / 2 + 2.2, "compile", 6, "#fff", weight=700))
+    d["I1"] = (strip(3, 8) + arrow("M37 17H41", MUTED, w=1.1) + compile_box(43, 8)
+               + arrow("M68 17H76", MUTED, w=1.1) + arrow("M55 27V40", MUTED, w=1.1)
+               + rail(12, 56, 72, 56) + "".join(site(x, 56) for x in (12, 32, 52, 72))
+               + ion(12, 56, D0) + ion(32, 56, D1) + arrow("M16 47Q22 41 28 47", ARROW, w=1.3) + arrow("M28 65Q22 71 16 65", ARROW, w=1.3)
+               + '<rect x="80" y="6" width="36" height="46" rx="4" fill="#fff" stroke="#d0d5dd" stroke-width="1.1"/>'
+               + "".join(text(84, 17 + i * 11, s, 5.6, "#475467", "start", 600) for i, s in enumerate(("map", "moves", "witnesses")))
+               + good(98, 64, 6) + text(98, 76, "checker", 5.8, GOOD, weight=700))
+    d["I2"] = (strip(9, 4, faded=.25) + strip(6, 9, faded=.5) + strip(3, 14)
+               + text(19, 42, "every circuit", 5.8, "#667085")
+               + arrow("M37 23H41", MUTED, w=1.1) + compile_box(43, 14) + arrow("M68 23H72", MUTED, w=1.1)
+               + '<rect x="74" y="4" width="42" height="44" rx="4" fill="#fffaf0" stroke="#c9971a" stroke-width="1.3"/>'
+               + text(95, 15, "Implements", 6, "#182230", weight=700, mono=True) + text(95, 24, "(compile", 5.6, "#182230", weight=600, mono=True)
+               + text(95, 32, "home c)", 5.6, "#182230", weight=600, mono=True)
+               + '<circle cx="95" cy="41" r="4.5" fill="#e8b84b"/><path d="M92.8 41.2l1.6 1.6 2.8-3.2" stroke="#fff" stroke-width="1.3" fill="none" stroke-linecap="round"/>'
+               + '<path d="M6 52H114" stroke="#e4e7ec" stroke-width="1"/>'
+               + text(8, 63, "I1: checked once per output", 6, "#667085", "start")
+               + text(8, 74, "I2: proved once, for every output", 6, "#c9971a", "start", 700))
+    langs = ("Python", "OCaml", "Rust")
+    d["I3"] = ("".join(f'<rect x="3" y="{6 + i * 24}" width="30" height="16" rx="3" fill="#1e2761"/>'
+                       + text(18, 16.4 + i * 24, s, 6, "#fff", weight=700) + arrow(f"M34 {14 + i * 24}L44 40", MUTED, w=1)
+                       for i, s in enumerate(langs))
+               + '<path d="M46 31h11l4 4v14h-15z" fill="#fff" stroke="#475467" stroke-width="1.2" stroke-linejoin="round"/>'
+               + text(53.5, 44, "{ }", 6.4, "#475467", weight=800, mono=True) + text(53.5, 58, "JSON", 5.4, "#667085", weight=700)
+               + arrow("M62 40H64", MUTED, w=1.1)
+               + '<rect x="66" y="30" width="22" height="20" rx="3.5" fill="#fff" stroke="#6a4fd0" stroke-width="1.4"/>'
+               + text(77, 39, "checker", 5.2, "#6a4fd0", weight=800) + text(77, 46.5, "proved", 4.8, "#6a4fd0", weight=600)
+               + arrow("M89 36L93 27", GOOD, w=1) + arrow("M89 44L93 53", BAD, w=1)
+               + f'<rect x="90" y="16" width="28" height="9" rx="4.5" fill="{GOOD}"/>' + text(104, 22.2, "ACCEPTED", 4.8, "#fff", weight=800)
+               + f'<rect x="90" y="55" width="28" height="9" rx="4.5" fill="{BAD}"/>' + text(104, 61.2, "REJECTED", 4.8, "#fff", weight=800))
+    slots = ("circuit ops", "qubit map", "init", "moves", "rotations", "witnesses")
+    d["I4"] = ('<rect x="3" y="3" width="56" height="74" rx="4" fill="#fff" stroke="#d0d5dd" stroke-width="1.1"/>'
+               + "".join(f'<rect x="7" y="{7 + i * 11.6}" width="48" height="9" rx="2" fill="#f2f4f7"/>'
+                         + text(10, 13.4 + i * 11.6, s, 5.4, "#182230", "start", 600) for i, s in enumerate(slots))
+               + '<path d="M63 6V74" stroke="#e4e7ec" stroke-width="1"/>'
+               + text(90, 9, "from the device", 5.4, "#667085", weight=700)
+               + site(77, 24, n=2, gap=6) + beam(77, 13, 19) + text(117, 26, "gate sites", 5.2, "#475467", "end")
+               + rail(67, 45, 89, 45) + jsq(79, 45) + site(68, 45) + arrow("M70 38Q79 32 88 38", ARROW, w=1)
+               + text(117, 47, "a hop", 5.2, "#475467", "end")
+               + '<rect x="67" y="60" width="22" height="13" rx="6.5" fill="none" stroke="#f2b8b5" stroke-width="2.6"/>'
+               + "".join(f'<circle cx="{x}" cy="{y}" r="2" fill="#0f766e"/>' for x, y in ((73, 60), (83, 60), (83, 73), (73, 73)))
+               + arrow("M74 55Q78 52 82 55", ARROW, w=1) + text(117, 69, "loop order", 5.2, "#475467", "end"))
+    pairs = "".join(f'<rect x="{_n(6 + (i % 12) * 6.4)}" y="{_n(48 + (i // 12) * 6.4)}" width="5" height="5" rx="1" '
+                    f'fill="{BAD if i == 20 else GOOD}" opacity="{1 if i == 20 else .7}"/>' for i in range(36))
+    d["I5"] = ('<rect x="3" y="4" width="114" height="16" rx="4" fill="#fff" stroke="#d0d5dd" stroke-width="1.1"/>'
+               + '<circle cx="12" cy="12" r="5" fill="#0b7a4b"/>' + text(12, 14.4, "1", 6.2, "#fff", weight=800)
+               + text(20, 14.6, "your compiler", 6, "#182230", "start", 700, True) + text(112, 14.6, "vs the reference", 5.4, "#667085", "end")
+               + text(6, 31, "speedup, geometric mean", 5.4, "#667085", "start")
+               + '<rect x="6" y="34" width="70" height="6" rx="3" fill="#e4e7ec"/><rect x="6" y="34" width="49" height="6" rx="3" fill="#1f7fa8"/>'
+               + text(80, 39.5, "1.4×", 6.6, "#1f7fa8", "start", 800)
+               + pairs + text(6, 76, "every circuit × device pair", 5.2, "#667085", "start")
+               + f'<rect x="90" y="47" width="18" height="18" rx="4" fill="{BAD}"/>'
+               + '<path d="M94.5 51.5l9 9M103.5 51.5l-9 9" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>'
+               + text(99, 74, "not eligible", 5, BAD, weight=700))
+
+    # ---- J: gadgets and fault-tolerant architecture, in the gadget page's own vocabulary --------
+    try:
+        from ..gadget.categories import CATEGORIES
+        from ..gadget.svg import shape_d, shape_detail
+    except ImportError:              # a tree without the gadget tool: Part J's cards fall back
+        return d
+
+    def place(cat, x, y, w, h, glyph=None, sw=1.3):
+        c = CATEGORIES[cat]
+        g = f'<path d="{shape_d(c["shape"], x, y, w, h)}" fill="{c["fill"]}" stroke="{c["stroke"]}" stroke-width="{sw}"/>'
+        dd = shape_detail(c["shape"], x, y, w, h)
+        if dd:
+            g += f'<path d="{dd}" fill="none" stroke="{c["stroke"]}" stroke-width="1"/>'
+        if glyph:
+            g += text(x + w / 2, y + h * .62 + 2, glyph, min(6.4, h * .32), c["stroke"], weight=800)
+        return g
+
+    def bundle(x, y, n=3, c="#475467", op=1.0):
+        return "".join(f'<circle cx="{_n(x + (i - (n - 1) / 2) * 3.6)}" cy="{_n(y)}" r="1.6" fill="{c}" opacity="{op}"/>' for i in range(n))
+
+    GOLD, FRESH, BUS = "#e8b84b", "#98a2b3", CATEGORIES["wire"]["stroke"]
+    door = lambda x, y: f'<rect x="{_n(x - 1.6)}" y="{_n(y - 4)}" width="3.2" height="8" rx="1" fill="#fff" stroke="#1c2a4a" stroke-width="1"/>'
+    d["J1"] = (place("factory", 34, 16, 52, 40, "MSF", 1.6) + door(34, 44) + door(86, 44)
+               + arrow("M6 44H30", MUTED, w=1.3) + ion(14, 44, FRESH) + text(16, 38, "in", 6, "#667085", weight=700)
+               + arrow("M90 44H114", MUTED, w=1.3) + f'<circle cx="104" cy="44" r="4.2" fill="{GOLD}" stroke="#fff" stroke-width="1.3"/>'
+               + text(102, 38, "out", 6, "#667085", weight=700) + good(84, 16, 6)
+               + text(60, 72, "verified once, used as a box", 6.2))
+    lanes = (("factory", 8, 30), ("surgery", 22, 48), ("memory", 4, 40))
+    d["J2"] = (place("factory", 6, 6, 30, 20) + place("surgery", 45, 6, 30, 20) + place("memory", 84, 6, 30, 20)
+               + "".join(f'<rect x="{_n(6 + s)}" y="{32 + k * 6}" width="{e}" height="4.4" rx="2" fill="{CATEGORIES[c]["stroke"]}" opacity=".75"/>'
+                         for k, (c, s, e) in enumerate(lanes))
+               + '<path d="M6 51H114" stroke="#c3cbd8" stroke-width="1"/>' + text(114, 49, "time", 5.4, "#98a2b3", "end")
+               + rail(28, 66, 66, 66) + bundle(47, 66) + bundle(17, 66, op=.4) + text(17, 76, "waits", 5.6, "#667085")
+               + text(47, 76, "one bundle per road", 5.6, "#667085", "start") + text(92, 69, "at once", 6.4, GOOD, weight=700))
+    jx = (19, 45, 71, 97)
+    street = "".join(rail(jx[i], 24, jx[i + 1], 24) for i in (0, 1)) + "".join(rail(x, 24, x, 42) for x in jx)
+    d["J3"] = (street
+               + f'<path d="M71 24H97" stroke="#f2b8b5" stroke-width="4.5" stroke-dasharray="2 4" opacity=".7"/>'
+               + "".join(jsq(x, 24) for x in jx)
+               + place("factory", 8, 42, 22, 18) + place("surgery", 34, 42, 22, 18) + place("memory", 60, 42, 22, 18)
+               + place("readout", 86, 42, 22, 18)
+               + f'<path d="M19 42V24H71V42" stroke="{ARROW}" stroke-width="2.4" fill="none" stroke-linejoin="round" opacity=".9"/>'
+               + bad(84, 24, 4.4)
+               + '<rect x="84" y="8" width="32" height="58" rx="6" fill="none" stroke="#d92d20" stroke-width="1.3" stroke-dasharray="3 2.4"/>'
+               + text(100, 74, "closed", 6, BAD, weight=700) + text(45, 74, "door to door", 6, ARROW, weight=700))
+    d["J4"] = (place("factory", 3, 12, 22, 18) + arrow("M26 21H30", MUTED, w=1.1)
+               + place("injection", 32, 12, 22, 18) + arrow("M55 21H58", MUTED, w=1.1)
+               + place("surgery", 60, 12, 24, 18) + place("memory", 63, 34, 18, 13)
+               + text(60, 43, "data", 5.2, CATEGORIES["memory"]["stroke"], "end", 700) + arrow("M85 21H89", MUTED, w=1.1)
+               + place("readout", 91, 12, 26, 18)
+               + f'<path d="M104 30V60H88" stroke="{BUS}" stroke-width="1.3" stroke-dasharray="3 2" fill="none"/>'
+               + place("archive", 58, 54, 30, 14) + text(52, 63, "if a: S̄", 6, "#182230", "end", 700, True)
+               + pill(16, 42, "x m", "#667085", 18) + text(16, 53, "software Pauli", 5.2, "#667085"))
+    prog = (("h q", False), ("t q", True), ("cx q r", False))
+    d["J5"] = ("".join(f'<rect x="4" y="{14 + i * 13}" width="32" height="10" rx="2" fill="{"#fde8e1" if hot else "#fff"}" stroke="{"#c2410c" if hot else "#d0d5dd"}" stroke-width="1"/>'
+                       + text(8, 21 + i * 13, s, 6, "#182230", "start", 700 if hot else 500, True) for i, (s, hot) in enumerate(prog))
+               + '<path d="M37 32L46 8M37 32L46 72" stroke="#c2410c" stroke-width=".9" opacity=".7"/>'
+               + "".join(f'<rect x="48" y="{8 + i * 9.4}" width="{30 - (i * 7) % 12}" height="5.2" rx="2" fill="#e4e7ec"/>' for i in range(7))
+               + text(86, 44, "=", 11, GOOD, weight=800)
+               + place("operation", 94, 30, 22, 20, "T") + good(105, 62, 5) + text(105, 76, "agree", 5.8, GOOD, weight=700))
+    row1 = (("memory", 4), ("factory", 22), ("surgery", 40), ("readout", 58))
+    row2 = (("injection", 4), ("memory", 22), ("operation", 40), ("memory", 58))
+    d["J6"] = ("".join(place(c, x, 4, 15, 12, sw=1) for c, x in row1) + rail(4, 21, 73, 21)
+               + "".join(place(c, x, 26, 15, 12, sw=1) for c, x in row2) + rail(4, 43, 73, 43)
+               + "".join(rail(x + 7.5, 16, x + 7.5, 26) for _, x in row1)
+               + f'<path d="M38 43V56" stroke="{BUS}" stroke-width="1.3" stroke-dasharray="3 2"/>'
+               + place("decoder", 22, 56, 32, 16, "DEC")
+               + '<path d="M80 6V74" stroke="#e4e7ec" stroke-width="1.2"/>'
+               + text(99, 22, "order of", 6.2, "#667085") + text(99, 33, "7 mod 15", 7, "#182230", weight=700, mono=True)
+               + text(99, 45, "= 4", 9, GOOD, weight=800) + text(99, 66, "15 = 3 × 5", 7, "#182230", weight=800))
     return d
 
 
