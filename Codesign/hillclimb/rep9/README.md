@@ -24,24 +24,30 @@ instruction. The gate traps cannot measure, so all 8 readouts wait until the las
 | µs | 300 | 720 | 120 | 160 | 5 | **1305** |
 
 Each round, a data ion steps into its ancilla's gate trap (5 µs), the CX runs, and it steps back out.
-The agents searched all 1023 ways to put readout on the 10 odd sites, 1500 random masks that also
-put readout on gate traps, gate capacity 3, and loops of 18 to 28 sites. Nothing went below 1.305 ms.
-They argue that 1.305 ms is the floor of the race-track pass for this circuit. It needs 16 serial MS
-rounds, the unconditional state-prep cool, at least 32 one-ion steps and at least one measure
-instruction. The other two regimes have higher floors: 1.985 ms for the router, and 2.06 ms for the
-rotation pass under the old compiler.
+In local probes during the search, under `c7c535380bfb`, the agents tried all 1023 ways to put
+readout on the 10 odd sites, 1500 random masks that also put readout on gate traps, gate capacity 3,
+and loops of 18 to 28 sites. Nothing went below 1.305 ms. They argue that 1.305 ms is the floor of
+the race-track pass for this circuit. It needs 16 serial MS rounds (720 µs), the unconditional
+state-prep cool (300 µs), at least 32 one-ion steps (160 µs), one measure instruction (120 µs) and,
+because the 8 ancillas become ready at different times, one extra 5 µs shift to bring them onto
+readout sites together: 1305 µs. The other two regimes have higher floors: 1.985 ms for the router,
+and 2.06 ms for the rotation pass under the old compiler.
 
 **Caveat.** The race track's steps into a 2-ion gate trap run on the movement class `shuttle`, which
 entails no split or merge. That is the shipped convention, and the 1.985 ms router floor design relies
 on it too, but a stricter rule would charge them.
 
 **Not counted.** Removing the `dock`/`undock` classes makes the conveyor fall back to plain
-`shuttle` for docking (no split/merge, no cools): 1.12 ms on a dock ring, eligible. That gets around
-the honest split/merge rule, so it was not graded.
+`shuttle` for docking, with no split/merge, so the per-batch R7 cools go away. On the third device
+below, an `hc-grade --no-log` probe under `c7c535380bfb` gave 1.12 ms, eligible and audit-clean.
+That gets around the honest split/merge rule, so it was neither logged nor counted. It was not
+re-graded either: the 1.12 ms needed the 16 CX in 2 batches (90 µs of gates), and `dbd13d8952f3`
+keeps each qubit's gate order, so they now take at least 720 µs. The audit still does not check that
+docks run on a class that entails split and merge.
 
 ## The designs
 
-Every graded design ranked, beside the live designs (grey), as on the board's page:
+Every graded design ranked, beside the live designs (dark diamonds), as on the board's page:
 
 ![rep9: every design ranked](chart.png)
 
@@ -68,14 +74,14 @@ The board's page as fetched at 2026-10-19 23:33 UTC; its numbers were regenerate
 | live design | on qccd.academy | graded here | eligible | within the climb's rules | rebuilt from |
 |---|---:|---:|:---:|:---:|---|
 | `stationary_chain` (answer) | 1.99 | 1.99 | yes | yes | arch/stationary_chain.arch.json |
-| `chain` | 2.1 | 2.1 | yes | no | arch/chain.arch.json |
+| `chain` | 2.1 | 2.1 | yes | no (1,728 DACs) | arch/chain.arch.json |
 | `h2_racetrack` | 2.135 | 2.135 | yes | yes | arch/h2_racetrack.arch.json |
 | `cyclone_dual_loop` | 2.135 | 2.135 | yes | yes | arch/cyclone_dual_loop.arch.json |
 | `ladder_2x72` | 3.4 | 3.4 | yes | yes | arch/ladder_2x72.arch.json |
 | `cyclone_base` | 3.55 | 3.55 | yes | yes | arch/cyclone_base.arch.json |
-| `grid5x5` | 9.76 | 9.76 | yes | yes | Machine.grid(5, 5) (guess) |
-| `cylinder6x4` | 9.81 | 9.81 | yes | no | generators.cylinder(6, 4) with grid9x9 zones and control |
-| `grid9x9` | 10.24 | 10.24 | yes | no | arch/grid9x9.arch.json |
+| `grid5x5` | 9.76 | 9.76 | yes | no (1,600 DACs on the page; the rebuild passes) | Machine.grid(5, 5) (guess) |
+| `cylinder6x4` | 9.81 | 9.81 | yes | no (1,680 DACs) | generators.cylinder(6, 4) with grid9x9 zones and control |
+| `grid9x9` | 10.24 | 10.24 | yes | no (5,760 DACs) | arch/grid9x9.arch.json |
 | `deck_unit_cell` | 10.24 | 10.24 | yes | yes | arch/deck_unit_cell.arch.json |
 | `ring24_8` | 12.63 | 18.48 | yes | yes | Machine.ring(12, 2, 8) (guess) |
 | `ring144_24v` | 13.175 | 27.86 | yes | yes | arch/ring144_24v.arch.json |
