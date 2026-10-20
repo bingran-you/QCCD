@@ -14,8 +14,8 @@ and Ke Sun's from the Häffner group's members page (ions.berkeley.edu/members).
 from __future__ import annotations
 
 GROUPS = (
-    ("faculty", "Leading Faculty", "The faculty who lead the collaboration."),
     ("team", "PhD Students and Postdocs", "The people who build the compiler, the verifier, the studio and this website."),
+    ("faculty", "Leading Faculty", "The faculty who lead the collaboration."),
     ("collaborators", "Collaborators and advisors", "The physicists and computer scientists the design questions are worked out with."),
     ("alumni", "Alumni", "Earlier contributors."),
 )

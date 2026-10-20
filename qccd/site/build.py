@@ -1843,12 +1843,7 @@ def people_page() -> str:
     """One card per person, grouped; then the three institutions with their marks."""
     ids = [g for g, _, _ in PEOPLE_GROUPS]
     group_of = lambda p: p.get("group") if p.get("group") in ids else ids[-1]
-    body = ["<h1>People</h1>",
-            '<p class="sub">Who takes part in the project. The work is led by a collaboration between UCLA and '
-            'UC Berkeley and funded by the Challenge Institute for Quantum Computation, an NSF Quantum Leap '
-            'Challenge Institute, and by NQVL FTL, within which the project began. Its contributors are '
-            'also based at the University of Arizona, the University of Michigan, UC San Diego and '
-            'Cornell University.</p>']
+    body = ["<h1>People</h1>"]
     for gid, gtitle, gblurb in PEOPLE_GROUPS:
         mine = [p for p in PEOPLE if group_of(p) == gid]
         if not mine:
