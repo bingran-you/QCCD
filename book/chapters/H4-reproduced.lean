@@ -343,15 +343,16 @@ theorem ghz_late_rejected : check ghzLate = false :=
 ## 7. What `qccd toolchain install` asks of a checker
 
 When it installs a prebuilt `qcheck` (on macOS), `qccd toolchain install` runs it twice before
-calling it installed: on an input it must accept and one it must reject. The first is
-`{"circuit": "smoke", "arch": "none", "n_qubits": 0}`: every other field is missing, and
-`Input.ofJson` reads a missing field as empty. The second has two qubits on ions `a` and `b`,
-both starting in `S0`, and one op, `cx` on both -- and no witness. In Lean:
+calling it installed (and `qccd toolchain build-checker` does the same with the one it builds): on
+an input it must accept and one it must reject. The first is a certificate of nothing: no qubits,
+no ops, no moves, no witnesses, one gate site `S0`, every field written out (the checker's strict
+reader refuses a missing one). The second has two qubits on ions `a` and `b`, both starting in
+`S0`, and one op, `cx` on both -- and no witness. In Lean:
 -/
 
 def smokeOk : Input :=
   { circuit := "smoke", arch := "none", nQubits := 0, qmap := [], init := [], ops := [],
-    moves := [], rots := [], gates := [], unrealised := [], gateSites := [], hops := [],
+    moves := [], rots := [], gates := [], unrealised := [], gateSites := ["S0"], hops := [],
     loops := [] }
 
 def smokeBad : Input :=

@@ -35,6 +35,20 @@ var QCCD_TUTORIAL = {
     { id: 'D', title: 'Architecture decisions with the compiler',
       milestone: 'The course is done. You can read the map, build a device, program it by hand, break and fix every rule, schedule a circuit, and judge an architecture from measured numbers. The rest is practice, and the compiler.' }
   ],
+  // The tutorial goes on past this page: Parts E onward are lessons whose code is Lean, checked
+  // in the page, on the site's Learn page (their titles are book/book.json's; tests/test_book.py
+  // keeps the two in step).  The Learn tab links to them; it never loads or scores them here.
+  continues: {
+    href: 'https://qccd.academy/learn/',
+    parts: [
+      { id: 'E', title: 'The machine as data' },
+      { id: 'F', title: 'Certificates and the proved checker' },
+      { id: 'G', title: 'Semantics: which gate the pulses make' },
+      { id: 'H', title: 'Verify the website yourself' },
+      { id: 'I', title: 'Build your own verified compiler' },
+      { id: 'J', title: 'Gadgets and fault-tolerant architecture' }
+    ]
+  },
   lessons: [
 
     // =============================================================== A1

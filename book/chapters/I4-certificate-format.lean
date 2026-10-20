@@ -79,8 +79,9 @@ compares transport).
 `circuit_ops` lists; every move's `t` a whole number and its `ion`, `from`, `to` names; every
 witness's `t` and `dag` whole numbers, `instr` (if present) an instruction id, `ions` a list,
 `site` a name; every rotation's `t` and `delta` whole numbers. A certificate that fails is refused,
-R10 `FAILED`, with the field named. The Lean parser is more forgiving, which is the reason the
-shape check exists: what it cannot read, it drops.
+R10 `FAILED`, with the field named. `qcheck` reads as strictly since 2026-10-20 (its reader
+`Input.parse` refuses a missing field or an entry it cannot read, by name). The checker's other
+reader, `Input.ofJson`, the one this page runs, is forgiving: what it cannot read, it drops.
 -/
 
 #eval (Input.ofJson (json% {"moves": [{"t": 20.0, "ion": "q0", "from": "C0", "to": "C1"},

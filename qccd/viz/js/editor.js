@@ -4587,6 +4587,7 @@ var HINTS = {
   'menu': { t: 'Panels', d: 'One item per panel. Click to open it beside (or under) the canvas; click the lit item to close it and give the canvas the room back.' },
   'tab:L': { t: 'Learn', d: 'The course: what the machine is, how to build and program it by hand, every rule it must obey, and how to choose an architecture. Small lessons, each with an exercise the page checks.' },
   'learn:pick': { t: 'Lessons', d: 'Jump to any lesson. Stars show what you have passed.' },
+  'learn:lean': { t: 'The tutorial in Lean', d: 'The tutorial goes on past this page: Parts E onward are lessons whose code is Lean, checked as you type, on the site’s Learn page. Opens in a new tab.' },
   'learn:load': { t: 'Load', d: 'Put this lesson\u2019s device and programme on the canvas. Undo takes you back to what was there.' },
   'learn:check': { t: 'Check', d: 'Test your answer against what the page measures: the frames, the verdicts, the price.' },
   'learn:hint': { t: 'Hint', d: 'Shows you the next step: the page dims, the one control to press lights up, and a pointer makes the gesture. Taking it costs nothing.' },
@@ -5504,7 +5505,8 @@ function renderLearn() {
     var first = COURSE.lessons[0];
     h += '<div class="learn-story">A course for people who have never seen one of these machines: ' +
          COURSE.lessons.length + ' lessons in ' + COURSE.parts.length + ' parts, each a few minutes, each with an exercise this page checks.</div>' +
-         '<div class="learn-btns"><button class="p" id="lnLoad" data-hint="learn:load">Start with ' + esc2(first.id) + ' \u00b7 ' + esc2(first.title) + '</button></div>';
+         '<div class="learn-btns"><button class="p" id="lnLoad" data-hint="learn:load">Start with ' + esc2(first.id) + ' \u00b7 ' + esc2(first.title) + '</button></div>' +
+         continuesNote();
     host.innerHTML = h;
     wireLearn(host);
     return;
@@ -5546,8 +5548,24 @@ function renderLearn() {
     var extra = (L.boundary && stars < 2) ? L.boundary : (L.challenge && stars < 3) ? L.challenge : null;
     if (extra) h += '<div class="learn-ex extra"><div class="learn-exh">' + (extra === L.boundary ? 'Second star \u00b7 the boundary' : (L.boundary ? 'Third' : 'Second') + ' star \u00b7 sharp') + '</div><div>' + inline(extra.exercise) + '</div></div>';
   }
+  // the last lesson here, passed: where the tutorial goes on
+  if (LSTATE.passed && COURSE.lessons[COURSE.lessons.length - 1].id === L.id) h += continuesNote();
   host.innerHTML = h;
   wireLearn(host);
+}
+// The tutorial's Lean parts (tutorial.js `continues`), one link each to its place in the Learn
+// page's contents.  Only links: their lessons run on the site, never on this page.
+function continuesNote() {
+  var C = COURSE && COURSE.continues;
+  if (!C || !C.parts || !C.parts.length) return '';
+  var h = '<div class="learn-note">The tutorial goes on in Lean, checked as you type, on the Learn page:' +
+          '<ul style="margin:4px 0 0 18px;padding:0">';
+  for (var i = 0; i < C.parts.length; i++) {
+    var p = C.parts[i];
+    h += '<li><a href="' + esc2(C.href + '#part-' + p.id) + '" target="_blank" rel="noopener" data-hint="learn:lean">' +
+         esc2('Part ' + p.id + ' \u00b7 ' + p.title) + '</a></li>';
+  }
+  return h + '</ul></div>';
 }
 function renderVerdict(vd) {
   var V = shippedVerdict(vd['case'], vd.which);

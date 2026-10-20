@@ -23,10 +23,11 @@ open QCCDC.Cert Lean
 ## 1. The checker as a program
 
 The command-line checker `qcheck` is about fifty lines of Lean. It reads one file, parses it as
-JSON (`Json.parse`, Lean's own parser), turns the JSON into an `Input` (`Input.ofJson`, in the
+JSON (`Json.parse`, Lean's own parser), turns the JSON into an `Input` (`Input.parse`, in the
 module `QCCDC.Cert.Syntax`), and runs `check`, the function `check_sound` is
-proved about. It prints `ACCEPTED`, or `REJECTED` with `diagnose`'s list of failed conditions, and
-exits with 0 when it accepts, 1 when it refuses, 2 when the file is not JSON.
+proved about. It prints `ACCEPTED`, or `REJECTED` with `diagnose`'s list of failed conditions, or
+`REJECTED -- the input is malformed` naming a field that is missing or an entry it cannot read;
+it exits with 0 when it accepts, 1 when it refuses, 2 when the file is not JSON.
 
 From a compiler in any language to a verdict is three steps. The compiler writes its
 certificate, `prog.qcert.json` (lesson I4 gives its format). The device facts' builder
@@ -44,7 +45,10 @@ alone.
 
 ## 2. The document
 
-The file `qcheck` reads is one JSON object. `Input.ofJson` reads these keys, and no others:
+The file `qcheck` reads is one JSON object, with these keys and no others. `qcheck`'s reader,
+`Input.parse`, refuses a file that leaves one out or writes an entry it cannot read; this page
+runs the module's other reader, `Input.ofJson`, which gives the same `Input` from a well-formed
+file and, from a malformed one, drops what it cannot read:
 
 | key | `Input` field | what it is |
 |---|---|---|
@@ -112,8 +116,8 @@ def ghzJ : Json := json% {"circuit": "circuit", "arch": "chain4", "n_qubits": 4,
 /-!
 ## 3. Computed, then proved
 
-Which of those two steps is proved? `check` is: `check_sound` is about it. `Input.ofJson` is not.
-It is run, never proved, and so is `Json.parse` before it. In this page Lean cannot even look
+Which of those two steps is proved? `check` is: `check_sound` is about it. The reading is not:
+`Input.parse` and `Input.ofJson` are run, never proved, and so is `Json.parse` before them. In this page Lean cannot even look
 inside `Input.ofJson` during a proof: the page's Lean builds every file as a module, and a module
 shares a definition's body only when its file exposes it, which the module `QCCDC.Cert.Syntax`,
 with its `private` helpers, does not. Natively the kernel can unfold all of it except the
@@ -240,14 +244,16 @@ theorem off_by_one_refused : check offByOne = false :=
 ## 5. What a missing field does
 
 A compiler that writes the qubit map with the ion names as keys (`{"q0": "q0"}`) instead of the
-qubit numbers has written nothing the parser can read as a qubit, and the map comes out empty:
+qubit numbers has written nothing a reader can take as a qubit. `qcheck` says so at once:
+`REJECTED -- the input is malformed: map["q0"] is malformed`. The lenient reader this page runs
+drops the entries instead, and the map comes out empty:
 -/
 
 #eval (Input.ofJson (json% {"n_qubits": 2, "map": {"q0": "q0", "q1": "q1"}})).qmap
 
 /-!
-An empty map is never mistaken for a good one: the checker refuses it, for every certificate of a
-circuit with any qubit at all.
+Even then an empty map is never mistaken for a good one: the checker refuses it, for every
+certificate of a circuit with any qubit at all.
 
 #### Exercise 3 (★★) `no_map_refused`
 Prove it, for every `inp`. Condition 3, `MapTotal`, is `inp.qmap.length = inp.nQubits`; it is
@@ -378,7 +384,7 @@ When `qcheck` accepts a file, `check_sound` gives `Implements` of the `Input` th
 it, whoever wrote the file and in whatever language. That is the whole of what is proved. Three
 things are around it, and none is part of the proof:
 
-* **the parse**: `Json.parse` and `Input.ofJson` are run, not proved (section 3);
+* **the parse**: `Json.parse` and `qcheck`'s reader `Input.parse` are run, not proved (section 3);
 * **the binding**: that the file is this certificate's, on this device, for this circuit (the
   names bind nothing, Exercise 5). The semantic check (`check_cert`) checks it, by computation;
 * **the programme**: that the hardware programme does what the certificate says, gate by gate

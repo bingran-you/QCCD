@@ -206,6 +206,23 @@ def test_a_lesson_page_reads_as_the_tutorial_not_a_book(tmp_path):
     assert "../learn/#part-E" in index and "refresh" in index      # the first part with a live lesson
 
 
+@pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
+def test_the_studios_learn_tab_names_the_lean_parts_as_book_json_does():
+    """The studio's Learn tab links to the Lean parts (tutorial.js `continues`): one link per
+    part, in order, with the title the Learn page shows -- book.json's, for every part that is
+    not hidden."""
+    js = ("const fs = require('fs');"
+          "const T = new Function(fs.readFileSync(process.argv[1], 'utf8') + ';return QCCD_TUTORIAL;')();"
+          "process.stdout.write(JSON.stringify(T.continues));")
+    out = subprocess.run(["node", "-e", js, str(ROOT / "qccd" / "viz" / "js" / "tutorial.js")],
+                         capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert out.returncode == 0, out.stderr[-2000:]
+    cont = json.loads(out.stdout)
+    want = [(p["part"], p["title"]) for p in book.outline()["parts"] if p.get("status") != "hidden"]
+    assert [(p["id"], p["title"]) for p in cont["parts"]] == want
+    assert cont["href"] == "https://qccd.academy/learn/"
+
+
 def test_no_lesson_shows_a_repository_path():
     """The website says nothing about the repository it was built from: no live lesson's page
     shows a path into the tree or a source file's name, in its prose or in the code a reader is

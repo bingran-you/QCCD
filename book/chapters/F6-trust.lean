@@ -59,11 +59,12 @@ equality tests Lean derived for `Op`, `Move`, `Rot` and `GateW`, which is why th
 
 ## 2. The parser
 
-`qcheck`, the checker as a program, reads a file, parses it as JSON, turns the JSON into an `Input` with
-`Input.ofJson`, and prints the answer of `check`. `check_sound` is a theorem about `check`; nothing
-is proved about `Input.ofJson`. Here is how it reads a list of moves (the others are alike): each
-entry is turned into a `Move` if it has a natural number `t` and strings `ion`, `from` and `to`,
-and is **dropped** otherwise.
+`qcheck`, the checker as a program, reads a file, parses it as JSON, turns the JSON into an `Input`,
+and prints the answer of `check`. `check_sound` is a theorem about `check`; nothing is proved about
+the reading. The checker's syntax module has two readers. `Input.ofJson`, the one this page runs,
+is lenient: here is how it reads a list of moves (the others are alike): each entry is turned into
+a `Move` if it has a natural number `t` and strings `ion`, `from` and `to`, and is **dropped**
+otherwise.
 
 ```
 moves := (arr? (field j "moves")).toList.filterMap moveOf
@@ -71,6 +72,11 @@ moves := (arr? (field j "moves")).toList.filterMap moveOf
 
 `filterMap` keeps the entries for which `moveOf` gives `some` and silently drops the rest. A
 natural number is written without a decimal point: `20` is one, `20.0` is not.
+
+Until 2026-10-20 `qcheck` read every file this way. Since then it reads with the strict one,
+`Input.parse`, which refuses a document with a missing field or an entry it cannot read, and says
+which; on a well-formed file the two give the same `Input`. This section is why the strict reader
+was needed.
 -/
 
 #eval (Lean.Json.parse "20").map fun j => j.getNat?.toOption
@@ -106,10 +112,11 @@ def parsed : Input :=
 #eval check parsed
 
 /-!
-One move, not two, and the checker accepts. We ran the real `qcheck` on this document saved as a
-file: it reports "1 moves" and ACCEPTED.
+One move, not two, and the checker accepts. We ran `qcheck` on this document saved as a file: as it
+was before 2026-10-20 it reported "1 moves" and ACCEPTED; today it says
+`REJECTED -- the input is malformed: moves[1] is malformed` and exits 1.
 
-So there are two certificates here: the one the file means, and the one the checker reads.
+So there are two certificates here: the one the file means, and the one the lenient reader reads.
 -/
 
 def bellMeant : Input := { bell with moves := [⟨3, "q0", "C1", "C0"⟩, ⟨20, "q1", "C0", "C3"⟩] }
@@ -119,7 +126,7 @@ def bellParsed : Input := { bell with moves := [⟨3, "q0", "C1", "C0"⟩] }
 {{figure bellMeant at=20}}
 
 #### Exercise 1 (★) `parsed_accepted`
-Prove that the certificate the checker reads holds.
+Prove that the certificate the lenient reader produces holds.
 -/
 
 theorem parsed_accepted : check bellParsed = true := by
@@ -151,9 +158,10 @@ theorem parsed_is_bellParsed : reprStr parsed = reprStr bellParsed := by native_
 
 /-!
 That is the trust in one line: the link from the file to the value `check_sound` speaks about is
-the compiled parser, believed.
+the compiled reader, believed. The strict reader narrows what that link can get wrong; nothing
+proves it right.
 
-What closes the gap is outside Lean. The semantic check (`check_cert`) reads the same certificate
+What else catches such a file is outside Lean. The semantic check (`check_cert`) reads the same certificate
 in Python, and before anything else checks its shape: every field it reads, with its type. On this
 one it says
 
@@ -168,20 +176,21 @@ one it says
 refuses the teleport itself, and the semantic check adds that `q1` makes no moves in the programme
 and one in the certificate. Both outcomes we ran.
 
-A field that is missing altogether reads as an empty list. For most fields that fails safe: an
-empty `gates` leaves the circuit's ops unwitnessed. Not for all. An empty JSON object `{}` reads as
-the certificate of lesson F4's last exercise, with nothing in it, and is accepted; the real
-`qcheck` prints "qcheck ? on ?" and ACCEPTED for it, as we ran.
+Under the lenient reader a field that is missing altogether reads as an empty list. For most fields
+that fails safe: an empty `gates` leaves the circuit's ops unwitnessed. Not for all. An empty JSON
+object `{}` reads as the certificate of lesson F4's last exercise, with nothing in it, and is
+accepted; until 2026-10-20 `qcheck` printed "qcheck ? on ?" and ACCEPTED for it. Today it says
+`REJECTED -- the input is malformed: the field "circuit" is missing`, as we ran.
 -/
 
 #eval check (Input.ofJson (Lean.Json.mkObj []))
 
 /-!
-What refuses `{}` is again outside Lean: an input that was not rebuilt from its certificate is
+Even before, `{}` was refused outside Lean: an input that was not rebuilt from its certificate is
 refused by the binding of section 3, and a certificate with no circuit by the binding of section 5,
 which compares the certificate's circuit with the source circuit, op by op.
 
-What a drop does depends on what is dropped. A move dropped from a certificate the checker would
+What a drop by the lenient reader does depends on what is dropped. A move dropped from a certificate the checker would
 refuse can make it accepted, as above. A dropped move can also leave a correct certificate correct:
 a last move of an ion that no later witness needs is not missed by anything the checker reads.
 A dropped ion is different. A witness's `ions` are read with a `filterMap` too, and a correct
@@ -382,7 +391,8 @@ theorem commuting_invisible (s : Nat → Bool) :
 | Lean's kernel, `propext` | checks every proof | believed |
 | `check_sound`, the rejection lemmas | `check` says yes exactly when `Implements` holds | proved |
 | `qcheck` | `check`, compiled by Lean's compiler; the published binary pinned by its SHA-256 | believed |
-| `Input.ofJson` | the file as an `Input`; malformed entries dropped, missing fields empty | believed |
+| `Input.parse` (`qcheck`'s reader) | the file as an `Input`; a missing field or an unreadable entry refused by name | believed |
+| `Input.ofJson` (this page's reader) | the same `Input` from a well-formed file; malformed entries dropped, missing fields empty | believed |
 | `qcheck_binding`, or the grader's own build of the input | the input is this certificate's, on this device | computed |
 | the device facts' builder (`mk_qcheck_input`, `trap_hops`) | gate sites, hops, loops, read from the device | computed |
 | the semantic check (`check_cert`) | shape, binding, transport, replay, witnesses, order, readout, tableau or unitary | computed |

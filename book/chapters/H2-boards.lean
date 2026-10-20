@@ -20,8 +20,9 @@ There are seven boards: BB [[144,12,12]]; the repetition code of distance 9; the
 [[5,1,3]]; the Steane code [[7,1,3]]; the distance-3 surface code (17 qubits); and two memory
 boards, the repetition code of distance 5 and the surface code of distance 3, ranked by logical
 error rate. Each board publishes its rows as `board/<id>/manifest.json`, and each row has a field
-`r10`, `true` or `false`. On the entry's card the same field is the row **R10: Lean checker +
-tableau**, which reads **passed** when `r10` is `true` and **not run** when it is `false`.
+`r10`: `true`, `false`, or none. On the entry's card the same field is the row **R10: Lean checker +
+tableau**, which reads **passed** when `r10` is `true`, **FAILED** with the checker's reason when it
+is `false`, and **not run** when there is none (a design the compiler could not serve).
 
 "passed" claims the whole of R10: the proved checker accepted the certificate (O1), and the
 pulses, composed, are the circuit (O2) -- what the semantic check (`check_cert`), run together
@@ -29,17 +30,15 @@ with the proved checker, reports as `R10 passed`.
 
 ## 2. Where the mark comes from
 
-The marks are made in two different ways.
+Every mark is computed. The boards are built by scripts that compile the board's circuit onto
+every device, then, for each compiled point, build the checker input (`mk_qcheck_input`) and run
+the semantic check (`check_cert`) with the proved checker; `r10` is whether its report says
+`R10 passed`. A point the compiler refused has no programme and no mark. (The memory boards'
+build computes the mark only on a machine where the checker is built.)
 
-* **Computed.** The four small-code boards (repetition, five-qubit, Steane, surface) and the two
-  memory boards are built by scripts that compile the board's circuit onto every device, then,
-  for each compiled point, build the checker input (`mk_qcheck_input`) and run the semantic check
-  (`check_cert`) with the proved checker; `r10` is whether its report says `R10 passed`. A point
-  the compiler refused has no programme and no mark. (The memory boards' build script computes
-  the mark only on a machine where the checker is built.)
-* **Typed.** The BB board's entries come from a study whose catalogue lists each design by hand,
-  with `"r10": True` or `"r10": False` written beside it. Nothing recomputes that field when the
-  board is rebuilt.
+On the BB board that has been so since 2026-10-20. Before that day its entries' marks were typed
+by hand in the study's catalogue, `"r10": True` or `"r10": False` beside each design, and nothing
+recomputed them when the board was rebuilt. Section 6 shows what that cost.
 
 The scripts that build the boards are not all in the public repository (the BB board's and the
 small-code boards' are not); what they did is what the rows record.
@@ -90,7 +89,7 @@ This device has no studio page in the tutorial, so there is no figure of it here
 certificate is short enough to read. Two ions start in `C1` (`q0` and the first ancilla `q9`),
 the other fifteen in `C0`. The first ancilla's two CNOTs happen in `C1`, every other gate in
 `C0`. The one ion that moves is `q1`: it goes to `C1` for the first ancilla's second CNOT and
-comes back. (The row's title says "no transport at all"; the certificate says two moves.)
+comes back.
 
 Run through `qcheck`, this input prints `24 circuit ops, 16 gate witnesses, 2 moves, 0 rotations,
 17 qubits` and `ACCEPTED`. Both its circuit (`rep9_esm.qasm`, the board's task circuit) and its
@@ -227,10 +226,9 @@ theorem fan_reordered_rejected : check fanReordered = false :=
     (by decide +kernel) (by decide +kernel) (by decide) (by decide) (by decide)
 
 /-!
-The BB board is where this happened. Its marks are typed, so here is what they said when this
-lesson was written (2026-10-20), beside what the semantic check, with the proved checker, said
-that day when re-run
-on each compiled entry's own certificate, circuit and device. The board had 21 entries; 6 are
+The BB board is where this happened. Until 2026-10-20 its marks were typed, so here is what they
+said that day, beside what the semantic check, with the proved checker, said when re-run on each
+compiled entry's own certificate, circuit and device. The board had 21 entries; 6 are
 devices the compiler could not serve, with no programme and no mark. The other 15:
 -/
 
@@ -263,10 +261,12 @@ two ops sharing a qubit are out of order: op 92 (cx [153, 10]) comes before op 9
 ```
 
 -- two CNOTs sharing the control `q[153]`, exactly the swap of the figure above. The twelve
-entries marked "not run" all passed. A computed mark would have said both things.
+entries marked "not run" all passed. A computed mark would have said both things, and since that
+day the board's marks are computed: the stride layout's card reads FAILED, with the reason above,
+and the twelve read passed.
 
 #### Exercise 8 (★) `a_stale_mark`
-Find the entry whose mark said passed and whose certificate no longer does.
+Find the entry whose typed mark said passed and whose certificate no longer does.
 -/
 
 theorem a_stale_mark : ∃ e ∈ bbBoard, e.marked = true ∧ e.passesToday = false :=

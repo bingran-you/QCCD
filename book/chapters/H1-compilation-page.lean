@@ -63,8 +63,9 @@ checker never reads.
 `algo_ghz` prepares a four-qubit GHZ state: `h q[0]`, then `cx q[0],q[1]`, `cx q[1],q[2]`,
 `cx q[2],q[3]`, then a measurement of each qubit. Below is its checker input as a Lean value:
 the file `algo_ghz.qcheck.json`, field by field and in the order the checker's own reader,
-`Input.ofJson`, puts them. (`qcheck` reads a file with exactly that function; the value below
-and the parsed file print the same.) The panel in section 6 builds its values the same way.
+`Input.ofJson`, puts them. (`qcheck` reads a well-formed file to the same value with its strict
+reader, `Input.parse`; the value below and the parsed file print the same.) The panel in section 6
+builds its values the same way.
 -/
 
 def case_algo_ghz : Input :=
