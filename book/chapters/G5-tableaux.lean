@@ -6,9 +6,10 @@ import QCCDC.Cert.Sound
 *Part G, lesson G5. You need lessons G1 to G4.*
 
 A matrix for n qubits has 4ⁿ entries; a BB[[144,12,12]] round has hundreds of qubits. So for a
-Clifford circuit (H, S, CNOT and the like), `check_cert.py` never forms the matrix. It
+Clifford circuit (H, S, CNOT and the like), the semantic check, `check_cert`, never forms the
+matrix. It
 describes each side by its **stabilizer tableau** and compares those, with the library `stim`;
-this is how the Compilation page's Bell certificate was checked (`bell/verdict.json`: "stabilizer
+this is how the Compilation page's Bell certificate was checked (its verdict there: "stabilizer
 tableau, composed from the emitted pulses, against the source QASM"). This lesson builds a
 tableau in Lean, small enough for the kernel at two qubits, checks its rules against the exact
 matrices, and proves the Bell circuit and the Bell programme's pulses have the same one.
@@ -317,10 +318,10 @@ def quarterTab (n : Nat) (Q : PS) : Tab :=
 /-!
 ## 4. The pulses, and the circuit's gates
 
-`check_cert.py` translates each native pulse into `stim`'s gates (`_emit_r`, `_emit_ms`, and `S`
+`check_cert` translates each native pulse into `stim`'s gates (`_emit_r`, `_emit_ms`, and `S`
 for a `VZ`), for angles that are multiples of π/2 only: "R(theta, phi) = exp(-i theta/2 (cos phi X +
 sin phi Y)), for theta a multiple of pi/2", the axis read as "0 = X, 1 = Y, 2 = -X, 3 = -Y" quarter
-turns of φ. A `T` gate's phase π/4 is off that grid, and there `check_cert.py` falls back to the
+turns of φ. A `T` gate's phase π/4 is off that grid, and there `check_cert` falls back to the
 full matrix. In our terms, with angles in eighths of a turn: `R θ φ` is θ/2 quarter turns about
 the axis φ/2; `VZ λ` is λ/2 quarter turns about Z (diag(1, e^(iλ)) is that up to a phase); `MS θ`
 is θ/2 quarter turns about X⊗X.
@@ -409,10 +410,10 @@ theorem bell_tableaux : progTab 2 bellPulses = bellCircuitTab := by
   decide +kernel
 
 /-!
-`check_cert.py` makes the same comparison with `stim`: it builds a `stim.Circuit` from the
+`check_cert` makes the same comparison with `stim`: it builds a `stim.Circuit` from the
 programme's pulses (`tableau_from_program`) and another from the QASM (`circuit_tableau`), turns
 each into a `stim.Tableau`, and tests `got == want`. That is a computation by a C++ library and a
-translation written in Python, trusted, not proved. `Compiler/PLAN.md` says so: "The tableau
+translation written in Python, trusted, not proved. The compiler's design notes say so: "The tableau
 itself is not proved -- it is `stim` plus a translation". What you just did is the same comparison
 as a theorem, for one certificate.
 
@@ -484,7 +485,7 @@ theorem commutes_symm (x y : PS) : commutes x y = commutes y x := by
 /-!
 ## 8. What this lesson proved
 
-For the Bell certificate, the stabilizer comparison `check_cert.py` runs with `stim` holds as a
+For the Bell certificate, the stabilizer comparison `check_cert` runs with `stim` holds as a
 theorem: the programme's seven pulses and the circuit's two gates have one tableau. The tableau's
 rules were checked against the exact matrices of lessons G1 to G4, and its blindness to a global
 phase is the one lesson G4 wanted. Lesson G6 adds what neither a tableau nor a unitary has:

@@ -5,11 +5,16 @@ import QCCDC.Cert.Sound
 
 *Part H, lesson H4. You need lessons H1 and H3.*
 
-Lesson H1 checked the O1 half of R10 on files the site publishes. This lesson does the whole of
-R10 from nothing but the repository: the circuit, the device, the published compiler, the
-cooling pass, the rules, the checker input, the proved checker, and `check_cert.py`, which ties
-them together and decides R10. You run it on the Compilation page's GHZ chain, compare what you
-get with what the page published, and then state in Lean what a verdict of `passed` requires.
+Lesson H1 checked the O1 half of R10 on files the site publishes. This lesson reproduces a whole
+verdict the way you would on your own computer: install the tools, make a workspace, compile the
+GHZ circuit onto a design, grade it under the reference profile -- the official grader, run
+locally -- and read what the report says about R10. Then you compare what you made with what the
+Compilation page published, and state in Lean what a verdict of `passed` requires.
+
+Two kinds of words appear in the commands below. **Yours to name, anything you like:** the
+workspace folder (`"My QCCD designs"` below is only an example) and the designs in it. **Type
+as shown:** everything else -- the commands, and a board by its title or any unambiguous part of
+it (`GHZ` below).
 -/
 
 open QCCDC.Cert
@@ -17,24 +22,17 @@ open QCCDC.Cert
 /-!
 ## 1. Once: the repository, the compiler, the checker
 
-From a terminal. When this lesson was written, the Windows blocks below were run as written in
-PowerShell from a fresh clone, and the commands of the macOS and Linux blocks in Git Bash on the
-same Windows machine (with the venv's `Scripts` folder in place of `bin`); they were not run on
-macOS or Linux.
-
-macOS or Linux:
+From a terminal, on macOS or Linux:
 
 ```
 git clone -b compiler https://github.com/yezhuoyang/QCCD
 cd QCCD
-python3.13 -m venv .venv && source .venv/bin/activate   # any Python 3.10 or newer
-pip install -e ".[agent]"                     # includes qiskit, stim and numpy, which check_cert.py uses
-qccd toolchain install                        # the compiler (on a Mac, see below)
-(cd Compiler/lean/checker && lake build)      # the checker (lesson H1)
-QCCDC=$(python -c "from qccd.workspace.evaluator import Toolchain; print(Toolchain.discover().qccdc)")
+python3.13 -m venv .venv && source .venv/bin/activate     # any Python 3.10 or newer
+pip install -e ".[agent]"
+qccd toolchain install
 ```
 
-Windows (PowerShell):
+On Windows, in PowerShell:
 
 ```
 git clone -b compiler https://github.com/yezhuoyang/QCCD
@@ -43,137 +41,142 @@ py -m venv .venv
 .venv\Scripts\activate
 pip install -e ".[agent]"
 qccd toolchain install
-cd Compiler\lean\checker; lake build; cd ..\..\..
-$QCCDC = python -c "from qccd.workspace.evaluator import Toolchain; print(Toolchain.discover().qccdc)"
 ```
 
-`qccd toolchain install` downloads the compiler `qccdc_cli` that the repository pins
-(`qccd/workspace/toolchain.json`: a version, and for each platform a URL, a size and a SHA-256),
-refuses it unless the size and the hash match, installs it under `~/.qccd/toolchain/`, and runs it
-once on a test circuit. The pinned version has prebuilt compilers for Windows and Linux on x86-64;
-when this lesson was written there was none for macOS, and on a Mac the command says so and says
-how to build one: OCaml 5.3 with opam (`brew install opam`, `opam init`,
-`opam switch create 5.3.0`, `opam install dune yojson.2.2.2`), then `dune build bin/qccdc_cli.exe`
-in `Compiler/ocaml`. The last line of each block asks the workspace which compiler it would use --
-`QCCD_QCCDC` if you set it, else the one built in the checkout, else the installed one -- so it
-works either way. `qccd toolchain status` shows the same.
+`pip install -e ".[agent]"` installs the workspace, with what its grader needs (qiskit, stim and
+numpy, which the semantic check uses). `qccd toolchain install` downloads the compiler `qccdc` that
+the repository pins -- a version, and for each platform a URL, a size and a SHA-256 -- refuses it
+unless the size and the hash match, installs it in your home folder, and runs it once on a test
+circuit. Windows and Linux on x86-64 have a prebuilt compiler. When this lesson was written the
+pinned version had none for macOS; on a Mac the command says so and says how to build the compiler
+from the repository's OCaml sources.
 
-## 2. The GHZ chain, from scratch
-
-The circuit is in the repository as the GHZ starter board's task circuit; it is byte for byte the
-Compilation page's `algo_ghz` (lesson H3). The device is made by the same generator call the page
-used for `chain4`. Run everything **from the repository root**: three of the scripts
-(`insert_cooling.py`, `check_tsir.py`, `check_cert.py`) read a relative `--arch` path against the
-repository root, not against the current folder.
-
-macOS or Linux:
+**The checker.** On Windows and Linux there is no prebuilt `qcheck`: `qccd toolchain install`
+says so and names the folder of the repository's checker package. Build it there:
 
 ```
-mkdir -p work/ghz
-cp qccd/workspace/releases/ghz4@1/circuit.qasm work/ghz/circuit.qasm
-python -c "import json; from qccd.api import Machine; m = Machine.chain(n=4, name='chain4'); open('work/ghz/chain4.arch.json', 'w', newline='\n').write(json.dumps(m.arch.to_json(), indent=1) + '\n')"
-python Compiler/bridge/export_arch.py work/ghz/chain4.arch.json -o work/ghz/chain4.expanded.json
-"$QCCDC" compile work/ghz/circuit.qasm --arch work/ghz/chain4.expanded.json -o work/ghz/prog
-python Compiler/bridge/insert_cooling.py work/ghz/prog.tsir.json --arch work/ghz/chain4.arch.json -o work/ghz/prog.cooled.tsir.json
-python Compiler/bridge/check_tsir.py work/ghz/prog.cooled.tsir.json --arch work/ghz/chain4.arch.json --model corrected
-python Compiler/bridge/mk_qcheck_input.py work/ghz/prog --arch work/ghz/chain4.expanded.json -o work/ghz/prog.qcheck.json
-Compiler/lean/checker/.lake/build/bin/qcheck work/ghz/prog.qcheck.json
-python Compiler/bridge/check_cert.py work/ghz/prog --qasm work/ghz/circuit.qasm --arch work/ghz/chain4.arch.json --qcheck work/ghz/prog.qcheck.json
+lake build
 ```
 
-Windows (PowerShell):
+(It needs Lean's installer, elan; see lesson H1.) Then
 
 ```
-mkdir work\ghz
-Copy-Item "qccd\workspace\releases\ghz4@1\circuit.qasm" work\ghz\circuit.qasm
-python -c "import json; from qccd.api import Machine; m = Machine.chain(n=4, name='chain4'); open('work/ghz/chain4.arch.json', 'w', newline='\n').write(json.dumps(m.arch.to_json(), indent=1) + '\n')"
-python Compiler\bridge\export_arch.py work\ghz\chain4.arch.json -o work\ghz\chain4.expanded.json
-& $QCCDC compile work\ghz\circuit.qasm --arch work\ghz\chain4.expanded.json -o work\ghz\prog
-python Compiler\bridge\insert_cooling.py work\ghz\prog.tsir.json --arch work\ghz\chain4.arch.json -o work\ghz\prog.cooled.tsir.json
-python Compiler\bridge\check_tsir.py work\ghz\prog.cooled.tsir.json --arch work\ghz\chain4.arch.json --model corrected
-python Compiler\bridge\mk_qcheck_input.py work\ghz\prog --arch work\ghz\chain4.expanded.json -o work\ghz\prog.qcheck.json
-Compiler\lean\checker\.lake\build\bin\qcheck.exe work\ghz\prog.qcheck.json
-python Compiler\bridge\check_cert.py work\ghz\prog --qasm work\ghz\circuit.qasm --arch work\ghz\chain4.arch.json --qcheck work\ghz\prog.qcheck.json
+qccd toolchain status
 ```
 
-What each step is:
+lists the compiler `in use` (installed) and, on its `checker` line, the `qcheck` the build made
+(built in this checkout). Without a checker that line says so and names the folder to run
+`lake build` in -- on a Mac too. A grade without `qcheck` reports the Lean stage `unsupported`,
+which is never eligible.
 
-| step | writes | what it does |
-|---|---|---|
-| `Machine.chain(n=4, name='chain4')` | `chain4.arch.json` | the device document, from the generator call the Compilation page used |
-| `export_arch.py` | `chain4.expanded.json` | the device expanded: every node's capacities and abilities, the rails, the SIMD classes; what the compiler and the checker input read |
-| `qccdc_cli compile` | `prog.tsir.json`, `prog.qcert.json` | the programme and its certificate. It prints `self-check OK`: the compiler's own pre-flight check, which nothing trusts |
-| `insert_cooling.py` | `prog.cooled.tsir.json` | cooling wherever a gate would start on ions too hot to gate (R7) |
-| `check_tsir.py` | | replays the cooled programme and evaluates the rules. It lists R10 as skipped: R10 is not decided by the replay |
-| `mk_qcheck_input.py` | `prog.qcheck.json` | the certificate plus the device's gate sites, hops and loops |
-| `qcheck` | | O1, by the proved checker |
-| `check_cert.py --qcheck` | | the whole of R10 |
+When this lesson was written, the Windows lines of this section and all of the next were run as
+written, in PowerShell, starting from an empty folder. The macOS and Linux lines differ only in how
+the environment is made and activated; they were not run on macOS or Linux.
 
-`check_cert.py` reads the programme the certificate speaks about, `prog.tsir.json`, and the
-circuit, and checks, in one run: that the qcheck input was made from **this** certificate on
-**this** device (it rebuilds the input and refuses a file that differs); the binding (the
-certificate's `circuit_ops` are the QASM op by op, its map covers the QASM's qubits); O1,
-including that each witness names a real instruction of the right kind and that the
-programme's own transport is the certificate's moves; each qubit's ops in the circuit's order
-in the programme; `qcheck`'s verdict; and O2 -- the pulses composed and compared with the
-circuit, each measurement and reset in its place, as a stabilizer tableau or, outside the
-Clifford gates and up to 10 qubits counting mid-circuit readouts, as an exact unitary. R10 is
-`passed` only when all of them are; section 4 states the rule. On the GHZ chain it ends:
+## 2. A workspace, a compile, a grade
+
+Leave the clone, and make a workspace in a folder of your own:
 
 ```
-  -> R10 passed: O1 by the proved Lean checker (QCCDC.Cert.check_sound); O2 by stabilizer
-     tableau, composed from the emitted pulses, against the source QASM
+cd ..
+qccd init "My QCCD designs"
+cd "My QCCD designs"
 ```
 
-and exits with status 0 (status 1 for `FAILED`).
-
-## 3. Compare with what the page published
-
-Save [algo_ghz.qcheck.json](data/algo_ghz.qcheck.json) and
-[algo_ghz.qcert.json](data/algo_ghz.qcert.json) into `work/ghz`, and compare them with yours as
-JSON:
+`qccd init` starts the workspace with one design, the four-trap chain, and says which words are
+yours (two of its lines, wrapped here):
 
 ```
-python -c "import json, sys; a, b = (json.load(open(f)) for f in sys.argv[1:]); print(a == b)" work/ghz/prog.qcheck.json work/ghz/algo_ghz.qcheck.json
-python -c "import json, sys; a, b = (json.load(open(f)) for f in sys.argv[1:]); print(a == b)" work/ghz/prog.qcert.json work/ghz/algo_ghz.qcert.json
+  yours to name, anything you like:  this folder (rename or move it while `qccd stop`ped), every
+                                     design (in the Studio's design menu, or ask the agent), and
+                                     the name shown if you publish
+  type as shown:                     the commands; a board by its title, or any part of it that
+                                     is unambiguous ("BB", "surface code"; `qccd boards` lists them)
 ```
 
-Both print `True`. When this lesson was written the same held for all 19 examples of the
-Compilation page: from a fresh clone, with the pinned compiler (version `f88754a2fa71`), each
-one's programme, certificate and checker input came out equal to the files the page was built
-from -- on Windows byte for byte -- and its R10 verdict the same. (Compare as JSON on other
-systems: `mk_qcheck_input.py` ends its file with the system's line ending, and the page's files
-were made on Windows.) `algo_rot` uses the rotation pass, `qccdc_cli rotate` in place of
-`compile`; the rest use `compile`. So the proofs of lesson H1 are proofs about the files you just
-made.
-
-The same pipeline reproduces a board entry whose circuit and device are in the repository. Lesson
-H2's repetition-code entry: `Compiler/examples/rep9_esm.qasm` on `arch/stationary_chain.arch.json`
-gives a checker input equal to the one that lesson proves.
-
-## 4. The verdict, in Lean
-
-`check_cert.py --json` writes the verdict as JSON. Yours, for the GHZ chain:
+`qccd boards` lists the boards; the last is "GHZ state on four qubits (starter)". Its circuit is
+byte for byte the Compilation page's GHZ chain (lesson H3). Compile it onto your design, adopt the
+programme, and grade it:
 
 ```
-{ "program": "circuit", "arch": "chain4",
-  "circuit_sha256": "a6c1803b8301e79ceba044278137397890d40a37eb2eaaa6057b8e96a49bdd00",
-  "binding": "ok", "transport": "ok", "o1_transport": "ok", "order": "ok",
-  "lean": "accepted", "unrealised_ops": 0,
-  "readout": "ok: 0 measurement(s)/reset(s) compared in place, final measurements at the end",
-  "o2_semantics": "ok",
-  "method": "stabilizer tableau, composed from the emitted pulses, against the source QASM",
-  "R10": "passed",
-  "R10_reason": "O1 by the proved Lean checker (QCCDC.Cert.check_sound); O2 by stabilizer tableau, ..." }
+qccd compile --board GHZ --adopt
+qccd submit --local --wait --json
 ```
 
-(The verdicts the page was built with have no `"transport"` field: that check was added to
-`check_cert.py` after they were made. Its result is also folded into `"o1_transport"`.)
+The first prints
 
-`R10` is decided from these fields by one chain of tests at the end of `check_cert.py`'s `main`.
-Here it is, with the fields as Lean data. A list of problems is empty where the JSON says `"ok"`;
-`lean` is `some true` for `accepted`, `some false` for `REJECTED`, and `none` when `--qcheck`
-was not given or `qcheck` is not built; `same` is O2: `some true` for `ok`, `some false` for a
+```
+succeeded: compiled GHZ state on four qubits (starter) at r0: 25 instructions (cooled); certificate stored
+adopted as the final program at r1
+```
+
+-- the compiler ran, the cooling pass added cooling where a gate would start on ions too hot to
+gate (R7), and the rules were checked on the cooled programme. The second freezes the design and
+its programme as a bundle and grades it under the reference profile: binding the certificate to
+the task's circuit, running the proved Lean checker, checking the programme implements the
+circuit. It prints
+
+```
+submission sub_... of r1 (Local result - not published); bundle sha256:...
+eligible  bundle=passed  device=passed  physics_lock=passed  program=passed  rules=passed
+          correspondence=passed  certificate_binding=passed  lean_certificate=passed
+          semantics=passed  metrics=passed
+  T_jones                  0.83 ms
+```
+
+(one line, here broken; then the other metrics), and with `--json` the whole report. Nothing has
+been published: `qccd publish` is a separate, deliberate step.
+
+## 3. What the report says about R10
+
+The two stages that make up R10, from that report:
+
+```
+{"id": "lean_certificate", "status": "passed",
+ "coverage": "QCCDC.Cert.check (proved sound: check_sound) accepted the certificate against
+              hop/gate-site facts re-derived from the submitted device", ...}
+{"id": "semantics", "status": "passed",
+ "coverage": "O1 transport replay of the certificate; O2 stabilizer tableau, composed from the
+              emitted pulses, against the source QASM",
+ "detail": {"o1_transport": "ok", "unrealised_ops": 0, "order": "ok", "o2_semantics": "ok",
+            "method": "stabilizer tableau, composed from the emitted pulses, against the source QASM",
+            "circuit_sha256": "a6c1803b8301e79ceba044278137397890d40a37eb2eaaa6057b8e96a49bdd00"}}
+```
+
+and `certificate_binding` passed before them, which is what lets the Lean stage run at all
+(lesson H3).
+
+## 4. Compare with what the page published
+
+Three things tie your grade to the Compilation page's GHZ chain.
+
+* **The certificate.** Your report's `bundle.files.certificate` is the SHA-256 of the bundle's
+  certificate, written canonically (sorted keys, one spelling of every number). It is
+  `sha256:7b1db8a631b93bd4bc22daca3babc1afd918ffd71803d191a215855b9d1668c6` -- and that is also
+  the SHA-256 of the published [algo_ghz.qcert.json](data/algo_ghz.qcert.json) written the same
+  way: the same certificate, field for field.
+* **The checker's input.** The Lean stage built its input from your bundle's device and
+  certificate; rebuilt the same way, it equals the published
+  [algo_ghz.qcheck.json](data/algo_ghz.qcheck.json). So `qcheck algo_ghz.qcheck.json` (lesson H1)
+  checks exactly what your grade's Lean stage checked, and lesson H1's proofs are about it.
+* **The circuit.** `circuit_sha256` in the semantics stage is the SHA-256 of the board's circuit
+  file, the same bytes the Compilation page compiled.
+
+Your bundle's own digest, `bundle sha256:...`, will differ from anyone else's: the bundle records
+where it came from (your workspace's ids), and that is part of what it hashes.
+
+When this lesson was written we also compiled all 19 of the Compilation page's examples from a
+fresh clone with the pinned compiler (version `f88754a2fa71`): each one's programme, certificate
+and checker input came out equal to the page's files, and its R10 verdict the same.
+
+## 5. The verdict, in Lean
+
+The Compilation page's verdicts, and the computed marks of lesson H2's boards, come from the
+semantic check run *together with* the proved checker, which ends in one field, `R10`, decided by
+one chain of tests.
+Here is that chain, with its inputs as Lean data. A list of problems is empty where the verdict
+says `"ok"`; `qcheck` is `some true` when the proved checker accepted, `some false` when it
+rejected, and `none` when it was not run; `same` is O2: `some true` for `ok`, `some false` for a
 mismatch, `none` when it could not be established.
 -/
 
@@ -182,30 +185,37 @@ inductive R10 where
   | passed | «partial» | failed
   deriving DecidableEq, Repr
 
-/-- What `check_cert.py` decides R10 from. -/
+/-- What the semantic check decides R10 from. -/
 structure Verdict where
-  unbound : Bool          -- the qcheck input was not made from this certificate on this device
-  lean : Option Bool      -- qcheck's verdict
-  binding : List String   -- the certificate against the QASM
+  unbound : Bool          -- the checker input was not made from this certificate on this device
+  qcheck : Option Bool    -- the proved checker's verdict
+  binding : List String   -- the certificate against the circuit
   o1 : List String        -- co-location, the witnesses against the programme, its transport
   unrealised : Nat        -- `unrealised_ops`
   order : List String     -- each qubit's ops in the circuit's order, in the programme
   same : Option Bool      -- O2
   deriving Repr
 
-/-- The end of `check_cert.py`'s `main`, test for test. -/
+/-- The semantic check's last step, test for test. -/
 def r10 (v : Verdict) : R10 :=
   if v.unbound then .failed
-  else if v.lean = some false then .failed
+  else if v.qcheck = some false then .failed
   else if v.binding ≠ [] then .failed
   else if v.o1 ≠ [] ∨ v.unrealised ≠ 0 then .failed
   else if v.order ≠ [] then .failed
   else if v.same = some false then .failed
-  else if v.same = some true ∧ v.lean = some true then .passed
+  else if v.same = some true ∧ v.qcheck = some true then .passed
   else .«partial»
 
+/-!
+Your grade, read into it: `certificate_binding` passed, so no binding problem; `lean_certificate`
+passed, so `qcheck = some true`; the semantics stage's `o1_transport` and `order` are `ok`,
+`unrealised_ops` is 0, `o2_semantics` is `ok`. And `unbound` is `false`: the grader builds the
+checker's input itself, from your bundle, so it cannot be handed another.
+-/
+
 def ghzVerdict : Verdict :=
-  { unbound := false, lean := some true, binding := [], o1 := [], unrealised := 0, order := [],
+  { unbound := false, qcheck := some true, binding := [], o1 := [], unrealised := 0, order := [],
     same := some true }
 
 /-!
@@ -218,8 +228,9 @@ theorem ghz_verdict_passed : r10 ghzVerdict = .passed := by
 
 /-!
 #### Exercise 2 (★★) `refused_input_fails`
-A checker input that `check_cert.py` cannot rebuild from the certificate and the device is not
-run, and R10 fails, whatever else holds. Prove it for every verdict.
+Given a checker input it did not build, the semantic check builds its own from the certificate
+and the device and refuses one that differs: the proved checker is not run on it, and R10 fails,
+whatever else holds. Prove it for every verdict.
 -/
 
 theorem refused_input_fails {v : Verdict} (h : v.unbound = true) : r10 v = .failed := by
@@ -228,12 +239,12 @@ theorem refused_input_fails {v : Verdict} (h : v.unbound = true) : r10 v = .fail
 /-!
 #### Exercise 3 (★★) `no_qcheck_no_pass`
 Without the proved checker's verdict, R10 is at best `partial` -- which is why the official
-grader (lesson H3) runs `qcheck` as a stage of its own and runs `check_cert.py` without it.
-Prove that a verdict with `lean = none` is never `passed`. `unfold r10 at hp`, then
-`repeat' split at hp` takes the chain apart; `simp_all` closes each piece.
+grader runs `qcheck` as a stage of its own, beside the semantic check. Prove that a verdict with
+`qcheck = none` is never `passed`. `unfold r10 at hp`, then `repeat' split at hp` takes the chain
+apart; `simp_all` closes each piece.
 -/
 
-theorem no_qcheck_no_pass {v : Verdict} (h : v.lean = none) : r10 v ≠ .passed := by
+theorem no_qcheck_no_pass {v : Verdict} (h : v.qcheck = none) : r10 v ≠ .passed := by
   intro hp
   unfold r10 at hp
   repeat' split at hp
@@ -259,18 +270,18 @@ implications, which `intros` followed by `simp_all` closes.
 -/
 
 theorem passed_iff (v : Verdict) :
-    r10 v = .passed ↔ v.unbound = false ∧ v.lean = some true ∧ v.binding = [] ∧ v.o1 = [] ∧
+    r10 v = .passed ↔ v.unbound = false ∧ v.qcheck = some true ∧ v.binding = [] ∧ v.o1 = [] ∧
       v.unrealised = 0 ∧ v.order = [] ∧ v.same = some true := by
   unfold r10
   repeat' split
   all_goals (simp_all; try (intros; simp_all))
 
 /-!
-## 5. A doctored input
+## 6. A doctored input
 
-The checker input is a file, and you can change it. Here is your GHZ chain's, with one change:
-the first move is stamped cycle 9 instead of 3, so `q0` leaves `C3` after the CNOT that needs it
-in `C2` at cycle 8.
+The checker's input is a file, and you can change it. Take your copy of
+[algo_ghz.qcheck.json](data/algo_ghz.qcheck.json) and change the first move's `"t": 3` to
+`"t": 9`, so that `q0` leaves `C3` after the CNOT that needs it in `C2` at cycle 8. In Lean:
 -/
 
 def ghz : Input :=
@@ -292,24 +303,19 @@ def ghzLate : Input :=
 /-!
 {{figure ghzLate at=8}}
 
-`qcheck` on that file says
+`qcheck` on the edited file says
 
 ```
+qcheck circuit on chain4
+  8 circuit ops, 4 gate witnesses, 3 moves, 0 rotations, 4 qubits
   REJECTED
     - a gate witness's ions are not together at a gate-capable trap
 ```
 
-with exit status 1. And `check_cert.py`, given the doctored file with `--qcheck`, does not run
-the checker at all: the file is not the one it rebuilds from the certificate, so the Lean verdict
-would be about something else.
-
-```
-  proved Lean checker        : REFUSED: not this certificate's input
-  -> R10 FAILED: the qcheck input was not made from this certificate on this device, so the
-     Lean checker's verdict on it is not this certificate's
-```
-
-That is Exercise 2's case: `unbound`.
+with exit status 1. Nothing you can submit reaches the grader this way: it never reads a checker
+input you supply. It builds its own from your bundle's device and certificate -- Exercise 2's
+case, ruled out by construction. To lie to the grader you must change the certificate itself, as
+the tampered bundle of lesson H3 did, and the checker refuses that.
 
 #### Exercise 6 (★★) `ghz_late_rejected`
 Prove the doctored input refused, with `rejects_not_colocated`, on the witness of the first CNOT
@@ -322,13 +328,13 @@ theorem ghz_late_rejected : check ghzLate = false :=
     (by simp [ghzLate, ghz]) (by simp) (by decide +kernel)
 
 /-!
-## 6. What `qccd toolchain install` asks of a checker
+## 7. What `qccd toolchain install` asks of a checker
 
 When it installs a prebuilt `qcheck` (on macOS), `qccd toolchain install` runs it twice before
-calling it installed (`qccd/workspace/toolchain.py`): on an input it must accept and one it must
-reject. The first is `{"circuit": "smoke", "arch": "none", "n_qubits": 0}`: every other field is
-missing, and `Input.ofJson` reads a missing field as empty. The second has two qubits on ions
-`a` and `b`, both starting in `S0`, and one op, `cx` on both -- and no witness. In Lean:
+calling it installed: on an input it must accept and one it must reject. The first is
+`{"circuit": "smoke", "arch": "none", "n_qubits": 0}`: every other field is missing, and
+`Input.ofJson` reads a missing field as empty. The second has two qubits on ions `a` and `b`,
+both starting in `S0`, and one op, `cx` on both -- and no witness. In Lean:
 -/
 
 def smokeOk : Input :=
@@ -359,17 +365,17 @@ theorem smoke_bad_rejected : check smokeBad = false :=
     (by decide +kernel)
 
 /-!
-## 7. The whole part, in one table
+## 8. The whole part, in one table
 
 | what the site shows | what you can check | how |
 |---|---|---|
-| the Compilation page's R10, 19 examples | O1 in the page; all of R10 from the repository | lesson H1's panel; sections 1-3 here |
-| a board's R10 mark | the one board certificate in lesson H2; any entry whose circuit and device are in the repository, by compiling it yourself | lesson H2; sections 1-3 here |
-| an official entry's eligibility | the grader's code and your own bundle's report; another person's certificate only with their bundle | lesson H3 |
+| the Compilation page's R10, 19 examples | O1 in the page; the GHZ chain's whole R10 in a workspace of your own | lesson H1's panel; sections 1-4 here |
+| a board's R10 mark | the one board certificate in lesson H2; your own design on the same board, graded locally | lesson H2; sections 1-4 here |
+| an official entry's eligibility | the grader's rule, and your own bundle's report; another person's certificate only with their bundle | lesson H3 |
 
-Every check above runs the same proved `check`, and every R10 the same `check_cert.py`. What
-that leaves you trusting is what Part F lists: Lean's kernel for what you prove in the page, and
-Lean's compiler too for `qcheck`; and the computed half -- `check_cert.py`, the
-`mk_qcheck_input.py` and `export_arch.py` that build the checker's input, and the qiskit and stim
-they use -- which is computed, not proved.
+Every check above runs the same proved `check`, and every R10 the same semantic check. What that
+leaves you trusting is what Part F lists: Lean's kernel for what you prove in the page, and Lean's
+compiler too for `qcheck`; and the computed half -- the semantic check (`check_cert`), the device
+facts' builder (`mk_qcheck_input`, with `export_arch`) that makes the checker's input, and the
+qiskit and stim they use -- which is computed, not proved.
 -/

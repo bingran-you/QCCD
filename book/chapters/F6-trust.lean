@@ -51,14 +51,15 @@ that checks every proof term; a theorem is exactly as good as the kernel that ac
 
 On this page the kernel is Lean 4.33 compiled to WebAssembly, and the checker it loads is a
 mechanical port of the repository's (the note at the foot of the page says what it changes). One
-consequence you have met already: the port leaves the definitions of `Syntax.lean` unexposed, since
-that file has private helpers, so on this page the kernel cannot look inside them. That includes the
+consequence you have met already: the port leaves the definitions of the module `QCCDC.Cert.Syntax`
+unexposed, since that module has private helpers, so on this page the kernel cannot look inside them.
+That includes the
 equality tests Lean derived for `Op`, `Move`, `Rot` and `GateW`, which is why the lessons prove
 "this move is in the list" with `simp` rather than `decide +kernel`. It also includes the parser.
 
 ## 2. The parser
 
-`qcheck` (`Main.lean`) reads a file, parses it as JSON, turns the JSON into an `Input` with
+`qcheck`, the checker as a program, reads a file, parses it as JSON, turns the JSON into an `Input` with
 `Input.ofJson`, and prints the answer of `check`. `check_sound` is a theorem about `check`; nothing
 is proved about `Input.ofJson`. Here is how it reads a list of moves (the others are alike): each
 entry is turned into a `Move` if it has a natural number `t` and strings `ion`, `from` and `to`,
@@ -76,7 +77,8 @@ natural number is written without a decimal point: `20` is one, `20.0` is not.
 #eval (Lean.Json.parse "20.0").map fun j => j.getNat?.toOption
 
 /-!
-Here is the published Bell input with one more move: ion `q1` from `C0` to `C3` at cycle 20,
+Here is the published Bell input ([bell.qcheck.json](data/bell.qcheck.json)) with one more move:
+ion `q1` from `C0` to `C3` at cycle 20,
 which is no hop of `chain4`, with its cycle written `20.0`.
 -/
 
@@ -151,7 +153,7 @@ theorem parsed_is_bellParsed : reprStr parsed = reprStr bellParsed := by native_
 That is the trust in one line: the link from the file to the value `check_sound` speaks about is
 the compiled parser, believed.
 
-What closes the gap is outside Lean. `Compiler/bridge/check_cert.py` reads the same certificate
+What closes the gap is outside Lean. The semantic check (`check_cert`) reads the same certificate
 in Python, and before anything else checks its shape: every field it reads, with its type. On this
 one it says
 
@@ -163,7 +165,7 @@ one it says
 (Until 2026-10-20 it had no such check, and a cycle of `20.0` stopped its replay with a Python
 `TypeError`; the official grader counts a semantic check that produced no verdict as
 `internal_error`, which is never a pass either.) With the cycle written `20`, the proved checker
-refuses the teleport itself, and `check_cert.py` adds that `q1` makes no moves in the programme
+refuses the teleport itself, and the semantic check adds that `q1` makes no moves in the programme
 and one in the certificate. Both outcomes we ran.
 
 A field that is missing altogether reads as an empty list. For most fields that fails safe: an
@@ -231,7 +233,7 @@ theorem dropped_ion_refused {inp : Input} {g : GateW} {rest : List GateW} {i : S
 ## 3. Is this input this certificate's?
 
 `qcheck` decides whatever file it is given. A verdict reported for a certificate must be about that
-certificate on that device. `check_cert.py` makes sure with `qcheck_binding`: it rebuilds the input
+certificate on that device. The semantic check makes sure with `qcheck_binding`: it rebuilds the input
 from the certificate and the device, with the same function that made it, and refuses a file that
 differs. Lesson F5 ran it: an input whose witness differed from the certificate's was refused, "not
 this certificate's input", and R10 failed. The official grader does not need the comparison: its
@@ -240,8 +242,9 @@ runs `qcheck` on that.
 
 ## 4. The device facts
 
-`gateSites`, `hops` and `loops` are not the compiler's. `Compiler/bridge/mk_qcheck_input.py`
-reads them out of the device's document: the gate sites are the nodes whose zone can gate; the
+`gateSites`, `hops` and `loops` are not the compiler's. The device facts' builder
+(`mk_qcheck_input`) reads them out of the device's document: the gate sites are the nodes whose zone
+can gate; the
 loops are the device's closed loops, in their node order; the hops are computed by `trap_hops`, a
 search that leaves a site, crosses only junctions (a junction node, or a site where three or more
 rails meet), at most three of them, and lands on a site. On `ring6d`, `S0` has three rails, so
@@ -271,7 +274,7 @@ theorem device_decides : check bellTeleport = false ∧ check bellTeleportWide =
   ⟨by decide +kernel, by decide +kernel⟩
 
 /-!
-Which way can a wrong hop list fail? `mk_qcheck_input.py` argues that if its search and the
+Which way can a wrong hop list fail? The builder's own documentation argues that if its search and the
 compiler's idea of the device disagree, the checker sees moves that are not in its hop set and
 refuses: the safe direction. The next exercise proves the other half of that argument: extra hops
 never turn an acceptance into a refusal. So a missing hop can only cost a refusal; an extra hop is
@@ -298,8 +301,8 @@ theorem more_hops_still_accepted {inp : Input} (hd : check inp = true)
 ## 5. The semantic half: computed, not proved
 
 `Implements` names no gate, and the checker never sees the programme. Everything that ties the
-certificate to the programme and to the source circuit is `Compiler/bridge/check_cert.py`, which is
-Python, computed and believed. In the order its `main` runs them:
+certificate to the programme and to the source circuit is the semantic check (`check_cert`), which
+is Python, computed and believed. In the order it runs them:
 
 * **shape**: every field of the certificate it reads is there, with its type (a cycle is a whole
   number); a malformed certificate fails R10 here, by name;
@@ -326,10 +329,10 @@ Python, computed and believed. In the order its `main` runs them:
 R10 is "passed" only when the proved checker accepts and every one of these holds. The official
 grader runs them as stages of its own, in this order: `bundle`, `device`, `physics_lock`,
 `program`, `rules`, `correspondence`, then `certificate_binding` (the binding),
-`lean_certificate` (`qcheck`, on an input it builds itself) and `semantics` (`check_cert.py`),
+`lean_certificate` (`qcheck`, on an input it builds itself) and `semantics` (the semantic check),
 then, on a memory board only, `ler`, and last `metrics`.
-`docs/workspace.md` lists what each stage establishes, and that no stage that was skipped, timed out
-or crashed counts as passed.
+The grader's documentation lists what each stage establishes, and that no stage that was skipped,
+timed out or crashed counts as passed.
 
 Two things Lean can show about this half. First, why it is needed: `Implements` is blind to which
 gate an operation is.
@@ -352,7 +355,8 @@ theorem cz_for_cx_accepted : check bellCZ = true := by
 The binding refuses it: the source circuit says `cx`, and a `cz` is another gate. If the label said
 `cx` and the pulses made a CZ, the tableau would refuse it. Neither refusal is a theorem.
 
-Second, what the semantic half cannot see: a reorder of two commuting gates. `Commute.lean` proves
+Second, what the semantic half cannot see: a reorder of two commuting gates. The module
+`QCCDC.Cert.Commute` proves
 that two CNOTs sharing a control commute, as maps on basis states (`cxAct`), and a permutation
 matrix is determined by its map, so the unitary is the same either way. A comparison of tableaux or
 unitaries cannot tell the two orders apart; only the order checks can, the proved `RespectsOrder`
@@ -380,8 +384,8 @@ theorem commuting_invisible (s : Nat → Bool) :
 | `qcheck` | `check`, compiled by Lean's compiler; the published binary pinned by its SHA-256 | believed |
 | `Input.ofJson` | the file as an `Input`; malformed entries dropped, missing fields empty | believed |
 | `qcheck_binding`, or the grader's own build of the input | the input is this certificate's, on this device | computed |
-| `mk_qcheck_input.py` | gate sites, hops, loops, read from the device | computed |
-| `check_cert.py` | binding, transport, replay, witnesses, order, readout, tableau or unitary | computed |
+| the device facts' builder (`mk_qcheck_input`, `trap_hops`) | gate sites, hops, loops, read from the device | computed |
+| the semantic check (`check_cert`) | shape, binding, transport, replay, witnesses, order, readout, tableau or unitary | computed |
 | the rules (Part E) | the programme is physically legal on the device | computed |
 
 The second row is the only proved one, and it is the one that would be hardest to get right by

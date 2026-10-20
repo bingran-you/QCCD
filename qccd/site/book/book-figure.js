@@ -146,8 +146,13 @@
   // the studio's OWN rule check on the same moves, as a second opinion beside the proof
   Figure.prototype.studioRules = function () {
     var E = this.ed(); if (!E || !E.ruleCoverage || this.refused) return;   // a refused programme was never replayed
-    var failed = [];
-    try { failed = E.ruleCoverage().filter(function (c) { return c.state === 'failed'; }); } catch (e) { return; }
+    var cov = [];
+    try { cov = E.ruleCoverage(); } catch (e) { return; }
+    // a programme the studio parsed but could not replay (an ion not where a move says it is)
+    // has no verdicts at all: every rule is withdrawn, which is not "passes"
+    var stuck = cov.filter(function (c) { return c.state === 'unchecked' && /^(no rule could run|the programme has not been replayed|there is no programme)/.test(c.why || ''); })[0];
+    if (stuck) { this.say('bad', 'The studio could not replay this programme: ' + stuck.why.replace(/^no rule could run: /, '') + '.'); return; }
+    var failed = cov.filter(function (c) { return c.state === 'failed'; });
     if (!failed.length) { this.say('ok', 'The studio replays this programme, and every rule it checks passes.'); return; }
     this.say('bad', 'The studio, replaying the same moves, flags ' + failed.map(function (c) {
       return c.rule + (c.statement ? ' (' + c.statement + ')' : ''); }).join('; ') + '.');

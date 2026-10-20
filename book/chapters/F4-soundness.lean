@@ -7,9 +7,10 @@ import QCCDC.Cert.Sound
 
 A checker can be wrong in two directions. It can say yes to a certificate that does not hold, and
 then a proof built on its yes proves nothing; or it can say no to one that does, and then a
-compiler that is right is turned away and nobody can tell why. `Sound.lean` rules out both, for
-every certificate, with three theorems a line each. This lesson reads them, takes apart the
-pattern behind the eleven rejection lemmas, and has you prove the ones `Sound.lean` does not have.
+compiler that is right is turned away and nobody can tell why. The module `QCCDC.Cert.Sound` rules
+out both, for every certificate, with three theorems a line each. This lesson reads them, takes
+apart the pattern behind the eleven rejection lemmas, and has you prove the ones that module does
+not have.
 -/
 
 open QCCDC.Cert
@@ -119,10 +120,11 @@ Read it from the inside out. `himp` is a supposed proof of `Implements inp`. It 
 `rejects_teleport` takes condition 6, applies it to the move `m` (it is a "for every move"), takes
 the first half (the hop), and the hypothesis `h` says that half is false: so `himp` cannot exist.
 `decide_eq_false` turns "`Implements inp` cannot hold" into `decide (Implements inp) = false`,
-which is `check inp = false` by definition. Every rejection lemma in `Sound.lean` has this shape,
+which is `check inp = false` by definition. Every rejection lemma in `QCCDC.Cert.Sound` has this
+shape,
 and so `#print axioms` finds only `propext` in each, the axiom `check_sound` itself rests on.
 
-Sound.lean has eleven of them, but not one per condition: `GatesLegal` and `MovesAreHops` have two
+The module has eleven of them, but not one per condition: `GatesLegal` and `MovesAreHops` have two
 each, and two conditions have none. F1 proved the one for `MapTotal`. The other is next.
 
 #### Exercise 4 (★★) `rejects_unsorted`

@@ -8,8 +8,7 @@ import QCCDC.Cert.Sound
 Papers about QCCD machines do not agree on the rules. In one a trap does one gate, split or
 merge at a time, in another one operation of any kind; one holds every rail and junction to one
 ion at a time, another lets two chains pass. Until October 2026 this platform's rules were
-fixed: twenty-odd checks written in Python (`qccd/verify/rules.py`), the same for every
-programme. Now they are an input:
+fixed: twenty-odd checks written in Python, the same for every programme. Now they are an input:
 
 * a **rule** is one assertion about the hardware and the execution, written in a small
   language, and the checker evaluates exactly that text;
@@ -18,7 +17,8 @@ programme. Now they are an input:
   every rule of the set;
 * every verdict is one of four words.
 
-The language is described in `docs/rule-language.md` and lives in `qccd/ruleset/`. This lesson
+The site's [Rules page](../rules/) describes the language and lists every rule and rule set.
+This lesson
 reads real rules from it, translates some into Lean over the replay of lessons E2 and E3, and
 models a rule set: what its verdicts mean, and two facts every rule set obeys.
 
@@ -132,7 +132,7 @@ def canGate (d : Device) (n : String) : Bool :=
 /-!
 ## 1. A rule, as the platform writes it
 
-Every rule the website knows is written once, in `qccd/ruleset/library/catalogue.rules`. Here
+Every rule the website knows is written once, in the rule language's **catalogue**. Here
 is R1 from it, exactly:
 
 ```
@@ -147,7 +147,7 @@ A rule has an id, a title, a sentence about what it means, its sources, and one 
 The formula is logic over finite collections -- the sites of the device, the instants of the
 execution, its operations -- built from `for all x in D where C: B`, `for some`, `and`, `or`,
 `not`, `implies`, comparisons, `count(...)`, `sum(...)` and a few more. Its words (`sites`,
-`instants`, `occupancy`, `capacity`) come from a fixed vocabulary (`qccd/ruleset/vocabulary.py`),
+`instants`, `occupancy`, `capacity`) come from a fixed vocabulary ([the words](../rules/#words)),
 and every word has a definition in words and a reading for each kind of execution: a programme
 (the replay's instants are before each step, during each step that moves ions, and the end) or
 a paper's timed schedule. A formula may start with `when C:`, a precondition. `core` marks the
@@ -171,7 +171,7 @@ there the two lines become one.
 
 ## 2. Four verdicts
 
-The evaluator (`qccd/ruleset/evaluate.py`) answers one of four words for a rule:
+The rule language's evaluator answers one of four words for a rule:
 
 * **holds**;
 * **fails**, with the counterexamples: the values that make the formula false;
@@ -387,7 +387,8 @@ theorem bell_report :
 /-!
 ## 6. Rule sets
 
-A rule set is a file too. The website's own, `standard.rules`, uses every rule of the catalogue
+A rule set is a file too. The website's own, the [standard rule set](../rules/#set-standard),
+uses every rule of the catalogue
 that is about a programme, a device drawing or the compiler's claims -- 31 rules, R0 to R25 --
 and sets `max_chain = 15`. Each paper on the Reproduce pages has its own; here is Cyclone's,
 exactly:
@@ -450,7 +451,7 @@ theorem two_sets : ok standard ring6d loopGate = false ∧ ok cyclone ring6d loo
 `qccdc compile <circuit> --arch <device> -o <out> --rules <file>` makes the compiler plan with a
 rule set instead of the standard one. It is given the set resolved into one file, every rule
 written out (`python -m qccd.ruleset show <set>` prints it). The compiler reads two things from
-it (`Compiler/ocaml/lib/rules.ml`): R13's `max_chain` bounds a gate's chain (without R13 only
+it: R13's `max_chain` bounds a gate's chain (without R13 only
 the trap's capacity does), and without R22 a transport cycle may carry unlike motions.
 Everything else it obeys whatever the set says, since a programme that keeps stricter rules
 keeps weaker ones. Then the programme is judged by **every** rule of the set, including rules

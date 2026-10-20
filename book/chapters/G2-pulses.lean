@@ -6,7 +6,7 @@ import QCCDC.Cert.Sound
 *Part G, lesson G2. You need lesson G1.*
 
 A trapped-ion machine does three things to its qubits, and the compiler emits nothing else
-(`check_cert.py` calls them `NATIVE`: "the pulses the hardware executes, and so the only gates the
+(the semantic check, `check_cert`, calls them `NATIVE`: "the pulses the hardware executes, and so the only gates the
 semantic half can compose"):
 
 * `R(θ, φ)`, one physical laser pulse on one ion: a rotation by θ about an axis at angle φ in
@@ -15,9 +15,9 @@ semantic half can compose"):
   no laser fires and it takes no time;
 * `MS(θ)`, the Mølmer-Sørensen pulse, which entangles two ions in one trap.
 
-The compiler's proofs define all three in `Compiler/lean/QCCDC/Pulse/Native.lean`, with Mathlib's
+The platform's proofs define all three in the module `QCCDC.Pulse.Native`, with Mathlib's
 complex matrices. This lesson writes them again as exact matrices over the numbers of lesson G1,
-quotes each definition from `Native.lean` beside its twin, and checks the twins agree on the π/4
+quotes each definition from `QCCDC.Pulse.Native` beside its twin, and checks the twins agree on the π/4
 grid.
 -/
 
@@ -141,7 +141,7 @@ def I2 : Mat := [[1, 0], [0, 1]]
 /-!
 ## 2. The three Paulis
 
-`Native.lean` starts from the Pauli matrices:
+`QCCDC.Pulse.Native` starts from the Pauli matrices:
 
 ```
 def PX : Matrix (Fin 2) (Fin 2) ℂ := !![0, 1; 1, 0]
@@ -206,7 +206,7 @@ theorem sin_shift (n : Int) : sinE (n + 2) = cosE n := by
 /-!
 ## 4. One pulse: `R(θ, φ)`
 
-A pulse rotates about the axis cos φ·X + sin φ·Y. `Native.lean`:
+A pulse rotates about the axis cos φ·X + sin φ·Y. `QCCDC.Pulse.Native`:
 
 ```
 noncomputable def axis (φ : ℝ) : Matrix (Fin 2) (Fin 2) ℂ :=
@@ -217,7 +217,7 @@ noncomputable def R (θ φ : ℝ) : Matrix (Fin 2) (Fin 2) ℂ :=
     - (Complex.I * (Real.sin (θ / 2) : ℂ)) • axis φ
 ```
 
-A physical pulse is exp(−i·θ/2·A) for its axis A. `Native.lean` defines it by the closed form
+A physical pulse is exp(−i·θ/2·A) for its axis A. `QCCDC.Pulse.Native` defines it by the closed form
 cos(θ/2)·1 − i·sin(θ/2)·A instead of an exponential, which is right only because A·A = 1; so it
 proves that (`axis_sq`), and so do you, below.
 
@@ -240,7 +240,7 @@ def R (θ φ : Int) : Mat := cosE (θ / 2) • I2 - (I * sinE (θ / 2)) • axis
 `R 2 0` is a quarter turn about X, (1 − i·X)/√2; `R 2 2` the same about Y.
 
 #### Exercise 3 (★) `axis_sq_grid`
-`Native.lean` proves `axis_sq : axis φ * axis φ = 1` for every real φ, the fact the closed form
+`QCCDC.Pulse.Native` proves `axis_sq : axis φ * axis φ = 1` for every real φ, the fact the closed form
 rests on. Prove it at the eight angles of the grid.
 -/
 
@@ -248,7 +248,7 @@ theorem axis_sq_grid : ∀ φ : Fin 8, axis φ * axis φ = I2 := by
   decide +kernel
 
 /-!
-`Native.lean` then writes the pulse out entry by entry, the form everything downstream computes
+`QCCDC.Pulse.Native` then writes the pulse out entry by entry, the form everything downstream computes
 with:
 
 ```
@@ -263,7 +263,7 @@ theorem R_eq (θ φ : ℝ) :
 Here are those entries over our numbers, for θ = 2t eighths:
 -/
 
-/-- The explicit pulse of `Native.lean`'s `R_eq`, for θ = 2t eighths of a turn. -/
+/-- The explicit pulse of `QCCDC.Pulse.Native`'s `R_eq`, for θ = 2t eighths of a turn. -/
 def Rentries (t φ : Int) : Mat :=
   [[cosE t, -I * cis (-φ) * sinE t], [-I * cis φ * sinE t, cosE t]]
 
@@ -282,7 +282,7 @@ theorem R_eq_grid : ∀ t ∈ ([0, 1, 2, -1] : List Int), ∀ φ : Fin 8, R (2 *
 /-!
 ## 5. The virtual Z: `VZ(λ)`
 
-`Native.lean` gives a Z rotation in two conventions:
+`QCCDC.Pulse.Native` gives a Z rotation in two conventions:
 
 ```
 noncomputable def RZ (lam : ℝ) : Matrix (Fin 2) (Fin 2) ℂ :=
@@ -315,7 +315,7 @@ theorem VZ_eq_smul_RZ_grid : ∀ t : Fin 8, VZ (2 * t) = cis t • RZ (2 * t) :=
 /-!
 ## 6. Two ions: `MS(θ)`
 
-A 4×4 matrix acts on two qubits. `Native.lean` fixes the order: index `0 .. 3` is the pair of bits
+A 4×4 matrix acts on two qubits. `QCCDC.Pulse.Native` fixes the order: index `0 .. 3` is the pair of bits
 (qubit 0, qubit 1), qubit 0 the more significant, so `kron A B` puts `A` on qubit 0:
 
 ```
@@ -329,7 +329,8 @@ noncomputable def MS (θ : ℝ) : Matrix (Fin 4) (Fin 4) ℂ :=
     - (Complex.I * (Real.sin (θ / 2) : ℂ)) • XX
 ```
 
-`unitary.py`, which builds the floating-point matrices for `check_cert.py`, uses the same order
+The helpers that build the floating-point matrices for `check_cert` (`apply_gate` and its
+neighbours) use the same order
 ("qubit 0 is the most significant bit, matching `QCCDC.kron` in Lean"). Our `kron`: for each row
 of `A` and each row of `B`, the row whose entries are `a·b` with `a` running over `A`'s row on the
 outside. `List.flatMap f l` applies `f` to each element and joins the lists.
@@ -347,7 +348,7 @@ def MS (θ : Int) : Mat := cosE (θ / 2) • I4 - (I * sinE (θ / 2)) • XX
 
 /-!
 `MS 2` is MS(π/2), the operating point the compiler uses for every CNOT: the identity and −i·XX in
-equal measure, each times √2/2. `Native.lean` proves `XX_sq : XX * XX = 1`, which licenses `MS`'s
+equal measure, each times √2/2. `QCCDC.Pulse.Native` proves `XX_sq : XX * XX = 1`, which licenses `MS`'s
 closed form as `axis_sq` licenses `R`'s; Exercise 7 has you check it.
 -/
 
@@ -414,8 +415,7 @@ theorem first_pulse_unitary : R 2 (-2) * dagger (R 2 (-2)) = I2 := by
 /-!
 ## 8. The Bell programme's pulses, on the machine
 
-The Bell pair of lesson F1, compiled for `chain4`, is this programme (`bell/prog.tsir.json` in
-`qccd/site/compiled/`, the files the Compilation page shows): its native gate instructions, in
+The Bell pair of lesson F1, compiled for `chain4`, is this programme (the one the Compilation page shows for it): its native gate instructions, in
 order, with the angles written as eighths of a turn. Each `R` and `VZ` acts on the ion named, in the trap named; the `MS` on both ions in `C0`.
 Between the second and the third, `q0` moves from `C1` to `C0`.
 -/
@@ -483,7 +483,7 @@ theorem bell_pulses_unitary :
 /-!
 ## 9. What this lesson built
 
-`R`, `VZ` and `MS` as exact matrices, defined the way `Native.lean` defines them, checked against
+`R`, `VZ` and `MS` as exact matrices, defined the way `QCCDC.Pulse.Native` defines them, checked against
 its explicit forms on the grid, and unitary for every angle there. They are seven matrices in the
 Bell programme. Lesson G3 multiplies the first two and finds the Hadamard; lesson G4 multiplies
 the last five and finds the CNOT, up to a phase.

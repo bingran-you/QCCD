@@ -138,12 +138,12 @@ def MS (θ : Int) : Mat := cosE (θ / 2) • I4 - (I * sinE (θ / 2)) • XX
 *Lessons G1 and G2 are restated, unseen, above this line: the numbers, `cis n` = e^(inπ/4) and
 `cosE`, `sinE` on the grid (an angle is a whole number of eighths of a turn), matrices with `*`,
 `•` and `dagger`, the Paulis `PX`, `PY`, `PZ`, and the pulses `R θ φ`, `VZ λ` and `RZ λ`. `R` is
-written by its explicit entries, `Native.lean`'s `R_eq`, which lesson G2 checked against the
+written by its explicit entries, `QCCDC.Pulse.Native`'s `R_eq`, which lesson G2 checked against the
 definition for every beam angle the compiler's Clifford+T output uses.*
 
 ## 1. The general one-qubit gate
 
-OpenQASM writes a one-qubit gate as u3(θ, φ, λ). `Native.lean`:
+OpenQASM writes a one-qubit gate as u3(θ, φ, λ). `QCCDC.Pulse.Native`:
 
 ```
 noncomputable def u3 (θ φ lam : ℝ) : Matrix (Fin 2) (Fin 2) ℂ :=
@@ -161,7 +161,7 @@ def u3 (θ φ l : Int) : Mat :=
    [cis φ * sinE (θ / 2), cis (φ + l) * cosE (θ / 2)]]
 
 /-!
-The compiler keeps a table, `u3_of_gate` in `Compiler/ocaml/lib/gateset.ml`, that gives every
+The compiler keeps a table, `u3_of_gate`, beside its lowering, that gives every
 gate it supports as a u3. Its Clifford+T rows:
 
 ```
@@ -226,7 +226,7 @@ theorem sx_phase : SX = ω • u3 2 (-2) 2 := by
 /-!
 ## 2. One pulse and one frame
 
-`Compiler/lean/QCCDC/Pulse/Decompose.lean` proves, for all real angles:
+The module `QCCDC.Pulse.Decompose` proves, for all real angles:
 
 ```
 theorem u3_decomp (θ φ lam : ℝ) :
@@ -235,7 +235,7 @@ theorem u3_decomp (θ φ lam : ℝ) :
 
 "exactly, with no global phase". Its header says why it matters for cost: the general one-qubit
 gate is one virtual frame update and "exactly **one physical pulse** -- not the three a naive Euler
-(Z-X-Z) decomposition would emit". The compiler's `decompose_u3` (`gateset.ml`) is the theorem's
+(Z-X-Z) decomposition would emit". The compiler's lowering, `decompose_u3`, is the theorem's
 computational content:
 
 ```
@@ -297,7 +297,7 @@ theorem decomp_quarter_turn (φ l : Int) : u3 2 φ l = VZ (φ + l) * R 2 (2 - l)
 ## 3. The Hadamard the compiler wrote
 
 The Compilation page compiles `h q[0];` on its own, onto `chain4`. Its certificate,
-`h/prog.qcert.json`, has one witness: op 0 at cycle 2 in trap `C1` on ion `q0`, with the pulses
+[h.qcert.json](data/h.qcert.json), has one witness: op 0 at cycle 2 in trap `C1` on ion `q0`, with the pulses
 the compiler emitted for it, in time order:
 
 ```
@@ -306,7 +306,7 @@ the compiler emitted for it, in time order:
 
 That is R(π/2, −π/2) then VZ(π): the table's row for `h` is (π/2, 0, π), so the beam has phase
 π/2 − π and the frame turns by 0 + π. Here is the certificate as the proved checker reads it
-(`h/prog.qcheck.json`), played in the studio. The checker sees the witness, the trap and the ion;
+([h.qcheck.json](data/h.qcheck.json)), played in the studio. The checker sees the witness, the trap and the ion;
 it never sees the two pulses. Which gate they make is this lesson's question.
 -/
 
@@ -335,7 +335,8 @@ theorem h_witness : VZ 4 * R 2 (-2) = H := by
   decide +kernel
 
 /-!
-`check_cert.py` checks the same two pulses, read from the programme, with a stabilizer tableau
+The semantic check, `check_cert`, checks the same two pulses, read from the programme, with a
+stabilizer tableau
 (lesson G5). The page's other one-qubit examples (`x`, `z`, `s` and `t` on the Compilation page)
 carry these in their certificates:
 
@@ -391,7 +392,7 @@ theorem zero_beam (φ : Int) : R 0 φ = I2 := by
 
 The "naive Euler (Z-X-Z) decomposition" the cost comment warns about writes a one-qubit gate as a
 Z rotation, an X rotation and a Z rotation. For the Hadamard it is H = i·Rz(π/2)·Rx(π/2)·Rz(π/2),
-with `Native.lean`'s symmetric `RZ`, and its `Rx θ`, which it defines as `R θ 0`.
+with `QCCDC.Pulse.Native`'s symmetric `RZ`, and its `Rx θ`, which it defines as `R θ 0`.
 
 #### Exercise 9 (★) `euler_zxz_h`
 Prove it. Three rotations and a phase, against `u3_decomp`'s one pulse and one free frame.

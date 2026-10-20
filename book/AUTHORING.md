@@ -75,6 +75,12 @@ Wherever a statement is about a concrete device, programme or certificate, put a
   definitions where you can, so the figure follows the reader's edits). The studio plays it and
   says what its own rule checker thinks.
 * `{{certificates}}` -- the panel proving the Compilation page's 19 published certificates.
+* `{{gadget NAME [focus=ID] [at=US]}}` -- a design page of the gadget level, framed as built
+  (`qccd.gadget.site.embed_page`): `NAME` is `algorithms/<stem>` (the design tool running that
+  example), a place's kind (`msf15`: the town with it selected) or `<place>.<op>` (that op on the
+  studio's stage). `focus` is a place (by path or kind) or an instruction (`i5`, or its source
+  line `L23`); `at` is the clock in microseconds. No Lean value is behind it, so it does not
+  follow the reader's edits: put a Lean figure beside it when the statement is about a value.
 
 Devices with a studio page: `chain4` (C0-C1-C2-C3, every trap gates), `grid2x3` (traps
 T0_0h ... T1_1v between junctions J0_0 ... J1_2), `race8` (a closed loop S0..S7, every trap
@@ -105,10 +111,41 @@ checker's Lean 4.29. A lesson must pass both. Practical rules:
   runs the helper too, and catches it);
 * an exercise may use an earlier exercise; while that one is open the page shows this one as
   "open · uses <name>";
+* an exercise is `theorem name ... := proof` (not equation-style `| ... =>` cases), in the first
+  code block after its heading;
+* in the browser the kernel does not reduce `toString`: spell names out as literals rather than
+  computing them, where a proof depends on them;
+* `open Lean` makes some short names ambiguous (`quote`, `toJson`): qualify, or open less;
+* the browser's interpreter has about 550 frames of stack, and so has its kernel: a
+  `decide +kernel` over a deep recursion (a search to a fixed point, a long `foldl`) can stop
+  with "Maximum call stack size exceeded" in the page while it passes natively. Prove such a
+  fact by a witness the kernel only checks (a route, step by step) rather than by the search;
 * the browser's interpreter has about 550 frames of stack: no deep non-tail recursion in an
   `#eval`; keep `#eval` output short;
 * the whole lesson should check in a few seconds in the browser: keep kernel computations small
   (a certificate of tens of events, not thousands).
+
+## No repository paths on the page
+
+The website says nothing about the repository it was built from: a reader never sees a path
+into the tree (`Compiler/bridge/...`, `qccd/site/compiled/...`) or a source file's name
+(`check_cert.py`, `Check.lean`, `cert.ml`), in prose or in a shown code block. The site's walk
+fails a page that shows one (`tests/site.mjs`), and `check_lesson.py` fails the lesson first
+(PATHS). Name the thing instead:
+
+| instead of | write |
+|---|---|
+| `Compiler/lean/QCCDC/Cert/Check.lean` | the module `QCCDC.Cert.Check`, or the declaration (`Implements`, `check_sound`) |
+| `Compiler/lean/QCCDC/Pulse/Native.lean` | `QCCDC.Pulse.Native` |
+| `Compiler/bridge/check_cert.py` | the semantic check (`check_cert`), or its function (`check_binding`, `readout_plan`) |
+| `Compiler/bridge/mk_qcheck_input.py` | the device facts' builder (`mk_qcheck_input`, `trap_hops`) |
+| `qccd/verify/rules.py` | the platform's rule checker; quote the rule's own statement |
+| `qccd/workspace/evaluator.py` | the official grader |
+| `qccd/site/compiled/bell/prog.qcheck.json` | `bell.qcheck.json`, linked to the published copy, [`data/bell.qcheck.json`](data/bell.qcheck.json) |
+| `python Compiler/bridge/check_cert.py ...` | the tool's own commands: `qccd init`, `qccd compile`, `qccd submit --local`, `qccdc ...`, `qcheck ...` |
+
+The files a reader holds keep their names (`prog.qcert.json`, `chain4.arch.json`, `circuit.qasm`);
+the folders in front of them go. A module or function name without its file is fine.
 
 ## Accuracy
 

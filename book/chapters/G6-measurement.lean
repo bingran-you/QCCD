@@ -8,7 +8,7 @@ import QCCDC.Cert.Commute
 
 A measurement is not a unitary: it reads a qubit and leaves it in the state it read. A reset is
 not one either: it throws a qubit's state away and starts it at |0⟩. Neither has a matrix, so
-lessons G2 to G5 left them out. `check_cert.py` compares them anyway, by turning each into a
+lessons G2 to G5 left them out. The semantic check, `check_cert`, compares them anyway, by turning each into a
 unitary on one more qubit. This lesson does that exactly, shows why moving a measurement past a
 gate on its qubit changes the experiment, and finds the one kind of move that no unitary can
 see.
@@ -177,7 +177,7 @@ the more significant bit), `H`, `CX`, `PX`, `entry`, `UpToPhase` and lesson G4's
 Measure qubit q in the Z basis and keep the outcome for the end. The same experiment: take a
 fresh qubit a in |0⟩, apply a CNOT from q onto a, and measure a at the end. If q holds
 α|0⟩ + β|1⟩, the CNOT makes α|00⟩ + β|11⟩: a reads 1 with probability |β|², as q would have, and
-afterwards q is in the state a read. `check_cert.py` says it in one line (`_defer`): "a Z
+afterwards q is in the state a read. `check_cert` says it in one line (`_defer`): "a Z
 measurement IS that CNOT, read out at the end".
 
 A two-qubit matrix's first column is what it does to |00⟩: qubit 0 the data, qubit 1 the fresh
@@ -223,7 +223,7 @@ theorem reset_is_swap : col0 (SWAP * kron PX I2) = [0, 1, 0, 0] := by
 /-!
 ## 3. The plan: which readouts get a fresh qubit
 
-`readout_plan` in `check_cert.py` pairs the circuit's measurements and resets with the
+`readout_plan` in `check_cert` pairs the circuit's measurements and resets with the
 programme's, qubit by qubit. First the kinds must agree: the k-th readout of a qubit is a
 measurement on both sides, or a reset on both. Then "the `j`-th measurement of qubit `q` is a
 CNOT onto a fresh qubit of its own, the `j`-th reset a SWAP with one, on BOTH sides, so the two
@@ -264,7 +264,7 @@ def deferredOf (q : Nat) (circ prog : List Ev) : List Nat :=
 
 /-!
 The Bell circuit ends `measure q -> c;`, one measurement per qubit, and the programme ends with
-one `measure` instruction on both ions. `bell/verdict.json` on the Compilation page reports
+one `measure` instruction on both ions. The Compilation page's verdict for the Bell pair reports
 "0 measurement(s)/reset(s) compared in place, final measurements at the end"; the `reset`
 example's verdict reports 1.
 -/
@@ -312,7 +312,7 @@ theorem moved_changes_probability :
 
 /-!
 #### Exercise 6 (★★) `moved_refused`
-Prove the two extended unitaries are not equal up to any phase, which is how `check_cert.py`
+Prove the two extended unitaries are not equal up to any phase, which is how `check_cert`
 refuses the programme. Use `not_phase_of_zero` at an entry where the programme's matrix is 0 and
 the circuit's is not: from |00⟩, the circuit reaches |11⟩ and the programme does not.
 -/
@@ -329,7 +329,7 @@ measure q[0];` and a programme that measures `q0` before the CNOT. The plan defe
 measurement onto a fresh qubit 2, and the two sides become CX(0→1) then CX(0→2), against CX(0→2)
 then CX(0→1): two CNOTs with the same control.
 
-Those commute, and the proved checker has the proof. `Compiler/lean/QCCDC/Cert/Commute.lean`
+Those commute, and the proved checker has the proof. The module `QCCDC.Cert.Commute`
 writes `cx c t` as the permutation it is on basis states, `cxAct c t s` (s gives each qubit its
 bit), and proves `cxAct_comm_same_control`. A permutation matrix is determined by its permutation,
 so equal permutations are equal unitaries: the semantic check cannot tell these two programmes
@@ -354,7 +354,7 @@ theorem deferred_reorder_invisible (s : Nat → Bool) :
 
 So the programme with the early measurement passes the semantic check, correctly as far as
 unitaries go. It is refused anyway, by a different check, `check_program_order` in
-`check_cert.py`: "STRICT: two ops on one qubit must run in their source order even when they
+`check_cert`: "STRICT: two ops on one qubit must run in their source order even when they
 commute. The order of a qubit's gates is the circuit author's to choose". Its docstring records
 why: "A compiler that batched a check's CNOTs by rotation offset passed every one of them with 726
 adjacent pairs out of order on a BB144 round."
@@ -365,10 +365,10 @@ its qubit's order is held by `check_program_order` alone, and that is computed, 
 
 The Compilation page's `reset` example is the extreme case. The circuit is `reset q[0];`; the
 programme is one `reset` instruction; the certificate has the one op and no witness at all. Here
-it is as the proved checker reads it (`reset/prog.qcheck.json`). The checker accepts it, and has
+it is as the proved checker reads it ([reset.qcheck.json](data/reset.qcheck.json)). The checker accepts it, and has
 nothing to say about where, or whether, the reset happened: what holds the programme to it is
 computed, the `reset` instruction's place by `check_program_order` and its kind by the readout
-plan ("1 measurement(s)/reset(s) compared in place", says `reset/verdict.json`).
+plan ("1 measurement(s)/reset(s) compared in place", says its verdict on the Compilation page).
 -/
 
 open QCCDC.Cert in

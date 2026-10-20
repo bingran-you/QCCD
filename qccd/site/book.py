@@ -46,6 +46,35 @@ ASSETS = HERE / "book"
 #: auxiliary axioms `native_decide` adds (the compiler trusted) are not on the list.
 ALLOWED_AXIOMS = ("propext", "Quot.sound", "Classical.choice")
 
+#: The website says nothing about the repository it was built from (qccd/site/prose.py): a
+#: reader never sees a path into the tree or a source file's name.  The same pattern as the
+#: rendered-page probe (tests/_rendered_paths.mjs, PROBE), so a lesson that passes here passes
+#: the site walk.  A Lean module or declaration (`QCCDC.Cert.Check`, `check_sound`), the tool's
+#: own commands (`qccd ...`, `qccdc ...`, `qcheck ...`) and the files a reader holds
+#: (`prog.qcert.json`, `chain4.arch.json`) are not paths.
+READER_PATH = re.compile(
+    r"(?:(?:qccd|Compiler|tests|Codesign|tools|Knowledge|Library|examples|docs|arch|site|lean|ChainQ)"
+    r"/[A-Za-z0-9_./*-]*[A-Za-z0-9_*/]"
+    r"|[A-Za-z0-9_][A-Za-z0-9_.-]*\.(?:py|lean|ml|mli|mjs|olean|yaml|yml|js)\b)(?::\d+)?")
+
+
+def reader_paths(ch: "Chapter") -> list[tuple[str, str]]:
+    """Every path a reader of the lesson's page would see: in its prose, and in the code it is
+    shown (exercises as the reader gets them; the import line and setup blocks are not shown)."""
+    out = []
+    for b in ch.blocks:
+        if b.kind == "prose":
+            text, where = b.text, "prose"
+        elif b.hidden or b.setup:
+            continue
+        else:
+            text, where = reader_code(b), "code"
+        for m in READER_PATH.finditer(text):
+            line = text[:m.start()].count("\n") + 1
+            snippet = text.splitlines()[line - 1].strip()[:90]
+            out.append((f"{where} block {ch.blocks.index(b)}, line {line}: {snippet}", m.group(0)))
+    return out
+
 EXERCISE_RE = re.compile(r"^#{2,4}\s*Exercise\s+(\d+)\s*\(([★]+)\)\s*`([A-Za-z_][A-Za-z0-9_'.]*)`\s*$")
 
 
@@ -200,7 +229,25 @@ def grader(ch: Chapter) -> str:
 
 # ----------------------------------------------------------------------------- prose
 
+#: a code span, or a link whose text may hold code spans of its own; whichever starts first wins,
+#: so `l[i](x)` stays code and [`bell.qcheck.json`](data/...) is a link
+_TOKEN = re.compile(r"`([^`]+)`|\[((?:[^\]`]|`[^`]*`)+)\]\(([^)\s]+)\)")
+
+
 def _inline(s: str) -> str:
+    out, i = [], 0
+    for m in _TOKEN.finditer(s):
+        out.append(_emph(html.escape(s[i:m.start()], quote=False)))
+        if m.group(1) is not None:
+            out.append("<code>" + html.escape(m.group(1), quote=False) + "</code>")
+        else:
+            out.append(f'<a href="{html.escape(m.group(3))}">{_spans(m.group(2))}</a>')
+        i = m.end()
+    out.append(_emph(html.escape(s[i:], quote=False)))
+    return "".join(out)
+
+
+def _spans(s: str) -> str:
     out, i = [], 0
     for m in re.finditer(r"`([^`]+)`", s):
         out.append(_emph(html.escape(s[i:m.start()], quote=False)))
@@ -213,7 +260,6 @@ def _inline(s: str) -> str:
 def _emph(s: str) -> str:
     s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
     s = re.sub(r"(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])", r"<i>\1</i>", s)
-    s = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", lambda m: f'<a href="{m.group(2)}">{m.group(1)}</a>', s)
     return dash(s)
 
 
@@ -362,11 +408,27 @@ def devices() -> dict:
     return out
 
 
-FIGURE_RE = re.compile(r"^\{\{(figure|studio)\s+([A-Za-z_][A-Za-z0-9_'.]*)((?:\s+[a-z]+=[^\s}]+)*)\s*\}\}$")
+FIGURE_RE = re.compile(r"^\{\{(figure|studio|gadget)\s+([A-Za-z_][A-Za-z0-9_'./-]*)((?:\s+[a-z]+=[^\s}]+)*)\s*\}\}$")
+GADGET_RE = re.compile(r"(?m)^\{\{gadget\s+([A-Za-z_][A-Za-z0-9_'./-]*)")
+
+
+def gadget_file(name: str) -> str:
+    """Where a {{gadget NAME}} figure's page is written, beside the studio pages."""
+    return "ex/gadget-" + re.sub(r"[^A-Za-z0-9_-]+", "-", name) + ".html"
 
 
 def figure_html(name: str, params: str, kind: str = "figure") -> str:
     kv = dict(p.split("=", 1) for p in params.split())
+    if kind == "gadget":
+        # a design page of the gadget level (qccd.gadget.site.embed_page): no Lean value behind
+        # it, so it is drawn as the page is built; `focus` and `at` (microseconds) go in its address
+        frag = "&".join(f"{k}={v}" for k, v in (("f", kv.get("focus")), ("t", kv.get("at"))) if v)
+        src = gadget_file(name) + ("#" + frag if frag else "")
+        return (f'<figure class="leanfig gadgetfig" data-kind="gadget" data-name="{html.escape(name)}">'
+                f'<div class="fighead"><b>{html.escape(name)}</b> in the design tool'
+                + (f', at <code>{html.escape(kv["focus"])}</code>' if kv.get("focus") else "")
+                + '</div><div class="studiobox"><iframe class="studio" loading="lazy" title="the design tool: '
+                f'{html.escape(name)}" src="{html.escape(src)}"></iframe></div></figure>')
     attrs = "".join(f' data-{k}="{html.escape(v)}"' for k, v in kv.items() if k in ("at", "show"))
     if kind == "studio":
         attrs += ' data-kind="studio"'
@@ -430,7 +492,10 @@ def chapter_body(ch: Chapter, part: dict, lesson: dict, prev: dict | None = None
             "prelude": (ASSETS / "engine" / "prelude.lean").read_text(encoding="utf-8"),
             # the figures: Lean's replay of a named certificate, drawn on its device
             "figureHelper": (ASSETS / "engine" / "figure.lean").read_text(encoding="utf-8"),
-            "devices": devices(),
+            # the tutorial's four small devices, and any other the lesson names (a place's device)
+            "devices": {k: v for k, v in devices().items()
+                        if k in ("chain4", "grid2x3", "race8", "ring6d")
+                        or any(f'"{k}"' in b.text for b in ch.blocks if b.kind == "code")},
             "cases": ([{k: v for k, v in c.items() if not k.startswith("_")} for c in published_cases()]
                       if any("{{certificates}}" in b.text for b in ch.blocks if b.kind == "prose") else [])}
     head = (f'<p class="crumbs"><a href="../learn/#part-{part["part"]}">Tutorial</a> &rsaquo; '
@@ -454,8 +519,8 @@ def script_json(data) -> str:
 ENGINE_NOTE = ('<p class="enginenote">The Lean on this page is Lean&nbsp;4 (Apache-2.0), compiled to '
                'WebAssembly by the <a href="https://github.com/cauli/lean4-wasm-in-browser">cauli/lean4</a> '
                'browser build (Lean 4.33, Apache-2.0), hosted here byte for byte. The proved checker it loads is '
-               "the repository's <code>QCCDC.Cert</code>, carried to that Lean by a mechanical port "
-               '(<code>port_checker.py</code> in the repository): module syntax, and two tail-recursive functions each '
+               "the repository's <code>QCCDC.Cert</code>, carried to that Lean by a mechanical port: "
+               'module syntax, and two tail-recursive functions each '
                "proved equal to the one it replaces; it gives the repository checker's verdict on every "
                'published certificate. The first time a lesson in this part opens, your browser downloads Lean '
                '(about 58&nbsp;MB, kept for next time); a desktop browser is needed.</p>')
@@ -473,9 +538,14 @@ def tutorial_parts() -> list[dict]:
         [{"part": "F", "title": ..., "about": ...,
           "lessons": [{"id": "F1", "title": ..., "story": ..., "href": "../book/2.1-certificates.html",
                        "exercises": ["book:V2.1.ex1", ...], "stars": [1, 1, 1, 1, 2, 2, 3, 3], "live": True}],
-          "coming": ["The specification, condition by condition", ...]}, ...]"""
+          "coming": ["The specification, condition by condition", ...]}, ...]
+
+    A part whose entry says `"status": "hidden"` is not listed at all, not even as coming: it is
+    still being reviewed, and every build of the Learn page must agree on that."""
     out = []
     for part in outline()["parts"]:
+        if part.get("status") == "hidden":
+            continue
         lessons, coming = [], []
         for les in part["lessons"]:
             if les.get("status") != "live":
@@ -589,9 +659,11 @@ def build(out: Path, packs: Path | None = None, studio: bool = True, drafts: boo
                 and (BOOK / c.get("source", "-")).exists())
     # the lessons in the tutorial's order, for each page's previous / next links
     order = [(part, c) for part in parts for c in part["lessons"] if shown(c)]
+    gadgets: set[str] = set()                 # the design pages the built lessons frame
     for k, (part, c) in enumerate(order):
         if only and c["id"] not in only:
             continue
+        gadgets.update(GADGET_RE.findall((BOOK / c["source"]).read_text(encoding="utf-8")))
         ch = parse_chapter(BOOK / c["source"], c["slug"], c.get("store"), c.get("ids"))
         if solutions:
             (dst / "_solutions").mkdir(exist_ok=True)
@@ -608,6 +680,13 @@ def build(out: Path, packs: Path | None = None, studio: bool = True, drafts: boo
                                        '<script src="book-page.js" defer></script></body>')
         (dst / f'{c["slug"]}.html').write_text(page.replace("__FOOTER__", ""), encoding="utf-8")
         written.append(dst / f'{c["slug"]}.html')
+    if gadgets:
+        # the gadget level's own pages (qccd.gadget.site.embed_page): one self-contained file
+        # each, served beside the studio pages so they share the lesson's isolation headers
+        from ..gadget.site import embed_page
+        (dst / "ex").mkdir(exist_ok=True)
+        for name in sorted(gadgets):
+            written.append(embed_page(name, dst / gadget_file(name)))
     for name in ("book-page.js", "book-figure.js", "book-progress.js"):
         (dst / name).write_bytes((ASSETS / name).read_bytes())
         written.append(dst / name)

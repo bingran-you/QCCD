@@ -135,7 +135,8 @@ theorem rider_perm_own : [some "q1", some "q0"].Perm ([0, 1].map (ionOf bell)) :
 #print axioms rider_perm_own
 
 /-!
-The checker's procedure is in `Perm.lean`, and it is the obvious one. `takeOut a l` removes the
+The checker's procedure is in the module `QCCDC.Cert.Perm`, and it is the obvious one. `takeOut a l`
+removes the
 first `a` from `l`, or says `none` if there is no `a`; `permB` takes the first element of the left
 list out of the right one, and recurses.
 -/
@@ -148,10 +149,11 @@ list out of the right one, and recurses.
 #eval permB ["q1", "q1"] ["q0", "q1"]
 
 /-!
-`Perm.lean` proves it right in both directions, using only lemmas of core that need `propext`:
+`QCCDC.Cert.Perm` proves it right in both directions, using only lemmas of core that need `propext`:
 `permB_sound` (if `permB` says `true`, the lists are rearrangements) and `permB_complete` (if they
 are, it says `true`). `decPerm` packages the two as a `Decidable`. It is deliberately not an
-instance: `Check.lean` names it where `OwnIons` is decided, so that instance search can never pick
+instance: the checker names it where `OwnIons` is decided (`ownIonsAt`), so that instance search
+can never pick
 core's procedure in its place.
 -/
 
@@ -209,7 +211,8 @@ theorem permB_refl : ∀ l : List String, permB l l = true := by
 Three conditions read the replay: `MovesAreHops` and `GatesLegal` (where every ion is), and
 `RespectsOrder` (the witness join). Each binds it with a `let` in its definition, as F2 printed.
 Decided by "unfold, then instance search", that `let` landed inside the procedure for each single
-move and witness, so the replay was recomputed for every one of them. `Check.lean` records what
+move and witness, so the replay was recomputed for every one of them. The checker's own comments
+record what
 that cost: on a BB[[144,12,12]] round the replay ran about 3 700 times, and one check took ten
 minutes (2026-09-26).
 

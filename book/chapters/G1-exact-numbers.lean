@@ -8,16 +8,16 @@ this Part takes up.*
 
 Lesson F1 ended on a gap. The proved checker names no gate: a witness says *an operation happened
 here, now, on these ions*, never *which* gate the laser pulses make. That second question is
-answered by `Compiler/bridge/check_cert.py`. It reads the native pulses out of the emitted
+answered by the semantic check, `check_cert`. It reads the native pulses out of the emitted
 programme, composes them, and compares the result with the source circuit: with the stabilizer
 library `stim` for a Clifford circuit, and otherwise, up to ten qubits by default, with the full
 matrix in floating point, equal when every entry agrees to within 10⁻⁸ up to one global phase
-(`unitary.py`). It is computed, not proved.
+(`same_up_to_phase`). It is computed, not proved.
 
 Part G does that comparison in Lean, as a proof. The objects are matrices: a pulse on one ion is
 a 2×2 matrix of complex numbers, the entangling pulse on two ions a 4×4 one, and their entries are
 numbers like cos(π/4) and e^(iπ/4). The compiler's own pulse identities are proved in Lean with
-Mathlib, whose real and complex numbers make that easy (`Compiler/lean/QCCDC/Pulse/`). This page
+Mathlib, whose real and complex numbers make that easy (the modules `QCCDC.Pulse.Native` and `QCCDC.Pulse.Decompose`). This page
 has Lean's core only, which has whole numbers and no real numbers at all. So this lesson builds,
 out of `Int`, exactly the numbers the pulses need, and makes equality between them something
 Lean's kernel can decide.

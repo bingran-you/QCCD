@@ -24,8 +24,8 @@ error rate. Each board publishes its rows as `board/<id>/manifest.json`, and eac
 tableau**, which reads **passed** when `r10` is `true` and **not run** when it is `false`.
 
 "passed" claims the whole of R10: the proved checker accepted the certificate (O1), and the
-pulses, composed, are the circuit (O2) -- what `Compiler/bridge/check_cert.py --qcheck` reports
-as `R10 passed`.
+pulses, composed, are the circuit (O2) -- what the semantic check (`check_cert`), run together
+with the proved checker, reports as `R10 passed`.
 
 ## 2. Where the mark comes from
 
@@ -33,17 +33,16 @@ The marks are made in two different ways.
 
 * **Computed.** The four small-code boards (repetition, five-qubit, Steane, surface) and the two
   memory boards are built by scripts that compile the board's circuit onto every device, then,
-  for each compiled point, build the checker input (`mk_qcheck_input.py`) and run
-  `check_cert.py --qcheck`; `r10` is whether its report says `R10 passed`. A point the compiler
-  refused has no programme and no mark. (The memory boards' script,
-  `Codesign/scripts/memory_boards.py`, is in the repository; it computes the mark only on a
-  machine where the checker is built.)
+  for each compiled point, build the checker input (`mk_qcheck_input`) and run the semantic check
+  (`check_cert`) with the proved checker; `r10` is whether its report says `R10 passed`. A point
+  the compiler refused has no programme and no mark. (The memory boards' build script computes
+  the mark only on a machine where the checker is built.)
 * **Typed.** The BB board's entries come from a study whose catalogue lists each design by hand,
   with `"r10": True` or `"r10": False` written beside it. Nothing recomputes that field when the
   board is rebuilt.
 
-The scripts that build the BB board and the small-code boards are not in the public repository;
-what they did is what the rows record.
+The scripts that build the boards are not all in the public repository (the BB board's and the
+small-code boards' are not); what they did is what the rows record.
 
 ## 3. What you can check today
 
@@ -54,13 +53,12 @@ one is served. So a board's mark is, today, a claim you cannot re-check from wha
 gives you. There are three ways round that:
 
 * this lesson carries one board certificate in full (section 4);
-* every board's circuit is in the repository, as its task's
-  `qccd/workspace/releases/<board>@1/circuit.qasm` (the small-code and memory boards' entries
-  were compiled from that text; the BB study's entries from ancilla-layout variants of it, whose
-  files are not the task's), and
-  so are the devices the boards share with the repository (`arch/*.arch.json`): compile one
-  yourself with the published compiler and check your own certificate (lesson H4);
-* submit a design to the official grader, which runs the whole chain on your bundle (lesson H3).
+* every board's circuit ships with the workspace, as its task's `circuit.qasm` (the small-code
+  and memory boards' entries were compiled from that text; the BB study's entries from
+  ancilla-layout variants of it, which are other files): `qccd boards` lists the boards, and
+  `qccd submit --local --board <title>` compiles the board's circuit onto a design of yours and
+  grades it, the whole chain, on your own computer (lesson H4);
+* submit a design to the official grader, which runs the same chain on your bundle (lesson H3).
 
 ## 4. One board certificate, in this page
 
@@ -95,10 +93,10 @@ the other fifteen in `C0`. The first ancilla's two CNOTs happen in `C1`, every o
 comes back. (The row's title says "no transport at all"; the certificate says two moves.)
 
 Run through `qcheck`, this input prints `24 circuit ops, 16 gate witnesses, 2 moves, 0 rotations,
-17 qubits` and `ACCEPTED`. You can also make it yourself: the circuit is the repository's
-`Compiler/examples/rep9_esm.qasm` (the board's task circuit) and the device its
-`arch/stationary_chain.arch.json`; compiled with the published compiler, they give a checker
-input identical to this one (lesson H4 has the commands).
+17 qubits` and `ACCEPTED`. Both its circuit (`rep9_esm.qasm`, the board's task circuit) and its
+device (`stationary_chain.arch.json`) are in the repository, and when this lesson was written,
+compiling the one onto the other with the published compiler gave a checker input identical to
+this one.
 
 #### Exercise 1 (★) `rep9_counts`
 Prove the value has those counts.
@@ -186,8 +184,8 @@ theorem rep9_every_cx_meets :
 On 2026-10-19 the order condition became strict (lesson F1, condition 11): two ops sharing a
 qubit must be witnessed in circuit order **even when they commute**. Two CNOTs with a common
 control commute, so swapping them changes no unitary, and O2 cannot see the swap; only the order
-checks catch it -- condition 11 on the certificate, and `check_cert.py`'s order check, made strict
-the same day, on the programme. A certificate written before that day could have such a swap,
+checks catch it -- condition 11 on the certificate, and the semantic check's order check, made
+strict the same day, on the programme. A certificate written before that day could have such a swap,
 be accepted then, and be refused now.
 
 Here is the smallest such case, on `chain4`. One control ion `a` serves two targets, `b` in `C0`
@@ -230,7 +228,8 @@ theorem fan_reordered_rejected : check fanReordered = false :=
 
 /-!
 The BB board is where this happened. Its marks are typed, so here is what they said when this
-lesson was written (2026-10-20), beside what `check_cert.py --qcheck` said that day when re-run
+lesson was written (2026-10-20), beside what the semantic check, with the proved checker, said
+that day when re-run
 on each compiled entry's own certificate, circuit and device. The board had 21 entries; 6 are
 devices the compiler could not serve, with no programme and no mark. The other 15:
 -/
@@ -255,7 +254,7 @@ def bbBoard : List BBEntry :=
 
 /-!
 Three entries were marked passed. The first, the stride layout, was compiled on 2026-09-05; its
-certificate is now refused, by the proved checker and by `check_cert.py`'s own order check. The
+certificate is now refused, by the proved checker and by the semantic check's own order check. The
 checker's first reason:
 
 ```
@@ -278,7 +277,7 @@ theorem a_stale_mark : ∃ e ∈ bbBoard, e.marked = true ∧ e.passesToday = fa
 
 The kernel can prove a certificate of tens of events while you wait; the boards' certificates
 run from that to thousands. Measured on the checker inputs behind the boards (for BB, whose
-build makes none, built from each entry's certificate and device with `mk_qcheck_input.py`):
+build makes none, built from each entry's certificate and device with `mk_qcheck_input`):
 
 | entry | checker input | ops | witnesses | moves | rotations |
 |---|---|---|---|---|---|

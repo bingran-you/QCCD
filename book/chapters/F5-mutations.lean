@@ -5,8 +5,8 @@ import QCCDC.Cert.Sound
 
 *Part F, lesson F5. You need lessons F1, F2 and F4.*
 
-A checker is worth exactly what it refuses. The repository tests that with a **mutation suite**,
-`Compiler/bridge/mutate_cert.py`: it takes a certificate the checker accepts, seeds one defect at a
+A checker is worth exactly what it refuses. The repository tests that with a **mutation suite**
+(`mutate_cert`): it takes a certificate the checker accepts, seeds one defect at a
 time, each a way a compiler can really be wrong, and requires the checker to refuse every mutant.
 Its docstring quotes the criterion from the compiler's plan: a checker that accepts a mutant is a
 checker that proves nothing.
@@ -46,7 +46,7 @@ theorem rejects_unsorted {inp : Input} (h : ¬ EventsSorted inp) : check inp = f
 register: each qubit's ion moves one trap to meet the next.
 
 Here it is as Lean data, written by the same function that writes the published inputs of lesson
-F1's panel, from the published file `prog.qcheck.json`.
+F1's panel, from the published file [algo_ghz.qcheck.json](data/algo_ghz.qcheck.json).
 -/
 
 def ghz : Input :=
@@ -328,13 +328,14 @@ witnesses list the loop rider first, the other way round from the ops' qubits, a
 The bug the mutation stands for is real: a CNOT whose control and target are exchanged. That bug
 lives in the **pulses**, which the checker's input does not carry (the certificate file lists them
 beside each witness, as text) and Lean's checker never reads. What refuses
-it is the semantic half of the verdict, `Compiler/bridge/check_cert.py`, which composes the
+it is the semantic half of the verdict, the semantic check (`check_cert`), which composes the
 programme's emitted pulses into a stabilizer tableau (or, off the Clifford gates, an exact unitary)
 and compares it with the source circuit (Part G builds that comparison). We ran all three versions
-of the bug through `check_cert.py`, with the proved checker, on the published Bell certificate and
+of the bug through the semantic check, with the proved checker, on the published Bell certificate
+([bell.qcert.json](data/bell.qcert.json)) and
 its programme:
 
-| what was changed | proved checker | `check_cert.py` | R10 |
+| what was changed | proved checker | the semantic check | R10 |
 |---|---|---|---|
 | the CNOT's witness lists its ions the other way round (certificate and checker input) | accepted | everything ok | passed |
 | only the checker's input, not the certificate | not run: refused by `qcheck_binding`, "not this certificate's input" | the rest ok | failed |

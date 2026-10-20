@@ -96,28 +96,49 @@ def main(argv: list[str]) -> int:
     if bad:
         fail(f"WORDS: the prose says {sorted(set(bad))}")
     print("ok   WORDS")
+    paths = book.reader_paths(ch)
+    if paths:
+        fail(f"PATHS: the page would show {len(paths)} repository path(s) or source file name(s); "
+             "name the thing instead (a Lean module like QCCDC.Cert.Check, a declaration, the tool's "
+             "own command, or a file the reader holds):\n  " + "\n  ".join(f"{h!r} in {w}" for w, h in paths))
+    print("ok   PATHS (no repository path or source file name on the page)")
     names = re.findall(r"\{\{(?:figure|studio)\s+([A-Za-z_][A-Za-z0-9_'.]*)", src)
     for n in names:
         if not re.search(rf"(?m)^(?:def|abbrev|theorem)\s+{re.escape(n)}\b", src):
             fail(f"FIGURES: {{{{... {n}}}}} names no `def {n}` in the lesson")
-    print(f"ok   FIGURES ({len(names)})")
+    gadgets = list(dict.fromkeys(book.GADGET_RE.findall(src)))
+    if gadgets:
+        # a {{gadget NAME}} is a design page of the gadget level: it must be one that exists
+        from qccd.gadget.site import embed_page
+        with tempfile.TemporaryDirectory() as d:
+            for n in gadgets:
+                try:
+                    embed_page(n, Path(d) / "g.html")
+                except KeyError as e:
+                    fail(f"FIGURES: {{{{gadget {n}}}}} is no design page: {e}")
+    print(f"ok   FIGURES ({len(names)} from Lean, {len(gadgets)} design pages)")
 
     # what the page appends after the grader: the figure helper and one #eval per figure, so a
     # lesson whose own names clash with the helper's (`look`, `posAt`, ...) fails here, not only
-    # in the browser
+    # in the browser; each figure's line must print its JSON
     figs = list(dict.fromkeys(re.findall(r"\{\{(figure|studio)\s+([A-Za-z_][A-Za-z0-9_'.]*)", src)))
-    tail = ""
+    doc = src + book.grader(ch)
+    eval_line = {}
     if figs:
-        tail = "\n" + (book.ASSETS / "engine" / "figure.lean").read_text(encoding="utf-8")
+        doc += "\n" + (book.ASSETS / "engine" / "figure.lean").read_text(encoding="utf-8")
         for kind, n in figs:
-            tail += (f'#eval IO.println (Lean.Json.mkObj [("arch", Lean.toJson {n}.arch), ("src", Lean.toJson {n}.src), '
-                     f'("studio", Lean.toJson true)]).compress\n' if kind == "studio"
-                     else f"#eval IO.println (QCCDBook.figure {n}).compress\n")
+            eval_line[n] = doc.count("\n") + 1
+            doc += (f'#eval IO.println (Lean.Json.mkObj [("arch", Lean.toJson {n}.arch), ("src", Lean.toJson {n}.src), '
+                    f'("studio", Lean.toJson true)]).compress\n' if kind == "studio"
+                    else f"#eval IO.println (QCCDBook.figure {n}).compress\n")
+    tail = doc[len(src + book.grader(ch)):]
 
-    msgs = lean(src + book.grader(ch) + tail)
-    drawn = [m for m in msgs if m["sev"] == "info" and m["text"].lstrip().startswith("{")]
-    if len(drawn) < len(figs):
-        fail(f"FIGURES: {len(figs)} figures but Lean printed {len(drawn)} of them")
+    msgs = lean(doc)
+    printed = {m["line"] for m in msgs if m["sev"] == "info" and m["text"].lstrip().startswith("{")}
+    missing = [n for n, ln in eval_line.items() if ln not in printed]
+    if missing:
+        fail(f"FIGURES: Lean printed nothing for {missing}")
+    drawn = list(eval_line)
     errs = [m for m in msgs if m["sev"] == "error"]
     if errs:
         fail("SOLVED: " + "; ".join(f'{m["line"]}: {m["text"][:300]}' for m in errs[:5]))

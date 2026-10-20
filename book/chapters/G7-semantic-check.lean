@@ -7,8 +7,8 @@ import QCCDC.Cert.Sound
 
 Lesson F1 proved that the Bell certificate holds: where every ion is, cycle by cycle, and that
 every gate's ions are together in a trap that can gate. It ended on what that proof does not
-say: which gate the pulses make. That is the semantic half of the verdict called R10, and
-`check_cert.py` computes it. This lesson proves it, for the Bell certificate: it reads the
+say: which gate the pulses make. That is the semantic half of the verdict called R10, and the
+semantic check, `check_cert`, computes it. This lesson proves it, for the Bell certificate: it reads the
 witnesses' pulses, composes them into the exact 4×4 unitary, and proves it equal to the circuit's
 up to a global phase. Then it takes the one mutation of Part F's suite that the proved checker
 accepts, finds the bug it stands for in the pulses, and refuses that.
@@ -195,9 +195,10 @@ the move and on the two witnesses: the Hadamard's at cycle 2 in `C1`, the CNOT's
 
 ## 2. Reading the pulses
 
-The certificate file `bell/prog.qcert.json` carries, beside each witness, the pulses the compiler
-emitted for it ("the native sequence, from `Gateset`", `Compiler/ocaml/lib/cert.ml`), in time
-order, as text. The checker's input (`bell/prog.qcheck.json`, the `Input` above) does not carry
+The certificate file [bell.qcert.json](data/bell.qcert.json) carries, beside each witness, the
+pulses the compiler emitted for it ("the native sequence, from `Gateset`", says the certificate
+writer), in time order, as text. The checker's input ([bell.qcheck.json](data/bell.qcheck.json),
+the `Input` above) does not carry
 them, and Lean's checker never reads them:
 -/
 
@@ -208,14 +209,13 @@ def cxText : List String :=
    "R(-1.5708,1.5708)@q0"]
 
 /-!
-**The trusted step.** The compiler prints each angle to six significant figures (`%.6g` in
-`compile.ml`). `1.5708` is not π/2; it is the six-digit decimal nearest to it. To turn the text
+**The trusted step.** The compiler prints each angle to six significant figures (`%.6g`). `1.5708` is not π/2; it is the six-digit decimal nearest to it. To turn the text
 into pulses on the grid, this lesson rounds each angle to the nearest whole number of eighths of
 a turn, so `1.5708` becomes 2 (π/2) and `3.14159` becomes 4 (π). That rounding is **trusted, not
 proved**: Lean's core has no π to prove anything about, and nothing below could tell a pulse of
-1.5708 radians from one of π/2. `check_cert.py` takes the same step its own way: it reads the
+1.5708 radians from one of π/2. `check_cert` takes the same step its own way: it reads the
 angles from the programme, where they are the double-precision numbers (`1.5707963267948966` in
-`bell/prog.tsir.json`), and its tableau route accepts an angle as a multiple of π/2 when it is one
+the Bell programme), and its tableau route accepts an angle as a multiple of π/2 when it is one
 to within 10⁻⁹ (`is_right_angle`). It also reads the instructions, not the certificate's copy of
 them; for this certificate the seven pulses are the same, in the same order (instructions 2, 3 and
 5 to 9 of the programme), which is one more thing this lesson takes from the file rather than
@@ -287,8 +287,8 @@ def cxPulses : List Pulse := [.R 2 2 0, .MS 2 0 1, .R (-2) 0 0, .R (-2) 0 1, .R 
 /-!
 ## 3. The programme's unitary
 
-`check_cert.py`'s `program_unitary` starts from the identity and, for each pulse in time order,
-left-multiplies by that pulse on its qubits, through `apply_gate` in `unitary.py`:
+`check_cert`'s `program_unitary` starts from the identity and, for each pulse in time order,
+left-multiplies by that pulse on its qubits, through its helper `apply_gate`:
 
 ```
 def apply_gate(U: np.ndarray, g: np.ndarray, qubits: list[int], n: int) -> np.ndarray:
@@ -361,7 +361,7 @@ theorem cx_witness_unitary : run cxPulses = ω • CX := by
 The circuit is `h q[0]; cx q[0],q[1];` and two measurements. Both measurements are the last thing
 done to their qubit, in the circuit and in the programme, so `readout_plan` defers neither
 (lesson G6), and the comparison is over the two qubits alone: the circuit's unitary is the
-Hadamard on qubit 0, then the CNOT. `check_cert.py` reads the circuit's gates from the QASM through
+Hadamard on qubit 0, then the CNOT. `check_cert` reads the circuit's gates from the QASM through
 qiskit's own definitions (`source_unitary`); ours are the matrices of lessons G3 and G4.
 -/
 
@@ -374,7 +374,7 @@ def programmeU : Mat := run (hPulses ++ cxPulses)
 
 /-!
 #### Exercise 4 (★★) `bell_semantic`
-The theorem `check_cert.py` only computes, for this certificate: the programme's pulses implement
+The theorem `check_cert` only computes, for this certificate: the programme's pulses implement
 the circuit, up to a global phase. Name the phase.
 -/
 
@@ -382,15 +382,15 @@ theorem bell_semantic : UpToPhase circuitU programmeU :=
   ⟨cis (-1), by decide +kernel, by decide +kernel⟩
 
 /-!
-`check_cert.py` itself decides this certificate by the tableau route (`bell/verdict.json`,
-"stabilizer tableau, composed from the emitted pulses, against the source QASM"), which lesson G5
+`check_cert` itself decides this certificate by the tableau route (its verdict on the
+Compilation page: "stabilizer tableau, composed from the emitted pulses, against the source QASM"), which lesson G5
 proved. The full matrix is its route outside the Clifford fragment, for up to
 `--max-unitary-qubits` (default 10) qubits; it is the stronger comparison, since it sees every
 amplitude.
 
 ## 5. The mutant the proved checker accepts, and the bug behind it
 
-Part F's mutation suite (`Compiler/bridge/mutate_cert.py`, lesson F5) seeds defects into accepted
+Part F's mutation suite (`mutate_cert`, lesson F5) seeds defects into accepted
 certificates and requires each refused. One of them it expects the proved checker to accept:
 
 ```
@@ -448,12 +448,12 @@ theorem swapped_refused : ¬ UpToPhase circuitU swappedU :=
 /-!
 That is the reason R10 has two halves. Neither sees what the other does: the proved checker never
 reads a pulse, and the semantic check never asks where an ion is. Lesson F5 ran this bug through
-`check_cert.py` on the published Bell programme: accepted by the proved checker, refused by the
+`check_cert` on the published Bell programme: accepted by the proved checker, refused by the
 tableau. Exercise 6 is that refusal, proved.
 
 ## 6. The check as a program
 
-`check_cert.py`'s comparison is a procedure that answers yes or no (`same_up_to_phase`). Here is
+`check_cert`'s comparison is a procedure that answers yes or no (`same_up_to_phase`). Here is
 one for our numbers: try the eight phases ω⁰ .. ω⁷. Like Part F's `check`, it is worth having only
 with a theorem that its yes means the specification holds.
 -/
@@ -485,19 +485,19 @@ theorem bell_semantic_by_check : UpToPhase circuitU programmeU :=
 /-!
 ## 7. What is proved, and what is trusted
 
-For the Bell certificate, this Part has proved what `check_cert.py` computes: the pulses the
+For the Bell certificate, this Part has proved what `check_cert` computes: the pulses the
 witnesses carry make the circuit, exactly, up to the phase e^(−iπ/4) (Exercise 4); with lesson
 F1, both halves of R10 are proved for this certificate, up to the steps the table marks. What
 remains trusted or computed, and where:
 
 | step | how it is checked |
 |---|---|
-| the text `1.5708` read as π/2 | trusted: rounded, in floating point (this lesson); `is_right_angle` in `check_cert.py` |
-| the certificate's pulses are the programme's | trusted here; `check_cert.py` reads the programme itself |
+| the text `1.5708` read as π/2 | trusted: rounded, in floating point (this lesson); `is_right_angle` in `check_cert` |
+| the certificate's pulses are the programme's | trusted here; `check_cert` reads the programme itself |
 | the witnesses name the programme's instructions, its moves are the certificate's | computed: `check_witnesses`, `check_program_transport` |
 | the certificate's copy of the circuit is the QASM | computed: `check_binding` |
 | each qubit's ops in the circuit's order | proved of the certificate's witnesses (`RespectsOrder`, Part F); computed of the programme's instructions, readouts included (`check_program_order`, lesson G6) |
-| the pulses make the circuit | proved here, for one certificate; computed by `check_cert.py` for every one |
+| the pulses make the circuit | proved here, for one certificate; computed by `check_cert` for every one |
 
 The last row is why this lesson is about one certificate: the kernel composes a 4×4 matrix in
 seconds, but the Compilation page's larger examples and the boards' rounds are far beyond a

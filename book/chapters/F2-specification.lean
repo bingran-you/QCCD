@@ -148,8 +148,8 @@ that, because each row checks one move against that same replay. Only `EventsSor
 
 /-!
 #### Exercise 2 (★) `unsorted_detected`
-Prove that `bellUnsorted` breaks condition 4. (Sound.lean has no rejection lemma for it; lesson F4
-writes one.)
+Prove that `bellUnsorted` breaks condition 4. (The module `QCCDC.Cert.Sound` has no rejection
+lemma for it; lesson F4 writes one.)
 -/
 
 theorem unsorted_detected : ¬ EventsSorted bellUnsorted := by
@@ -171,7 +171,8 @@ at the dock `A0` and puts the other three on the loop, two sites apart. Each in 
 to `S0`.
 
 Here it is as Lean data, written by the same function (`lean_input`) that writes every published
-input for the panel at the end of lesson F1, from the published file `prog.qcheck.json`. The
+input for the panel at the end of lesson F1, from the published file
+[algo_rot.qcheck.json](data/algo_rot.qcheck.json). The
 `loops` field, like `hops` and `gateSites`, is read from the device:
 -/
 
@@ -522,7 +523,8 @@ Now a reorder nobody could see in the result. `fan` is a three-qubit circuit, `c
 `cx q[0],q[2]`, on `chain4`: `q0` waits in `C1`, `q1` comes in from `C0`, has its CNOT and goes
 back, then `q2` comes in from `C2`. `fanSwapped` serves `q2` first. Both CNOTs read the same
 control and write different targets, so in either order they make the same unitary (the repository
-proves it: `cxAct_comm_same_control` in `Commute.lean`, lesson F6). Every move of `fanSwapped` is a
+proves it: `cxAct_comm_same_control` in the module `QCCDC.Cert.Commute`, lesson F6). Every move of
+`fanSwapped` is a
 hop from where its ion is, every witness has its own ions together in a trap. Only the order fails.
 
 {{figure fanSwapped at=2}}
@@ -549,7 +551,8 @@ def fanSwapped : Input :=
 
 /-!
 Until 2026-10-19 the rule let exactly this through: two CNOTs sharing a control, or sharing a
-target. That day it became strict, and `Check.lean` gives the reasons. Swapping two commuting
+target. That day it became strict, and the comment on `RespectsOrder` gives the reasons. Swapping
+two commuting
 CNOTs leaves the unitary unchanged, so the half of the verdict that compares the emitted pulses
 with the circuit cannot see the swap at all; this condition is the only place it can be caught.
 And the order can matter where the unitary cannot show it: in a syndrome round, the order of an

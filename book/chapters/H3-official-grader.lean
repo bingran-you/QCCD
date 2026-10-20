@@ -18,11 +18,11 @@ open QCCDC.Cert
 
 The official service is at `https://qccd.academy/official/`. A workspace grades a design locally
 first (`qccd submit --local`), then `qccd publish` uploads the frozen bundle. The service stores
-it, and its grader runs `grade` on it -- the function in `qccd/workspace/evaluator.py`, the same
-one a local grade runs -- always under the `reference` profile (`qccd/official/worker.py`).
-Nothing the client says about its own grade is accepted.
+it, and its grader runs `grade` on it -- the official grader, the same function a local grade runs
+-- always under the `reference` profile. Nothing the client says about its own grade is
+accepted.
 
-A **bundle** is a directory of canonical JSON files (`qccd/workspace/bundle.py`):
+A **bundle** is a directory of canonical JSON files:
 
 | file | what it is |
 |---|---|
@@ -51,22 +51,22 @@ status: `passed`, `failed`, `partial`, `skipped`, `unsupported`, `timeout`, `can
 | `rules` | the final programme, replayed on the device under the task's model, passes every rule the replay checks | a failed rule; a skip other than R7b, R9, R10 or a partial other than R15 makes it `partial` |
 | `correspondence` | the final programme is the certified one with only the allowed insertions (`cool`, fresh ids), every certified instruction kept in order and unchanged | anything else |
 | `certificate_binding` | the certificate's `circuit_ops` are the **task's** circuit op by op (`check_cert.check_binding`), with its qubit count and a one-to-one map; nothing unrealised; every witness names a certified instruction with the same op stamp | any disagreement |
-| `lean_certificate` | `qcheck` accepts the certificate, against hops, gate sites and loops re-derived from the **submitted** device (`export_arch.py`, `mk_qcheck_input.py`) | `REJECTED`; `skipped` when the binding did not pass; `unsupported` with no `qcheck` installed |
-| `semantics` | `check_cert.py` (without `--qcheck`): O1, no unrealised op, the order of each qubit's ops in the programme, and O2 against the task's circuit | a problem in any of them; `partial` when O2 is not established |
+| `lean_certificate` | `qcheck` accepts the certificate, against hops, gate sites and loops re-derived from the **submitted** device (`export_arch`, `mk_qcheck_input`) | `REJECTED`; `skipped` when the binding did not pass; `unsupported` with no `qcheck` installed |
+| `semantics` | the semantic check (`check_cert`, run without the proved checker): O1, no unrealised op, the order of each qubit's ops in the programme, and O2 against the task's circuit | a problem in any of them; `partial` when O2 is not established |
 | `ler` | (memory boards) the programme runs the memory experiment; its logical error rate | a programme that does not run it |
 | `metrics` | the leaderboard's numbers | |
 
 Two details matter for R10. The Lean stage is not run on a certificate that is not bound to the
 task: checking it would prove something about some other circuit. And the semantics stage reads
-four fields of `check_cert.py`'s verdict -- `o1_transport` (which includes the witnesses checked
-against the programme's instructions and the programme's transport against the certificate's
-moves), `unrealised_ops`, `o2_semantics`, and `order`. A verdict without `order` comes from a
-`check_cert.py` older than the strict order rule, and counts as not checked.
+four fields of the semantic check's verdict -- `o1_transport` (which includes the witnesses
+checked against the programme's instructions and the programme's transport against the
+certificate's moves), `unrealised_ops`, `o2_semantics`, and `order`. A verdict without `order`
+comes from a semantic check older than the strict order rule, and counts as not checked.
 
 ## 3. The verdict, in Lean
 -/
 
-/-- How a stage ends (`STAGE_STATUSES` in `evaluator.py`). `partial` is a word Lean reserves,
+/-- How a stage ends (the official grader's `STAGE_STATUSES`). `partial` is a word Lean reserves,
 so that constructor is written `«partial»`. -/
 inductive Status where
   | passed | failed | «partial» | skipped | unsupported | timeout | cancelled | internalError
@@ -99,16 +99,18 @@ a stage it never reached. -/
 def Report.status (r : Report) (s : Stage) : Status :=
   ((r.stages.find? (fun p => p.1 = s)).map Prod.snd).getD .skipped
 
-/-- `_report` in `evaluator.py`: eligible when the profile is `reference` and every required check
+/-- The official grader's rule (`_report`): eligible when the profile is `reference` and every required check
 `passed`. Anything else -- `skipped`, `unsupported`, `partial`, `timeout`, `cancelled`,
 `internal_error` -- is not a pass. -/
 def Report.eligible (r : Report) : Bool :=
   r.profile == "reference" && r.required.all (fun s => r.status s == .passed)
 
 /-!
-Here is a real grade: the GHZ starter board (`ghz4@1`, the four-qubit GHZ circuit), compiled on
-its starter device, the four-trap chain, and graded under the reference profile by
-`evaluator.py` from a fresh clone of the repository, on 2026-10-20. Every stage passed.
+Here is a real grade: the GHZ starter board ("GHZ state on four qubits (starter)", the
+four-qubit GHZ circuit), compiled onto a new workspace's starter design, the four-trap chain, and
+graded under the reference profile with `qccd submit --local --board GHZ`, in a workspace made
+from a fresh clone of the repository, on 2026-10-20 (lesson H4 does it step by step). Every stage
+passed.
 
 That board's circuit is byte for byte the Compilation page's `algo_ghz` (both files have the
 SHA-256 `a6c1803b...`), and the bundle's certificate is the same certificate as the one you proved
@@ -174,7 +176,7 @@ CERT.LEAN_REJECTED  two ops sharing a qubit are out of order: op 2 (cx [1, 2]) c
 ```
 
 and the semantics stage reported O1 (`op 3: operands not co-located at t=14`). Its `order` was
-`ok`: `check_cert.py`'s order check reads the **programme**, which was not touched; only the
+`ok`: the semantic check's order check reads the **programme**, which was not touched; only the
 certificate lies.
 -/
 
@@ -252,13 +254,13 @@ theorem draft_never_eligible {r : Report} (h : r.profile ≠ "reference") : r.el
 /-!
 ## 6. The certificate chain, as the code runs it
 
-`grade` runs the last three certificate stages like this (`evaluator.py`): under any profile
+The official grader runs the last three certificate stages like this: under any profile
 but `reference` all three are `skipped`. Otherwise, `ready` says the bundle has a certificate
 and a certified programme (the `bundle` stage already refuses one that lacks either file, and
 `grade` checks again here). Without them the binding `failed`, and the other two are `skipped`.
 With them the binding is the binding check's result; the Lean stage is `skipped` when the
-binding did not pass and `qcheck`'s result otherwise; the semantics stage is `check_cert.py`'s
-result. Below, `binding`, `lean` and `sem` are what each check would say if it ran.
+binding did not pass and `qcheck`'s result otherwise; the semantics stage is the semantic
+check's result. Below, `binding`, `lean` and `sem` are what each check would say if it ran.
 -/
 
 def certChain (profile : String) (ready : Bool) (binding lean sem : Status) :
@@ -293,10 +295,10 @@ theorem lean_stage_needs_binding {p : String} {ready : Bool} {b l s : Status}
 /-!
 ## 7. The semantics stage's own rule
 
-The semantics stage turns `check_cert.py`'s verdict into a status like this:
+The semantics stage turns the semantic check's verdict into a status like this:
 -/
 
-/-- What the semantics stage reads from `check_cert.py --json`. -/
+/-- What the semantics stage reads from the semantic check's verdict. -/
 structure SemVerdict where
   o1Ok : Bool          -- `o1_transport` is `"ok"`
   allRealised : Bool   -- `unrealised_ops` is 0
@@ -326,7 +328,7 @@ theorem semantics_needs_order {v : SemVerdict} (h : semStage v = .passed) :
 ## 8. A real report, and how to read one
 
 `GET https://qccd.academy/official/v1/submissions/<id>/report` returns the latest report of a
-submission (`qccd/official/service.py`): a public submission's to anyone, a private one's to the
+submission: a public submission's to anyone, a private one's to the
 account that submitted it, and `409 not_ready` before it is graded. It is the object `grade`
 returns, stored as it was. The GHZ report above, shortened:
 

@@ -145,7 +145,8 @@
     }
     return doc;
   }
-  var figs = Array.prototype.slice.call(document.querySelectorAll('figure.leanfig'));
+  // a {{gadget}} figure is a design page drawn as built, with no Lean value behind it
+  var figs = Array.prototype.slice.call(document.querySelectorAll('figure.leanfig:not([data-kind="gadget"])'));
   var figLines = {}, figObjs = new Map();
   function drawFigures(messages) {
     if (!window.BookFigure || !figs.length) return;
@@ -248,9 +249,12 @@
       }
       if (text.startsWith('--', i)) { while (i < text.length && text[i] !== '\n') i++; continue; }
       if (text.startsWith('/-', i)) { depthC = 1; cStart = line; i += 2; continue; }
-      if (ch === '"') {
+      if (ch === '"') {                               // a Lean string may run over several lines
         var s0 = line; i++;
-        while (i < text.length && text[i] !== '"' && text[i] !== '\n') i += text[i] === '\\' ? 2 : 1;
+        while (i < text.length && text[i] !== '"') {
+          if (text[i] === '\n') line++;
+          i += text[i] === '\\' ? 2 : 1;
+        }
         if (text[i] !== '"') { out.push({ line: s0, text: 'This string is not closed: a " is missing.' }); }
         i++; continue;
       }

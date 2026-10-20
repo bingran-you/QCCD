@@ -23,7 +23,7 @@ Part E goes on the same way: programmes as data (E2), the rules as statements Le
 ## 1. A device document
 
 Here is one node, one segment and one zone type of the device `chain4`, from its document
-(`qccd/site/compiled/chain4.arch.json` in the repository; `...` marks fields left out):
+(`chain4.arch.json`; `...` marks fields left out):
 
 ```
 { "id": "C1", "pos": [1.0, 0.0], "kind": "site", "capacity": 2, "zone_type": "trap", ..., "degree": 2, ... }
@@ -227,8 +227,8 @@ theorem c1_neighbours : neighbours chain4 "C1" = ["C0", "C2"] := by
 /-!
 ## 4. Junctions are a matter of degree (R18)
 
-Rule R18 says: "a node is a junction only if three or more trap axes meet at it"
-(`qccd/verify/rules.py`). The rule language says it more bluntly: "Whatever a node is called,
+Rule R18, as the platform's rule checker states it, says: "a node is a junction only if
+three or more trap axes meet at it". The rule language says it more bluntly: "Whatever a node is called,
 it is a junction exactly when three or more rails meet at it." The platform's device keeps its
 junctions that way, as the nodes of degree at least three, and the junction rule R2 and the
 cost of crossing a junction both read that degree, never the node's `kind`.
@@ -298,8 +298,8 @@ theorem spur_makes_junction (d : Device) (s : Segment) (n : String)
 
 Part F's checker decides whether a compiler's account of a programme holds. It never takes the
 compiler's word for what the machine can do: the moves a device allows, its **hops**, are read
-out of the device document by a short Python function, `trap_hops` in
-`Compiler/bridge/mk_qcheck_input.py`. A hop is an ordered pair of sites one machine cycle
+out of the device document by a short Python function, `trap_hops`, in the builder of the
+checker's device facts (`mk_qcheck_input`). A hop is an ordered pair of sites one machine cycle
 apart. In the function's own words: an ion never rests on a junction, so a hop leaves a trap,
 crosses only junctions, and lands on a trap -- where a junction is what R18 says it is, a bare
 junction node or a site where three or more rails meet.
@@ -352,7 +352,7 @@ def hops (d : Device) : List (String × String) :=
 /-!
 The Bell pair that lesson F1 proves was compiled for `chain4`, and its certificate carries the
 device's hops in the field `hops`. Here is that list, copied from the certificate
-(`qccd/site/compiled/bell/prog.qcheck.json`, and `bell` in [lesson F1](2.1-certificates.html)).
+([bell.qcheck.json](data/bell.qcheck.json), and `bell` in [lesson F1](2.1-certificates.html)).
 -/
 
 def bellHops : List (String × String) :=
@@ -395,7 +395,8 @@ def ringHops : Studio :=
 {{studio ringHops}}
 
 The published certificates of the CX on `grid2x3` and the SWAP on `ring6d` carry these hop
-lists (`qccd/site/compiled/cx/prog.qcheck.json` and `.../swap/prog.qcheck.json`), copied here.
+lists ([cx.qcheck.json](data/cx.qcheck.json) and [swap.qcheck.json](data/swap.qcheck.json)),
+copied here.
 -/
 
 def cxHops : List (String × String) :=

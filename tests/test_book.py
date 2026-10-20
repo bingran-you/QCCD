@@ -179,7 +179,8 @@ def test_the_tutorials_lean_parts_keep_their_shape_and_their_progress_ids():
     """The Learn page (qccd/site/progress.py) reads tutorial_parts(); a reader's solved exercises
     are stored under these ids, so they never change."""
     parts = book.tutorial_parts()
-    assert [p["part"] for p in parts] == ["E", "F", "G", "H", "I"]
+    assert [p["part"] for p in parts] == [p["part"] for p in book.outline()["parts"] if p.get("status") != "hidden"]
+    assert [p["part"] for p in parts][:5] == ["E", "F", "G", "H", "I"]
     f1 = [l for p in parts for l in p["lessons"] if l["id"] == "F1"][0]
     assert f1["href"] == "../book/2.1-certificates.html" and f1["live"] is True
     assert f1["exercises"] == [f"book:V2.1.ex{i}" for i in range(1, 9)]
@@ -203,6 +204,19 @@ def test_a_lesson_page_reads_as_the_tutorial_not_a_book(tmp_path):
         assert f"Part {part}" in text and c["id"] in text and "Tutorial" in text
     index = (tmp_path / "book" / "index.html").read_text(encoding="utf-8")
     assert "../learn/#part-E" in index and "refresh" in index      # the first part with a live lesson
+
+
+def test_no_lesson_shows_a_repository_path():
+    """The website says nothing about the repository it was built from: no live lesson's page
+    shows a path into the tree or a source file's name, in its prose or in the code a reader is
+    given (the same pattern as the site walk's rendered-page probe)."""
+    bad = {}
+    for _, c in LIVE:
+        ch = book.parse_chapter(book.BOOK / c["source"], c["slug"], c.get("store"), c.get("ids"))
+        hits = book.reader_paths(ch)
+        if hits:
+            bad[c["id"]] = [h for _, h in hits]
+    assert not bad, bad
 
 
 def test_every_exercise_has_a_progress_id_the_server_accepts():

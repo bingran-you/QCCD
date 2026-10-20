@@ -157,8 +157,8 @@ def occupancy (pos : Pos) (n : String) : Nat :=
   (pos.filter fun p => p.2 == n).length
 
 /-!
-Rule R1, as the platform's rule checker states it (`qccd/verify/rules.py`): "occupancy(site)
-<= site.capacity at every instant". In Lean, over the states of E2's replay: in every state
+Rule R1, as the platform's rule checker states it: "occupancy(site) <= site.capacity at
+every instant". In Lean, over the states of E2's replay: in every state
 `pos` of the programme, every node `n` of the device that is a site holds at most its capacity.
 -/
 

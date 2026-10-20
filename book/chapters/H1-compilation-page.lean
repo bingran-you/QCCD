@@ -33,7 +33,7 @@ For every one of them, two files are published beside this lesson, under `data/`
 * `<id>.qcheck.json`: what the checker reads. It is the certificate's fields together with
   three facts read out of the **device's own document**, never from the compiler: the traps
   that can gate (`gate_sites`), the pairs of traps one cycle apart (`hops`), and each closed
-  loop's order (`loops`). The repository's `Compiler/bridge/mk_qcheck_input.py` makes it.
+  loop's order (`loops`). The device facts' builder, `mk_qcheck_input`, makes it.
 
 Here are the 19, with what is in each checker input:
 
@@ -265,7 +265,8 @@ theorem visitors_go_home :
 `measure` and `reset` have one op each and **no** witness. That is not an omission: lesson F1's
 condition 9, `Covered`, asks a witness only of an op that is not a measurement, a reset or a
 barrier (`needsWitness`). Where a readout happens, and that it happens in its place, is the
-semantic half's business (Part G, and `check_cert.py`'s readout comparison). So a certificate
+semantic half's business (Part G, and the readout comparison of the semantic check, `check_cert`).
+So a certificate
 with nothing to witness, nothing to move and nothing left unrealised holds as soon as its
 qubit map is sound -- for every such certificate, not just these two.
 -/
@@ -345,50 +346,50 @@ under it.
 A proof in this page and a run of `qcheck` decide the same `check` on the same input. To run
 `qcheck` yourself:
 
-**Step 1: get the checker.** It is a Lean program. Lean's installer, elan, fetches the Lean it
-is pinned to (`leanprover/lean4:v4.29.0-rc2`) the first time it is needed. Install elan (on
-macOS, `brew install elan-init`; elsewhere, see
-[github.com/leanprover/elan](https://github.com/leanprover/elan)), then build the checker from
-the repository. It needs no Mathlib; once Lean is installed, the build takes seconds.
+**Step 1: get the checker.** It is a Lean program, built from the repository's Lean sources.
+Lean's installer, elan, fetches the Lean it is pinned to (`leanprover/lean4:v4.29.0-rc2`) the
+first time it is needed: install elan (on macOS, `brew install elan-init`; elsewhere, see
+[github.com/leanprover/elan](https://github.com/leanprover/elan)). Then clone the repository's
+`compiler` branch (its default branch, `main`, does not have the checker yet):
 
 ```
 git clone -b compiler https://github.com/yezhuoyang/QCCD
-cd QCCD/Compiler/lean/checker
-lake build
 ```
 
-The checker is then `.lake/build/bin/qcheck` (on Windows, `.lake\build\bin\qcheck.exe`). These
-three commands are the same on Windows, Linux and macOS. Clone the `compiler` branch: the
-repository's default branch, `main`, does not have the checker package yet.
+and run `lake build` in its **checker package**. The compiler's README in the repository says
+where that is (its section "Build and run"), and so does the workspace's `qccd toolchain`
+(lesson H4). The checker needs no Mathlib; once Lean is installed, the build takes seconds. It
+makes one program, `qcheck` (`qcheck.exe` on Windows). This is the same on Windows, Linux and
+macOS.
 
 **Step 2: get the file.** Save [algo_ghz.qcheck.json](data/algo_ghz.qcheck.json), or any
 row's file from the panel above.
 
-**Step 3: run it**, with the path to wherever you saved the file:
+**Step 3: run it.** The program the build made, on the file you saved:
 
 ```
-.lake/build/bin/qcheck algo_ghz.qcheck.json          # macOS, Linux
-.lake\build\bin\qcheck.exe algo_ghz.qcheck.json      # Windows
+qcheck algo_ghz.qcheck.json
 ```
 
-On the published file it prints
+(Give each its full path, or run it from the folder it is in.) On the published file it prints
 
 ```
 qcheck circuit on chain4
   8 circuit ops, 4 gate witnesses, 3 moves, 0 rotations, 4 qubits
   ACCEPTED -- the program follows its certificate: mapping, transport, co-location of
-  each op's own ions, order (QCCDC.Cert.check_sound).  It names no gate: which gate fires
-  is decided by comparing the emitted pulses with the circuit (bridge/check_cert.py), and
-  R10 needs both.
+  each op's own ions, order (QCCDC.Cert.check_sound).  It names no gate: ...
 ```
+
+and two more lines, which say that which gate fires is decided by comparing the emitted pulses
+with the circuit, and that R10 needs both.
 
 **Step 4: read the verdict.** `ACCEPTED` and exit status 0 mean `check` returned `true` on
 that input, so by `check_sound` the input satisfies `Implements`. `REJECTED` and exit status 1
 come with `diagnose`'s list of the conditions that failed. Exit status 2 means the command was
 used wrongly or the file is not JSON.
 
-A prebuilt `qcheck` is published for macOS on Apple silicon only, listed with its size and
-SHA-256 in `qccd/workspace/toolchain.json`. The workspace's `qccd toolchain install` fetches it
+A prebuilt `qcheck` is published for macOS on Apple silicon only, pinned with its size and
+SHA-256 in the repository's toolchain manifest. The workspace's `qccd toolchain install` fetches it
 there together with the compiler; on Windows and Linux it says there is none and to build it as
 above. When this lesson was written, that published binary had been built before two changes to
 the checker (`OwnIons`, condition 8, and the strict order of condition 11), and the pinned
@@ -402,14 +403,15 @@ You have checked the O1 half of R10 for each published certificate: mapping, tra
 co-location of each op's own ions, order. That is a theorem about the **checker input**. Three
 things tie it to the Compilation page's verdict, and none of them is in these two files:
 
-* that the certificate describes the **source circuit** (`check_cert.py`'s binding: its
-  `circuit_ops` are the QASM op by op, its map covers the QASM's qubits);
+* that the certificate describes the **source circuit** (the binding, `check_binding`, of the
+  semantic check `check_cert`: its `circuit_ops` are the QASM op by op, its map covers the
+  QASM's qubits);
 * that it describes the **programme** (every witness names a real instruction of the right
   kind, and the programme's own transport equals the certificate's moves);
 * O2, which gates the pulses make (Part G).
 
 For those you need the circuit, the device and the programme, and the page publishes the
-circuit as text but not the programme as a file. Lesson H4 regenerates all of them from the
-repository with the published compiler, shows they are the same certificates as the ones
-above, and runs the whole of R10 on them.
+circuit as text but not the programme as a file. Lesson H4 compiles the GHZ chain again, in a
+workspace of your own with the published compiler, has the whole of R10 checked on it, and shows
+that its certificate is the one above.
 -/

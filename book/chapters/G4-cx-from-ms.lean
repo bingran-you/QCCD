@@ -162,7 +162,7 @@ VZ 4 * R 2 (-2) = H`; `mul_zero_right`; and lesson F1's Bell certificate `bell`.
 def CX : Matrix (Fin 4) (Fin 4) ℂ := !![1, 0, 0, 0; 0, 1, 0, 0; 0, 0, 0, 1; 0, 0, 1, 0]
 ```
 
-`Native.lean`'s CNOT, qubit 0 the control: it swaps the basis states 10 and 11.
+`QCCDC.Pulse.Native`'s CNOT, qubit 0 the control: it swaps the basis states 10 and 11.
 -/
 
 def CX : Mat := [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]]
@@ -170,7 +170,7 @@ def CX : Mat := [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]]
 /-!
 ## 2. Five pulses and a phase
 
-`Decompose.lean` states it as "CX = e^{−iπ/4} · [Ry(−π/2)⊗I] · [Rx(−π/2)⊗Rx(−π/2)] · MS(π/2) ·
+`QCCDC.Pulse.Decompose` states it as "CX = e^{−iπ/4} · [Ry(−π/2)⊗I] · [Rx(−π/2)⊗Rx(−π/2)] · MS(π/2) ·
 [Ry(π/2)⊗I]", with "Matrix order: the rightmost factor is the first pulse in time. One MS gate
 and four single-qubit pulses":
 
@@ -184,7 +184,7 @@ theorem cx_decomp :
           * kron (Ry (Real.pi / 2)) 1)
 ```
 
-`Rx θ` is `R θ 0` and `Ry θ` is `R θ (π/2)`. The compiler's `decompose_cx` (`gateset.ml`) emits
+`Rx θ` is `R θ 0` and `Ry θ` is `R θ (π/2)`. The compiler's lowering, `decompose_cx`, emits
 the same five pulses in time order, the reverse of the matrix order, and records the phase:
 
 ```
@@ -202,7 +202,7 @@ let decompose_cx ~(control : int) ~(target : int) : decomposed =
   }
 ```
 
-In eighths of a turn: π/2 is 2, −π/4 is −1. In `Decompose.lean` the proof is Mathlib algebra,
+In eighths of a turn: π/2 is 2, −π/4 is −1. In `QCCDC.Pulse.Decompose` the proof is Mathlib algebra,
 with `cos (π/4)` kept symbolic and the heartbeat limit raised (`set_option maxHeartbeats 2000000`);
 here it is a computation.
 
@@ -227,8 +227,8 @@ factor are the same gate as far as any experiment on them can tell:
 def UpToPhase (A B : Mat) : Prop := ∃ c : Zω, c * conj c = 1 ∧ A = c • B
 
 /-!
-This is the equality `check_cert.py` uses when it compares full matrices (`same_up_to_phase` in
-`unitary.py`: "Is `a = e^{iα}·b`?", with a tolerance of 10⁻⁸ on every entry), and the one a
+This is the equality the semantic check, `check_cert`, uses when it compares full matrices
+(`same_up_to_phase`: "Is `a = e^{iα}·b`?", with a tolerance of 10⁻⁸ on every entry), and the one a
 stabilizer tableau has built in (lesson G5). An `∃` is proved by naming the witness: `⟨c, p, q⟩`
 gives `c` and proofs of the two facts about it.
 
@@ -244,7 +244,8 @@ theorem cx_up_to_phase :
 /-!
 ## 4. When a phase is not global
 
-Then why does the compiler track the phase at all? `gateset.ml` says:
+Then why does the compiler track the phase at all? Its lowering says, where it defines a
+decomposed gate:
 
 ```
 (* A decomposed gate: its pulses in TIME order, plus the global phase the identity
@@ -256,7 +257,7 @@ Then why does the compiler track the phase at all? `gateset.ml` says:
 A phase is global only for the whole programme. Make a gate controlled, and its phase applies
 when the control is 1 and not when it is 0: it has become a relative phase, which experiments do
 see. Take X and ω·X: the same gate on their own. Controlled, they are not. `ctrl U` is the 4×4
-matrix that does U to qubit 1 when qubit 0 is 1 (`ctrl` in `unitary.py`).
+matrix that does U to qubit 1 when qubit 0 is 1 (the semantic check's helper `ctrl`).
 -/
 
 /-- Row `i` of a matrix, and entry `(i, j)` (0 past the end). -/
@@ -343,7 +344,7 @@ theorem not_phase_of_zero {A B : Mat} {i j : Nat}
 
 Lesson F1's certificate has a witness for the CNOT: op 1, at cycle 8, in trap `C0`, on ions `q0`
 and `q1`, `q0` (qubit 0) the control. The compiler wrote its pulses beside it in
-`bell/prog.qcert.json`, in time order:
+[bell.qcert.json](data/bell.qcert.json), in time order:
 
 ```
 "pulses":["R(1.5708,1.5708)@q0","MS(1.5708)@q0,q1","R(-1.5708,0)@q0",
@@ -381,8 +382,8 @@ theorem middle_beams :
 /-!
 ## 6. CZ
 
-Most other two-qubit gates are built from the CNOT. `Compiler/ocaml/lib/gateset_composites.ml` lowers
-`cz` as a CNOT between two Hadamards on the target:
+Most other two-qubit gates are built from the CNOT. The compiler's lowering of composite gates
+writes `cz` as a CNOT between two Hadamards on the target:
 
 ```
   | "cz", [ c; t ], _ -> seq [ named "h" t; cxg c t; named "h" t ]
@@ -430,5 +431,5 @@ theorem cz_from_witnesses :
 The CNOT is five native pulses times e^(−iπ/4), exactly; that is equality up to a global phase,
 the right equality for a whole programme and the wrong one for a part that will be controlled.
 The Bell certificate's CNOT witness carries pulses that make the CNOT. Lesson G5 checks the same
-pulses the way `check_cert.py` does, with a stabilizer tableau, which cannot see a phase at all.
+pulses the way `check_cert` does, with a stabilizer tableau, which cannot see a phase at all.
 -/
