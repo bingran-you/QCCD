@@ -57,11 +57,14 @@ def bell : Input :=
     loops := [] }
 
 /-!
-Here is that certificate as Lean replays it. Press ▶. Qubit 0 (ion `q0`) has its Hadamard in
-`C1` at cycle 2, hops to `C0` in cycle 3, and the CNOT fires in `C0` at cycle 8. Nothing in the
-figure is drawn from the certificate's own say-so: every position is the checker's replay
-(`posAt`), and every tick or cross under it is one of the checker's conditions, evaluated on that
-move or that witness. Edit `bell` above and the figure follows.
+Here is that certificate, played in the studio -- the same animation as everywhere else on this
+site. The page asks Lean to replay `bell` with the checker's own definitions, and turns what Lean
+reports into a studio programme: the ions where `init` puts them, each move in cycle order, each
+gate in the trap its witness names, and a cooling step before the two-qubit gate (a certificate
+leaves cooling to the cooling pass). Press Play: qubit 0 (ion `q0`) has its Hadamard in `C1`, hops
+to `C0`, and the CNOT fires in `C0`. Under the studio, each row is one of the checker's conditions
+on one move or one witness, as Lean evaluated it; click a row and the studio steps there. Edit
+`bell` above and the figure follows.
 
 {{figure bell}}
 
@@ -94,8 +97,8 @@ after every move before `t`, before every move at or after it. `look` finds one 
 
 /-!
 The move is stamped `t = 3`: `q0` is still in `C1` at the start of cycle 3, and in `C0` from
-the start of cycle 4. Step the figure from cycle 3 to cycle 4 and watch it go: that step is
-Exercise 2.
+the start of cycle 4. Step the studio across that move and watch `q0` go: Exercise 2 is that
+step, stated in Lean.
 
 {{figure bell at=3}}
 
@@ -105,7 +108,7 @@ kernel is the only thing trusted.
 
 #### Exercise 2 (★) `q0_moves_in_cycle_3`
 Prove both halves: at the start of cycle 3 `q0` is in `C1`, and at the start of cycle 4 it is
-in `C0` -- the two frames of the figure above. (`∧` is "and"; `⟨p, q⟩` proves it from two proofs.)
+in `C0` -- either side of the move in the studio above. (`∧` is "and"; `⟨p, q⟩` proves it from two proofs.)
 -/
 
 theorem q0_moves_in_cycle_3 :
@@ -210,8 +213,9 @@ def bellLate : Input := { bell with moves := [⟨9, "q0", "C1", "C0"⟩] }
 #eval diagnose bellLate
 
 /-!
-Go to cycle 8: the CNOT's witness says both ions are in `C0`, and the replay has `q0` still in
-`C1`. That red row is exactly what Exercise 5 asks you to prove.
+Click the CX row: the studio steps to the CNOT, and `q0` is still in `C1` -- the certificate says
+the hop comes later. The studio's own rule check flags it too (R6b: a two-qubit gate acts only on
+ions in one gate zone). The red row is exactly what Exercise 5 asks you to prove.
 
 {{figure bellLate at=8}}
 
@@ -236,8 +240,8 @@ theorem late_rejected : check bellLate = false :=
 
 /-!
 **The teleport.** Start `q0` in `C3` (its Hadamard there too) and move it straight to `C0`.
-The device has no such hop:
-in the figure the claimed jump is drawn as the certificate states it, across two traps.
+The device has no such hop,
+and the studio, asked to make that move, refuses it: there is no segment between `C3` and `C0`.
 
 {{figure bellTeleport at=3}}
 
@@ -257,7 +261,9 @@ theorem teleport_rejected : check bellTeleport = false :=
 /-!
 **Somebody else's ions.** The CNOT's witness names `q1` twice and leaves `q0` out. The two
 named ions are certainly together, so condition 7 holds; condition 8 does not -- one green tick
-and one red cross on the same row.
+and one red cross on the same row. Notice what the studio says: nothing is wrong. It moves and
+gates whatever ions it is told to; only the certificate checker knows which ions the op's qubits
+are on.
 
 {{figure bellForeign at=8}}
 -/
@@ -305,8 +311,9 @@ Every compiled example on the Compilation page has its certificate published bes
 input the checker reads from it. The panel below turns each input into a Lean value, exactly as
 the checker parses it, and proves by `decide +kernel` that it holds: the same theorem as
 Exercise 4, for certificates you did not write. Each row links the two files, so you can run the
-command-line checker on them too and compare, and **watch** opens the certificate's own figure:
-the ring's rotations, the grid's junctions, every gate in its trap.
+command-line checker on them too and compare, and **watch** opens the real compiled programme in
+the studio -- the same page the Compilation page embeds, the circuit in step with it -- with the
+certificate's rows from Lean under it.
 
 {{certificates}}
 

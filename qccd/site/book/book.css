@@ -89,8 +89,13 @@ figure.leanfig .figwait{font:13px var(--sans);color:var(--ink3);padding:8px 0}
 .fighead b{font-family:var(--mono);color:var(--head)}
 .figverdict{font-weight:600;margin-left:auto}
 .figverdict.ok{color:#1d6b40}.figverdict.bad{color:#9b2c1f}
-.figbody{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;overflow-x:auto}
-.figdev,.figcirc{display:block;max-width:100%;height:auto;font-family:var(--sans)}
+.figbody{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.studiobox{flex:1 1 520px;min-width:300px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.studiobox iframe.studio{display:block;width:100%;height:430px;border:0}
+.figside{flex:0 1 300px;min-width:240px}
+.figcirc{display:block;max-width:100%;height:auto;font-family:var(--sans)}
+.studiosays p{font:12.5px/1.45 var(--sans);margin:8px 0 0;padding:6px 9px;border-radius:7px}
+.studiosays p.ok{background:#e2f3e8;color:#1d6b40}.studiosays p.bad{background:#fbe7e4;color:#9b2c1f}
 .figctl{display:flex;gap:6px;align-items:center;margin:8px 0 4px;font:13px var(--sans);color:var(--ink2)}
 .figctl button{font:13px var(--sans);border:1px solid var(--line);background:var(--card);border-radius:6px;
   min-width:32px;padding:3px 8px;cursor:pointer;color:var(--ink)}

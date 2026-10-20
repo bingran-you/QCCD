@@ -158,7 +158,7 @@
       var dev = data.devices[fig.arch];
       if (!dev) { f.innerHTML = '<div class="figwait">No drawing of the device <code>' + esc(fig.arch) + '</code>.</div>'; return; }
       var o = figObjs.get(f);
-      if (!o) { o = BookFigure.create(f); figObjs.set(f, o); }
+      if (!o) { o = BookFigure.live(f, fig.arch); figObjs.set(f, o); }
       o.update(fig, dev);
     });
   }
@@ -407,7 +407,7 @@
               if (sev(m.severity) === 'info' && /^\s*\{/.test(m.text || '')) { try { got = JSON.parse(m.text); } catch (e) { /* skip */ } }
             });
             if (!got || !data.devices[got.arch]) { fig.innerHTML = '<div class="figwait">Lean could not replay ' + esc(c.id) + '.</div>'; return; }
-            var o = BookFigure.create(fig);
+            var o = BookFigure.compiled(fig, c.id);
             figObjs.set(fig, o);
             o.update(got, data.devices[got.arch]);
             if (pending) schedule(50);

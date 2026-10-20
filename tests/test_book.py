@@ -118,7 +118,7 @@ def test_the_page_carries_the_lean_byte_for_byte(tmp_path):
     the browser never entity-decodes: an HTML-escaped `=>` (`=&gt;`) once made every restated
     statement with a `>` fail to parse, and an engine that dropped parse errors then counted the
     exercise solved with its statement unchecked."""
-    book.build(tmp_path)
+    book.build(tmp_path, studio=False)
     for vol, c in LIVE:
         ch = book.parse_chapter(book.BOOK / c["source"], c["slug"])
         page = (tmp_path / "book" / f'{c["slug"]}.html').read_text(encoding="utf-8")

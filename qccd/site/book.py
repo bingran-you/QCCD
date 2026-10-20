@@ -447,7 +447,59 @@ def index_body(book: dict) -> str:
             + intro + "".join(vols) + engine)
 
 
-def build(out: Path, packs: Path | None = None) -> list[Path]:
+def studio_pages(dst: Path) -> list[Path]:
+    """The studio pages the figures embed, made by the platform's own renderer -- the same
+    engine, animation and transport as every studio page on the site -- in its embed mode:
+
+    * ex/dev-<arch>.html: the device, no programme; a chapter figure loads into it the programme
+      Lean's replay of a certificate describes;
+    * ex/<id>.html: a published example's REAL compiled programme with its circuit through the
+      checked source map, exactly as the Compilation page renders it (build_compiled_pages)."""
+    from . import build as site
+    from ..__main__ import main as qccd_main
+    from ..arch import Architecture
+    from ..cost import corrected_model
+    from ..ir.source_map import build as build_source
+    from ..ir.tsir import TSIR
+    from ..verify import verify
+    from ..viz.render import render_html
+    ex = dst / "ex"
+    ex.mkdir(parents=True, exist_ok=True)
+    out = []
+
+    def embed(p: Path) -> None:
+        s = p.read_text(encoding="utf-8")
+        i = s.rindex("</body>")
+        p.write_text(s[:i] + site.HASH_JS + s[i:], encoding="utf-8")
+        out.append(p)
+
+    for f in sorted(COMPILED.glob("*.arch.json")):
+        if f.name.endswith(".expanded.json"):
+            continue
+        arch = json.loads(f.read_text(encoding="utf-8"))["name"]
+        p = ex / f"dev-{arch}.html"
+        if qccd_main(["studio", "--seed", str(f), "--no-all-templates", "-o", str(p)]) not in (0, None):
+            raise RuntimeError(f"qccd studio failed for {f.name}")
+        embed(p)
+    wanted = {c["id"] for c in published_cases()}
+    model, archs = corrected_model(), {}
+    for g in site.load_compiled() + site.load_algo():
+        if g["id"] not in wanted:
+            continue
+        dev = g["meta"].get("device", "ring6d")
+        if dev not in archs:
+            archs[dev] = Architecture.from_json(json.loads((COMPILED / f"{dev}.arch.json").read_text(encoding="utf-8")))
+        prog = TSIR.load(g["dir"] / "prog.cooled.tsir.json")
+        source = build_source(prog, g["cert"], g["dir"] / "circuit.qasm")
+        res = verify(prog, archs[dev], model, check_metrics=False).result
+        p = ex / f'{g["id"]}.html'
+        render_html(archs[dev], prog, res, model, p, kicker="COMPILED", headline=f'{g["meta"]["title"]} on {dev}',
+                    lede=g["meta"]["note"], source=source, open_pane="Q")
+        embed(p)
+    return out
+
+
+def build(out: Path, packs: Path | None = None, studio: bool = True) -> list[Path]:
     from .build import PAGE, STYLE            # the site's own document page and stylesheet
     book = json.loads((BOOK / "book.json").read_text(encoding="utf-8"))
     css = (ASSETS / "book.css").read_text(encoding="utf-8")
@@ -489,6 +541,8 @@ def build(out: Path, packs: Path | None = None) -> list[Path]:
             if f.is_file():
                 shutil.copyfile(f, eng / "site" / f.name)
                 written.append(eng / "site" / f.name)
+    if studio:
+        written += studio_pages(dst)
     # the certificates the chapters prove, published beside them: what the page checks is a
     # file the reader can download and check again with the command-line checker
     (dst / "data").mkdir(exist_ok=True)
