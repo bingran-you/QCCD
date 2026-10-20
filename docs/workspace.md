@@ -838,8 +838,9 @@ Claude Code 2.1.199 is installed but its channel was not exercised live.
   CLI next needs it. A page on its own cannot start one, and shows *disconnected* until then. Two earlier bugs from
   this investigation are fixed: `_pid_alive` treated *access denied* as dead, and a service
   spawned inside an agent's job object could die with it (it now spawns with job breakaway).
-- **No prebuilt compiler for Intel Macs**, and a prebuilt Lean checker only for macOS on Apple
-  silicon. Elsewhere `qccd toolchain build-checker` makes `qcheck` in about a minute;
+- **No prebuilt compiler for Intel Macs**, and a prebuilt Lean checker for Windows and Linux
+  on x86-64 only (the Mac build of the current checker is not made yet). Elsewhere `qccd
+  toolchain build-checker` makes `qcheck` in about a minute;
   until then local reference grades stay `unsupported` at the certificate stage.
   `tests/test_workspace_toolchain.py` fails when `Compiler/ocaml`, or a source `qcheck` is built
   from, changes without a new release (`deploy/toolchain/README.md`).
@@ -891,13 +892,13 @@ py -m venv .venv
 .venv\Scripts\activate
 pip install -e ".[agent]"
 
-qccd toolchain install     # the prebuilt compiler, and on macOS the proved checker too
-qccd toolchain build-checker   # elsewhere: build the proved checker from source (needs Lean)
+qccd toolchain install     # the prebuilt compiler, and on Windows and Linux the proved checker too
+qccd toolchain build-checker   # on a Mac: build the proved checker from source (needs Lean)
 ```
 
 `qccd toolchain install` fetches `qccdc_cli` for Windows or Linux on x86-64 or macOS on Apple
-silicon, and `qcheck` (the Lean checker) where one is published -- macOS on Apple silicon so
-far -- from qccd.academy. It refuses each download unless its size and SHA-256 match
+silicon, and `qcheck` (the Lean checker) where one is published -- Windows and Linux on x86-64
+-- from qccd.academy. It refuses each download unless its size and SHA-256 match
 `qccd/workspace/toolchain.json`, installs it under `~/.qccd/toolchain/`, and runs it once
 (the compiler on a test circuit, the checker on a certificate it must accept and one it must
 reject). `qccd toolchain status` says which compiler and checker are in use: `QCCD_QCCDC` /

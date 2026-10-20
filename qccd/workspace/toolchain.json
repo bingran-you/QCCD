@@ -22,25 +22,33 @@
     }
   },
   "qcheck": {
-    "version": "bb1c1e19bded",
+    "version": "b92bb9c600b2",
     "source": {
       "repository": "https://github.com/yezhuoyang/QCCD",
       "paths": {
-        "Compiler/lean/Main.lean": "68e770fb50454f279dfb8f0641f3a92a310a9ab5",
-        "Compiler/lean/QCCDC/Cert": "a0ec4039d4a2311613a75b27ff0346764adae3b5",
+        "Compiler/lean/Main.lean": "499cff360899246b1c7a3c3aa7d89997a1fe3b5f",
+        "Compiler/lean/QCCDC/Cert": "f8e774cb44db47bd4ad8d10094651d6b1775beb9",
         "Compiler/lean/lean-toolchain": "05f548c1590e2e3324bb0c5158d3725682df2a81",
         "Compiler/lean/checker/lakefile.toml": "6cf4e425c1be91c1aa331d6b2679f4a3fc349b62"
       }
     },
-    "build": "Lean leanprover/lean4:v4.29.0-rc2: lake build in Compiler/lean/checker (no Mathlib), MACOSX_DEPLOYMENT_TARGET=11.0, strip -x, ad-hoc signed, gzipped (deploy/toolchain/README.md)",
+    "build": "Lean leanprover/lean4:v4.29.0-rc2: lake build in Compiler/lean/checker (no Mathlib), from git archive a1bc1dfb3c; Windows natively, Linux in deploy/toolchain/Dockerfile.qcheck-linux (debian:12-slim; runs on Debian 12 and Ubuntu 22.04); gzipped. No macOS build of this version yet: on a Mac, `qccd toolchain build-checker` (deploy/toolchain/README.md)",
     "assets": {
-      "macos-arm64": {
-        "url": "https://qccd.academy/downloads/toolchain/qcheck/bb1c1e19bded/qcheck-macos-arm64.gz",
+      "windows-x86_64": {
+        "url": "https://qccd.academy/downloads/toolchain/qcheck/b92bb9c600b2/qcheck-windows-x86_64.exe.gz",
         "encoding": "gzip",
-        "bytes": 36826241,
-        "sha256": "5b1fc39b3f0b8d4f54fd73280b3ee95e3b7c161a8ea5f551854f6dc12d653b75",
-        "unpacked_bytes": 105196544,
-        "unpacked_sha256": "6982cfc5cedef9544814d727229b06fecfd92211c67d9711164a0384857588d9"
+        "bytes": 43033648,
+        "sha256": "f8781612317d2e5351c05047ce8dabc745f6800dbde89abe6fc3be5ed496b6d5",
+        "unpacked_bytes": 140649472,
+        "unpacked_sha256": "5dc31f7d1822a17b79c4d5759e008da33aa1e8469e3b07ecd8551c61859a3b3d"
+      },
+      "linux-x86_64": {
+        "url": "https://qccd.academy/downloads/toolchain/qcheck/b92bb9c600b2/qcheck-linux-x86_64.gz",
+        "encoding": "gzip",
+        "bytes": 44256949,
+        "sha256": "709cc3a8889595f08dd718d32db624fb512dc3a5141de833dd786f9fe8530c31",
+        "unpacked_bytes": 147362552,
+        "unpacked_sha256": "4c8b7a05abe60961111658c67a3dba748f2bd94717aa48152214db7e5cb675da"
       }
     }
   }
