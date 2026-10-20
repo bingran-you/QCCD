@@ -479,6 +479,12 @@ def lesson_story(ch: Chapter) -> str:
     return ""
 
 
+def learn_section() -> str:
+    """Retired: the Lean lessons are the tutorial's Parts E-I on the Learn page (tutorial_parts).
+    Kept, empty, only until learn_page stops calling it, so no build breaks in between."""
+    return ""
+
+
 def redirect_html(target: str) -> str:
     """/book/ is the address of the tutorial's Lean lessons, not a page of its own."""
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Tutorial - QCCD studio</title>'
