@@ -375,8 +375,10 @@ let run ?(sweep = Greedy) ?placement ?(dock_all = false) (a : Arch.t) (c : Circu
       (* One dock (or undock) instruction per waveform (R22).  A generated ring's spurs
          all read `spur:inward`, so the batch is one instruction as it always was.  A
          dock drawn by hand can differ: a spur declared as its own open path is labelled
-         by its lab-frame axis, and a dock above the rail and one below it are then two
-         waveforms -- emitted as one instruction, that failed R22 on every such design.
+         by its lab-frame direction, and a dock above the rail and one below it are then
+         two waveforms -- emitted as one instruction, that failed R22 on every such
+         design.  So can a "dock" that is a chord between two loop slots: it is labelled
+         by direction too, since it is no dead end (`Route.hop_label`).
          The riders go to distinct dock traps and come back to distinct rail slots, so
          the groups do not compete for room and their order is free; first-seen order
          keeps the one-group case byte-identical. *)

@@ -4671,10 +4671,47 @@ function _onLoopSet(w) {
   return s;
 }
 
+// `rails_to_loop(dev, on_loop, node)` for every node at once, cached on the window like
+// `_onLoopSet`: node id -> how many rails join it to a node on a named path.  Only nodes
+// OFF every path are counted, which are the only ones `_hopLabel` asks about.  A spur's
+// off-path end has exactly one; a chord between two path nodes has two and is no spur.
+function _loopRails(w) {
+  var r = w._loopRails;
+  if (r) return r;
+  var on = _onLoopSet(w), segs = w.dev.segments;
+  r = w._loopRails = {};
+  for (var sid in segs) if (own(segs, sid)) {
+    var s = segs[sid], ia = own(on, s.a), ib = own(on, s.b);
+    if (ia && !ib) r[s.b] = (r[s.b] || 0) + 1;
+    else if (ib && !ia) r[s.a] = (r[s.a] || 0) + 1;
+  }
+  return r;
+}
+
+//: `HOP_ANGLE_TIE`: see `rules.py`.  V8's `Math.atan2` is its own fdlibm port, not the
+//: libm Python and OCaml call, so an angle at exactly x.5 degrees must not be decided by
+//: the last bit.
+var HOP_ANGLE_TIE = 1e-9;
+
+// `direction_label(dx, dy)`: `+x`, `-y` or `0` along an axis, `+x+y@30` off one -- the
+// angle in whole degrees counter-clockwise from +x, in [0, 360), rounded `floor(x + 0.5)`
+// after the tie nudge.  Python's `% 360` on a floor that can reach 360 is the `>= 360`.
+function _directionLabel(dx, dy) {
+  var sx = dx > RAIL_EPS ? '+x' : dx < -RAIL_EPS ? '-x' : '';
+  var sy = dy > RAIL_EPS ? '+y' : dy < -RAIL_EPS ? '-y' : '';
+  if (!sx || !sy) return (sx + sy) || '0';
+  var deg = Math.atan2(dy, dx) * RAD_TO_DEG;
+  if (deg < 0.0) deg += 360.0;
+  var r = Math.floor(deg + 0.5 + HOP_ANGLE_TIE);
+  if (r >= 360) r -= 360;
+  return sx + sy + '@' + r;
+}
+
 // `hop_label(dev, on_loop, src, dst, seg)`: a named path gives `L0:+1`, a rail that leaves
-// a path for a dock gives `spur:inward` / `spur:outward`, and everything else falls back to
-// the lab-frame axis.  The fall-through order is Python's and is load-bearing: a segment
-// that NAMES a loop it is not actually on skips the spur branch entirely.
+// a path for a dead end gives `spur:inward` / `spur:outward`, and everything else falls
+// back to the lab-frame direction.  The fall-through order is Python's and is load-bearing:
+// a segment that NAMES a loop it is not actually on skips the spur branch entirely, and a
+// chord (an off-path trap with two rails to the path) skips it too.
 function _hopLabel(w, m) {
   var dev = w.dev, seg = dev.segments[m.seg];
   var loop = seg.loop === undefined ? null : seg.loop;
@@ -4691,14 +4728,12 @@ function _hopLabel(w, m) {
     }
   }
   var on = _onLoopSet(w);
-  if (loop === null && own(on, m.src) !== own(on, m.dst)) {
+  if (loop === null && own(on, m.src) !== own(on, m.dst) &&
+      _loopRails(w)[own(on, m.src) ? m.dst : m.src] === 1) {
     return own(on, m.src) ? 'spur:inward' : 'spur:outward';
   }
   var a = _xyOf(dev.nodes[m.src].pos), b = _xyOf(dev.nodes[m.dst].pos);
-  var dx = b[0] - a[0], dy = b[1] - a[1];
-  var label = (dx > RAIL_EPS ? '+x' : dx < -RAIL_EPS ? '-x' : '') +
-              (dy > RAIL_EPS ? '+y' : dy < -RAIL_EPS ? '-y' : '');
-  return label || '0';
+  return _directionLabel(b[0] - a[0], b[1] - a[1]);
 }
 
 // R22: one transport cycle is one waveform.
@@ -4775,7 +4810,9 @@ function _makeChecker(dev, loops, classes, ctx) {
     _dir: {},
     // `loop_node_set(dev)`, built on first use and then constant: the device cannot
     // change inside one `evaluate`, so R22 walks the loops once rather than per cycle.
-    _onLoop: null
+    _onLoop: null,
+    // `rails_to_loop` per off-path node, built on first use for the same reason
+    _loopRails: null
   };
   var violations = [], byRule = {}, only = ctx.rules || null;
   var names = Object.keys(RULE_FNS);

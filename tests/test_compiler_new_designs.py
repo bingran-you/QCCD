@@ -13,6 +13,15 @@ in which ions moved in different directions:
 Each case here failed R22 with compiler f52d3ba63b9a.  The program is compiled exactly as the
 workspace does it (export, qccdc_cli rotate on a closed loop else compile, cooling) and
 replayed with every rule on.
+
+Two more shapes failed it once R22's hop label stopped being coarser than the motion (2026-10,
+issues #18 and #19), with the compiler of a9ead69, which labelled hops as coarsely as the
+verifier then did:
+
+  * rails at 30 and 60 degrees -- both read `+x+y` under the sign-only label, and the router
+    played hops on both in one cycle;
+  * a torus declared as one loop through its junctions -- a trap between two loop junctions
+    read as a spur, so two ions leaving two such traps in opposite directions shared a cycle.
 """
 
 from __future__ import annotations
@@ -75,7 +84,49 @@ def line_docks(width, verticals):
     return doc
 
 
+def slanted_chain(n):
+    """A chain (one open path) whose rails alternate 60 and 30 degrees: every hop reads
+    `+x+y` under the sign-only label R22 had until issue #19, and the router put hops on
+    both kinds of rail into one cycle."""
+    s30 = (math.cos(math.radians(30)), math.sin(math.radians(30)))
+    s60 = (math.cos(math.radians(60)), math.sin(math.radians(60)))
+    return bent_chain(n, {i: (s30 if i % 2 else s60) for i in range(n)})
+
+
+#: Two edge-disjoint Hamiltonian cycles of the 3 x 3 torus `Machine.grid(3, 3, periodic=True)`,
+#: junction, trap, junction, ...: between them they hold all 18 rails.
+TORUS_CYCLES = {
+    "L0": ["J0_0", "T0_0h", "J1_0", "T1_0h", "J2_0", "T2_0v", "J2_1", "T2_1h", "J0_1",
+           "T0_1h", "J1_1", "T1_1v", "J1_2", "T1_2h", "J2_2", "T2_2h", "J0_2", "T0_2v"],
+    "L1": ["J0_0", "T0_0v", "J0_1", "T0_1v", "J0_2", "T0_2h", "J1_2", "T1_2v", "J1_0",
+           "T1_0v", "J1_1", "T1_1h", "J2_1", "T2_1v", "J2_2", "T2_2v", "J2_0", "T2_0h"],
+}
+
+
+def torus_loops(loops):
+    """The 3 x 3 torus with `loops` of its two Hamiltonian cycles declared as closed loops.
+    With one, the other cycle's nine traps are chords between two loop junctions: the bb144
+    design of issue #18, which R22 read as spurs, so opposite moves shared a waveform."""
+    doc = Machine.grid(3, 3, periodic=True, name="torus").arch.to_json(expanded=True)
+    g = doc["geometry"]
+    g["generator"], g["params"] = "explicit", {}
+    on = {}
+    for lid in list(TORUS_CYCLES)[:loops]:
+        seq = TORUS_CYCLES[lid]
+        on.update((frozenset(e), lid) for e in zip(seq, seq[1:] + seq[:1]))
+        g.setdefault("loops", []).append({"id": lid, "kind": "ring", "nodes": seq, "closed": True})
+    for s in g["segments"]:
+        s["loop"] = on.get(frozenset(s["ends"]))
+    return _fresh(doc)
+
+
+#: The torus cases name the general router: the bb144 design compiled with it, because
+#: rotation declines there (24 qubits need a dock, the torus has 18).
 CASES = {
+    "chain at 30 and 60 degrees, adder": (lambda: slanted_chain(14), "adder3"),
+    "chain at 30 and 60 degrees, QFT": (lambda: slanted_chain(20), "qft8"),
+    "torus, one loop through its junctions, QFT": (lambda: torus_loops(1), "qft8", "compile"),
+    "torus, one loop through its junctions, Steane": (lambda: torus_loops(1), "steane_esm", "compile"),
     "L-shaped path, adder": (lambda: bent_chain(20, {9: (0.0, 1.0)}), "adder3"),
     "U-shaped path, QFT": (lambda: bent_chain(16, {5: (0.0, 1.0), 10: (-1.0, 0.0)}), "qft8"),
     "zig-zag path, adder": (lambda: bent_chain(14, {3: (0.0, 1.0), 6: (1.0, 0.0), 9: (0.0, -1.0)}), "adder3"),
@@ -109,8 +160,8 @@ def _compile(doc, circuit, tmp_path, mode=None, qasm=None):
 
 @pytest.mark.parametrize("case", list(CASES))
 def test_every_program_the_compiler_emits_passes_every_rule(case, tmp_path):
-    make, circuit = CASES[case]
-    _, _, bad = _compile(make(), circuit, tmp_path)
+    make, circuit, *mode = CASES[case]
+    _, _, bad = _compile(make(), circuit, tmp_path, *mode)
     assert not bad, f"{case}: {dict(Counter(v.rule for v in bad))}; first: {bad[0]}"
 
 
