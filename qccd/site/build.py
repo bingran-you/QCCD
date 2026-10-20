@@ -759,6 +759,9 @@ def learn_page(parts: list[dict], less: list[dict], docs: dict, ts: list[dict]) 
     else:
         # one card per lesson, and the reader's progress over them (qccd/site/progress.py)
         body.append(progress.course_section(parts, less, PART_ART, PART_COLOR))
+    # the book (qccd/site/book.py): its chapters and the reader's exercises solved in each
+    from . import book as book_
+    body.append(book_.learn_section())
     body.append("<h2>The reference</h2><div class=\"docs\">")
     body.append('<a class="doc" href="../physics/"><span class="tag">background</span><b>The physics, from one trapped ion to the noise model</b>'
                 '<span>Traps, qubits, gates, transport, the control system, where the noise comes from and how this website simulates it.</span></a>')

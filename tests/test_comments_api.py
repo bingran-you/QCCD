@@ -621,6 +621,22 @@ def test_a_readers_course_progress_follows_the_account(srv):
     assert ada.get("/api/progress")[1]["progress"]["stars"] == {"A1": 3, "A2": 1, "B1": 2}
 
 
+def test_the_books_exercises_follow_the_account_beside_the_course(srv):
+    """The book records an exercise as a namespaced id; it sits on the same account as the
+    course's lessons, and malformed ids are refused as before."""
+    ada = reader(srv)
+    # the book's rows alone do not make the course "last finished" anything
+    st, d = ada.post("/api/progress", {"stars": {"book:V2.1.ex1": 1}})
+    assert st == 200 and d["progress"]["updated"] is None and d["progress"]["stars"] == {"book:V2.1.ex1": 1}
+    st, d = ada.post("/api/progress", {"stars": {"book:V2.1.ex1": 1, "book:V2.1.ex7": 1, "A1": 1}})
+    assert st == 200 and d["progress"]["stars"] == {"book:V2.1.ex1": 1, "book:V2.1.ex7": 1, "A1": 1}
+    other = Client(srv[0], srv[1])
+    assert other.post("/api/login", {"email": "ada@example.org", "password": "reader-pass-123"})[0] == 200
+    assert other.get("/api/progress")[1]["progress"]["stars"]["book:V2.1.ex7"] == 1
+    for bad in ("book:", "book:<x>", "BOOK:x", "book:" + "x" * 49, ":x", "book x", "book:a/b"):
+        assert ada.post("/api/progress", {"stars": {bad: 1}})[0] == 400, bad
+
+
 def test_the_command_line_lists_who_is_learning(srv, capsys):
     ada = reader(srv)
     ada.post("/api/progress", {"stars": {"A1": 1, "A2": 2}})

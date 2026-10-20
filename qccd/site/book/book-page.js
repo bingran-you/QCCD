@@ -317,7 +317,8 @@
       });
     });
     if (keepExercises) return;
-    var prog = load(PROG_KEY) || { v: 1, done: {} };
+    // what this reader has solved before, on this browser or (signed in) on any: book-progress.js
+    var before = window.QCCDBOOK ? QCCDBOOK.state().done : ((load(PROG_KEY) || {}).done || {});
     var solved = 0;
     data.exercises.forEach(function (e) {
       var cell = document.querySelector('.cell[data-ex="' + e.name + '"]');
@@ -338,7 +339,12 @@
       }
       else if (ax.indexOf('sorryAx') >= 0) { st = 'open'; label = 'open'; }
       else if (ax.some(function (a) { return data.allowed.indexOf(a) < 0; })) { st = 'untrusted'; label = 'rests on ' + ax.filter(function (a) { return data.allowed.indexOf(a) < 0; }).join(', '); }
-      else { st = 'solved'; label = 'solved'; solved++; prog.done[e.id] = 1; }
+      else {
+        st = 'solved'; label = 'solved'; solved++;
+        if (window.QCCDBOOK) QCCDBOOK.mark(e.id);
+        else { var pp = load(PROG_KEY) || { v: 1, done: {} }; pp.done = pp.done || {}; pp.done[e.id] = 1; save(PROG_KEY, pp); }
+      }
+      if (st === 'open' && before[e.id]) label = 'open · solved before';
       var tag = document.querySelector('.exstate[data-ex="' + e.name + '"]');
       if (tag) {
         tag.setAttribute('data-s', st);
@@ -347,9 +353,16 @@
       }
       if (cell) cell.classList.toggle('solved', st === 'solved');
     });
-    save(PROG_KEY, prog);
-    bar.querySelector('.score').textContent = solved + ' of ' + data.exercises.length + ' exercises done';
+    score();
   }
+  // the chapter's score: what the reader has solved, ever, on this browser or their account
+  function score() {
+    var s = window.QCCDBOOK ? QCCDBOOK.state() : { done: (load(PROG_KEY) || {}).done || {}, status: 'local' };
+    var n = data.exercises.filter(function (e) { return s.done[e.id]; }).length;
+    var where = s.user ? ' · kept on your account' : (s.status === 'anon' ? ' · kept in this browser; sign in to keep it on your account' : '');
+    bar.querySelector('.score').textContent = n + ' of ' + data.exercises.length + ' exercises done' + where;
+  }
+  if (window.QCCDBOOK) QCCDBOOK.subscribe(score);
 
   // ---------------------------------------------------------------- goals at the cursor
   function caretMoved(cell) {

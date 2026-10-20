@@ -115,7 +115,10 @@ ATTEMPTS, ATTEMPT_WINDOW = 30, 15 * 60          # sign-in, registration, invite 
 DEFAULT_SITE = "https://qccd.academy"
 GRANT_TTL = 300                                  # seconds a leaderboard grant is good for
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
-LESSON_RE = re.compile(r"^[A-Z][0-9]{1,2}$")          # A1, B8, R9, C4, D4: the course's lesson ids
+# A1, B8, R9, C4, D4: the course's lesson ids; or a namespaced id, "book:V2.1.ex4" (the book's
+# exercises), which the course's own sync never reads back (it keeps only bare course ids)
+LESSON_RE = re.compile(r"^(?:[A-Z][0-9]{1,2}|[a-z]+:[A-Za-z0-9._-]{1,48})$")
+COURSE_RE = re.compile(r"^[A-Z][0-9]{1,2}$")
 MAX_LESSONS = 100
 MAX_STARS = 3                                    # done, the boundary, the challenge
 
@@ -548,9 +551,12 @@ class Store:
         with self.connect() as c:
             rows = c.execute("SELECT lesson, stars, first_done, updated FROM progress WHERE user_id=? "
                              "ORDER BY first_done", (user_id,)).fetchall()
+        # `updated` is the COURSE's last change (the Learn page's "last exercise finished"): a
+        # namespaced row (the book's exercises) is progress too, but not in the course
+        course = [r for r in rows if COURSE_RE.match(r["lesson"])]
         return {"stars": {r["lesson"]: r["stars"] for r in rows},
                 "done": {r["lesson"]: r["first_done"] for r in rows},
-                "updated": max((r["updated"] for r in rows), default=None)}
+                "updated": max((r["updated"] for r in course), default=None)}
 
     def record_progress(self, user_id: int, stars: dict) -> dict:
         """Raises each lesson to the stars given, never lowers one: two browsers, or one
@@ -705,7 +711,7 @@ def norm_stars(stars) -> dict:
     out = {}
     for k, v in stars.items():
         if not isinstance(k, str) or not LESSON_RE.match(k):
-            raise HttpError(400, "a lesson is a letter and a number, like B2")
+            raise HttpError(400, "a lesson is a letter and a number, like B2, or a namespaced id, like book:V2.1.ex4")
         if isinstance(v, bool) or not isinstance(v, int) or not 0 <= v <= MAX_STARS:
             raise HttpError(400, f"stars are a whole number from 0 to {MAX_STARS}")
         if v:

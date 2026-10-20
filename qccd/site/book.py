@@ -208,7 +208,12 @@ def _emph(s: str) -> str:
     s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
     s = re.sub(r"(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])", r"<i>\1</i>", s)
     s = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", lambda m: f'<a href="{m.group(2)}">{m.group(1)}</a>', s)
-    return s
+    return dash(s)
+
+
+def dash(s: str) -> str:
+    """The book's sources write a spaced ` -- `; a reader sees the dash the rest of the site prints."""
+    return s.replace(" -- ", " — ")
 
 
 def _slug(s: str) -> str:
@@ -443,8 +448,77 @@ def index_body(book: dict) -> str:
               '(<code>tools/book/port_checker.py</code>): module syntax, and two tail-recursive '
               'functions each proved equal to the one it replaces. The port gives the same verdict as the '
               'repository\'s checker on every published certificate.</p>')
-    return (f'<h1>{html.escape(book["title"])}</h1><p class="sub">{html.escape(book["subtitle"])}</p>'
+    return (f'<h1>{html.escape(book["title"])}</h1><p class="sub">{dash(html.escape(book["subtitle"]))}</p>'
             + intro + "".join(vols) + engine)
+
+
+LEARN_CSS = """<style>
+.bookintro{font:15px var(--sans);color:var(--ink2)}
+.bvol{margin:14px 0 6px}
+.bvol h3{font:600 15px var(--sans);color:var(--head);margin:0 0 4px}
+.bvol h3 small{font-weight:400;color:var(--ink3)}
+ul.bch{list-style:none;padding:0;margin:0}
+ul.bch li{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--line);font:14.5px var(--sans)}
+ul.bch .cn{font:12.5px var(--mono);color:var(--ink3);min-width:2.4em}
+ul.bch li.planned{color:var(--ink3)}
+ul.bch .soon{font:600 11px var(--sans);text-transform:uppercase;letter-spacing:.04em;color:var(--ink3)}
+ul.bch .bprog{margin-left:auto;font:12.5px var(--sans);color:var(--ink2);min-width:9em;text-align:right}
+ul.bch .bbar{width:110px;height:6px;border-radius:3px;background:#efeee9;overflow:hidden}
+ul.bch .bbar i{display:block;height:100%;width:0;background:#2f8f5b}
+ul.bch li.done .bprog{color:#1d6b40;font-weight:600}
+#booksum{font:13.5px var(--sans);color:var(--ink2);margin:10px 0 0}
+</style>"""
+
+LEARN_JS = """<script src="../book/book-progress.js"></script>
+<script>
+(function(){
+  // the book's chapters on the Learn page: each one's exercises solved, on this browser or the
+  // reader's account (book-progress.js), painted whenever that changes
+  if(!window.QCCDBOOK) return;
+  function paint(s){
+    var all = 0, got = 0;
+    [].forEach.call(document.querySelectorAll('ul.bch li[data-ids]'), function(li){
+      var ids = JSON.parse(li.getAttribute('data-ids')), n = ids.filter(function(i){ return s.done[i]; }).length;
+      all += ids.length; got += n;
+      li.querySelector('.bprog').textContent = n + ' of ' + ids.length + ' exercises';
+      li.querySelector('.bbar i').style.width = (ids.length ? 100 * n / ids.length : 0) + '%';
+      li.classList.toggle('done', ids.length > 0 && n === ids.length);
+    });
+    var sum = document.getElementById('booksum');
+    if(sum) sum.textContent = got + ' of ' + all + ' exercises done' + (s.user ? ', kept on your account.'
+      : s.status === 'anon' ? ', kept in this browser. Sign in to keep them on your account.' : '.');
+  }
+  QCCDBOOK.subscribe(paint); paint(QCCDBOOK.state());
+})();
+</script>"""
+
+
+def learn_section() -> str:
+    """The book on the Learn page, between the course and the reference: every volume and
+    chapter, and for each live chapter the reader's exercises solved -- the same progress the
+    chapter page records (book-progress.js), on their account when they are signed in."""
+    if not (BOOK / "book.json").exists():
+        return ""
+    book = json.loads((BOOK / "book.json").read_text(encoding="utf-8"))
+    vols = []
+    for v in book["volumes"]:
+        rows = []
+        for c in v["chapters"]:
+            num = f'<span class="cn">{v["n"]}.{c["n"]}</span>'
+            if c.get("status") == "live":
+                ids = [e["id"] for e in parse_chapter(BOOK / c["source"], c["slug"]).exercises]
+                rows.append(f'<li data-ids="{html.escape(json.dumps(ids))}">{num}'
+                            f'<a href="../book/{c["slug"]}.html">{html.escape(c["title"])}</a>'
+                            f'<span class="bprog">{len(ids)} exercises</span><span class="bbar"><i></i></span></li>')
+            else:
+                rows.append(f'<li class="planned">{num}{html.escape(c["title"])} <span class="soon">planned</span></li>')
+        vols.append(f'<div class="bvol"><h3>Volume {v["n"]}: {html.escape(v["title"])} '
+                    f'<small>{html.escape(v["about"])}</small></h3><ul class="bch">{"".join(rows)}</ul></div>')
+    return (LEARN_CSS + '<h2 id="the-book">The book</h2>'
+            f'<p class="bookintro"><a href="../book/"><b>{html.escape(book["title"])}</b></a>: '
+            f'{dash(html.escape(book["subtitle"]))}. Every chapter is Lean that runs in the page, with exercises '
+            'Lean checks as you type; what you solve is kept here, on your account when you are signed in.</p>'
+            + "".join(vols) + '<p id="booksum"></p>' + LEARN_JS)
 
 
 def studio_pages(dst: Path) -> list[Path]:
@@ -520,11 +594,12 @@ def build(out: Path, packs: Path | None = None, studio: bool = True) -> list[Pat
                                extra_css=css, body=body)
             # the Lean runtime first (it defines window.Book), the figures, then the page
             page = page.replace("</body>", '<script src="engine/book-runtime.js" defer></script>'
+                                           '<script src="book-progress.js" defer></script>'
                                            '<script src="book-figure.js" defer></script>'
                                            '<script src="book-page.js" defer></script></body>')
             (dst / f'{c["slug"]}.html').write_text(page.replace("__FOOTER__", ""), encoding="utf-8")
             written.append(dst / f'{c["slug"]}.html')
-    for name in ("book-page.js", "book-figure.js"):
+    for name in ("book-page.js", "book-figure.js", "book-progress.js"):
         (dst / name).write_bytes((ASSETS / name).read_bytes())
         written.append(dst / name)
     eng = dst / "engine"
