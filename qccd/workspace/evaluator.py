@@ -45,8 +45,9 @@ WHAT A PASSING REFERENCE REPORT ESTABLISHES, stage by stage (and nothing more):
                        board, `ler` and `ler_per_round` from the stage above).
 
 It does NOT establish physical realisability beyond the task's model: the rules and the
-physics tables are the model.  It does not compare the certificate's transport moves
-with the final program's transport instructions one by one; co-location of the program's
+physics tables are the model.  The certificate's transport is compared with the final
+program's: check_cert.py replays both and requires each ion's moves (and every rotation)
+to be the same, in order (`o1_transport`, which feeds O1); co-location of the program's
 own gates is R6b of the replay, and the semantic link is O2 through the certificate's
 qubit->ion map.
 
@@ -158,14 +159,16 @@ def _dir_digest(root: Path, names) -> str:
 
 
 class _Stage:
-    def __init__(self, sid: str, required: bool):
+    def __init__(self, sid: str, required: bool, clock: dict | None = None):
         self.id = sid
         self.required = required
         self.status = "skipped"
         self.coverage = ""
         self.detail: dict = {}
         self.diagnostics: list = []
-        self.t0 = time.time()
+        # every stage is made when grading starts; the stages run one after another, so a
+        # stage's time runs from when the previous one finished (`clock`, shared)
+        self.clock = clock if clock is not None else {"last": time.time()}
         self.seconds = 0.0
 
     def done(self, status: str, coverage: str = "", **detail) -> "_Stage":
@@ -173,7 +176,9 @@ class _Stage:
         self.status = status
         self.coverage = coverage or self.coverage
         self.detail.update(detail)
-        self.seconds = round(time.time() - self.t0, 3)
+        now = time.time()
+        self.seconds = round(now - self.clock["last"], 3)
+        self.clock["last"] = now
         return self
 
     def diag(self, rid: str, message: str, *, severity: str = "error", **where) -> None:
@@ -207,8 +212,9 @@ def grade(release: TaskRelease, bundle_dir: Path, profile: str = "reference", *,
     order = ["bundle", "device", "physics_lock", "program", "rules", "correspondence",
              "certificate_binding", "lean_certificate", "semantics"] + \
         (["ler"] if release.manifest.get("qec") else []) + ["metrics"]
+    clock = {"last": started}
     for sid in order:
-        stages[sid] = _Stage(sid, sid in required)
+        stages[sid] = _Stage(sid, sid in required, clock)
     limits = release.manifest.get("limits") or {}
     say = progress or (lambda s, m: None)
     ctx: dict = {}

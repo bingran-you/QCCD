@@ -7,12 +7,15 @@ acceptable outcome is a rejection naming the right conjunct.
 
 ## One mutation is expected NOT to be caught, and that is the point
 
-`swap_operands` exchanges the two ions of a gate.  The Lean checker verifies that a
-witness names its op's own ions, in any order (`OwnIons`), and that they are **co-located**
-in one gate-capable trap; swapping them changes neither, so it passes, correctly, because
-O1 does not claim to see operand *order*.  A CX is not symmetric, so the swap is a real
-bug; it is caught by the **stabilizer tableau** in `check_cert.py`, which is the other half
-of R10.
+`swap_operands` exchanges the two ions of a gate's witness.  The Lean checker verifies that
+a witness names its op's own ions, in any order (`OwnIons`), and that they are
+**co-located** in one gate-capable trap; swapping them changes neither, so it passes,
+correctly, because O1 does not claim to see operand *order*.  The mutated certificate
+passes the whole of R10, also correctly: a witness names ions, not which is the control, so
+the certificate alone says nothing wrong.  The compiler bug the mutation stands for -- a
+programme that gates a CX's two ions the wrong way round -- is real (a CX is not symmetric),
+and it is caught in the *programme*: the **stabilizer tableau** in `check_cert.py`, the
+other half of R10, composes the emitted pulses and reports TABLEAU MISMATCH.
 
 Reporting that split honestly is more useful than tuning the suite until everything is
 caught by one layer.  The suite therefore records, per mutation, which layer is supposed
@@ -223,7 +226,9 @@ def foreign_ions(d):
 
 
 def swap_operands(d):
-    """Exchange a gate's two operands.  O1 cannot see this -- the tableau can."""
+    """Exchange a gate's two operands in its witness.  O1 cannot see this, and need not:
+    the bug it stands for (a programme with control and target exchanged) is in the pulses,
+    where the tableau sees it."""
     for g in d["gates"]:
         if len(g["ions"]) == 2:
             g["ions"] = [g["ions"][1], g["ions"][0]]
@@ -303,8 +308,8 @@ def main(argv: list[str] | None = None) -> int:
             # the tableau's job; the Lean checker is expected to pass it
             mark = "as expected" if accepted else "also caught"
             print(f"{name:<18} {layer:<9} {'accepted' if accepted else 'rejected':<9} "
-                  f"{mark} -- O1 does not see operand order; "
-                  f"check_cert.py's tableau does")
+                  f"{mark} -- O1 does not see operand order; the programme bug this "
+                  f"stands for is in the pulses, where check_cert.py's tableau sees it")
 
     tmp.unlink(missing_ok=True)
     print()

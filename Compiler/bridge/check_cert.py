@@ -900,6 +900,55 @@ def _lowered_run(s: dict, cops: list[dict], j: int, cache: dict) -> tuple[int, s
 # ------------------------------------------------------------------ driver
 
 
+def certificate_shape(cert) -> list[str]:
+    """What is malformed about a certificate, field by field: every field the checks below
+    read, with the type they read it as.  A certificate with a problem here is refused with
+    the problem named -- never half-read, never a crash."""
+    out: list[str] = []
+
+    def is_int(v):
+        return isinstance(v, int) and not isinstance(v, bool)
+
+    if not isinstance(cert, dict):
+        return ["the certificate is not a JSON object"]
+    if not is_int(cert.get("n_qubits")):
+        out.append(f"n_qubits is {cert.get('n_qubits')!r}, not a whole number")
+    if not isinstance(cert.get("map"), dict):
+        out.append("map is missing or not an object")
+    for key in ("moves", "gates", "circuit_ops"):
+        if not isinstance(cert.get(key), list):
+            out.append(f"{key} is missing or not a list")
+    for key in ("rotations", "unrealised"):
+        if key in cert and not isinstance(cert[key], list):
+            out.append(f"{key} is not a list")
+    for i, m in enumerate(cert.get("moves") or []) if isinstance(cert.get("moves"), list) else ():
+        if not isinstance(m, dict):
+            out.append(f"move {i} is not an object")
+            continue
+        if not is_int(m.get("t")):
+            out.append(f"move {i} has t = {m.get('t')!r}, not a cycle number")
+        for k in ("ion", "from", "to"):
+            if not isinstance(m.get(k), str):
+                out.append(f"move {i} has {k} = {m.get(k)!r}, not a name")
+    for i, g in enumerate(cert.get("gates") or []) if isinstance(cert.get("gates"), list) else ():
+        if not isinstance(g, dict):
+            out.append(f"gate witness {i} is not an object")
+            continue
+        for k in ("t", "dag"):
+            if not is_int(g.get(k)):
+                out.append(f"gate witness {i} has {k} = {g.get(k)!r}, not a whole number")
+        if "instr" in g and not is_int(g["instr"]):
+            out.append(f"gate witness {i} has instr = {g['instr']!r}, not an instruction id")
+        if not isinstance(g.get("ions"), list):
+            out.append(f"gate witness {i} has no list of ions")
+        if not isinstance(g.get("site"), str):
+            out.append(f"gate witness {i} has site = {g.get('site')!r}, not a name")
+    for i, r in enumerate(cert.get("rotations") or []) if isinstance(cert.get("rotations"), list) else ():
+        if not isinstance(r, dict) or not is_int(r.get("t")) or not is_int(r.get("delta")):
+            out.append(f"rotation {i} needs a whole-number t and delta")
+    return out[:20]
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("prefix", help="the compiler's -o prefix (.tsir.json / .qcert.json)")
@@ -916,10 +965,30 @@ def main(argv: list[str] | None = None) -> int:
 
     cert = json.loads(Path(args.prefix + ".qcert.json").read_text(encoding="utf-8"))
     prog = TSIR.load(args.prefix + ".tsir.json")
-    arch_path = ROOT / args.arch if not Path(args.arch).is_absolute() else Path(args.arch)
+    # a relative --arch is read from where the command runs; the repository root is kept
+    # as the fallback older callers relied on
+    arch_path = Path(args.arch)
+    if not arch_path.is_absolute() and not arch_path.exists():
+        arch_path = ROOT / args.arch
     arch = Architecture.from_json(json.loads(arch_path.read_text(encoding="utf-8")))
 
     verdict: dict = {"program": prog.name, "arch": arch.name}
+    shape = certificate_shape(cert)
+    if shape:
+        verdict.update({"shape": shape, "binding": "not checked", "transport": "not checked",
+                        "o1_transport": [f"malformed certificate: {x}" for x in shape[:6]],
+                        "order": "not checked", "o2_semantics": "not checked",
+                        "method": "none: the certificate is malformed",
+                        "unrealised_ops": 0, "R10": "FAILED",
+                        "R10_reason": f"the certificate is malformed: {shape[0]}"})
+        if args.json:
+            print(json.dumps(verdict, indent=1))
+        else:
+            print(f"R10 for {prog.name} on {arch.name}")
+            for x in shape:
+                print(f"  malformed: {x}")
+            print(f"  -> R10 FAILED: {verdict['R10_reason']}")
+        return 1
 
     # the binding: a certificate with no binding is a certificate for anything
     qasm_sha = hashlib.sha256(Path(args.qasm).read_bytes()).hexdigest()

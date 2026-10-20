@@ -557,10 +557,13 @@ diagnostics with stable ids (`RULE.R1`, `TASK.PHYSICS_MODIFIED`, `CERT.BINDING`,
 `CORR.MISMATCH`, …), metrics with units, and non-deterministic timing kept apart.
 `evaluator.comparable` / `publish.compare_reports` define parity.
 
-**What it does not establish.** Physical realisability beyond the task's model. It also does
-not compare the certificate's moves with the final program's transport instruction by
-instruction: co-location of the program's own gates is rule R6b of the replay, and the
-semantic link is O2 through the certificate's qubit→ion map.
+**What it does not establish.** Physical realisability beyond the task's model. (The
+certificate's transport *is* compared with the final program's: `check_cert.py` replays both
+and requires each ion's moves, and every rotation, to be the same and in the same order --
+`o1_transport`, part of O1 -- so a programme that moves ions the certificate does not claim,
+or claims moves it does not make, fails the semantics stage. Co-location of the program's
+own gates is rule R6b of the replay, and the semantic link is O2 through the certificate's
+qubit→ion map.)
 
 **Metrics parity.** `tests/test_workspace_metrics.py` reproduces the published board numbers
 (`SmallCode/*/manifest.json`, re-replayed) exactly when those files are present. Modelled
