@@ -530,6 +530,89 @@ def _diagrams() -> dict[str, str]:
                + "".join(text(9, 15 + i * 12.2, ("$ " if i else "  ") + s, 6.2, "#e6edf3" if i else "#9fb3c8", "start", 600, True)
                          for i, s in enumerate(flow))
                + text(9, 73, "  R10 passed", 6.6, "#7ee787", "start", 800, True) + good(76, 70.8, 4.6))
+    # ---- G: which gate the pulses make (exact numbers, matrices, tableaux) ---------------------
+    def tile(x, y, w, n, label=None, c="#6a4fd0", fill="#f1edfd", lsize=5.6, h=None):
+        """A pulse as the exact matrix it is: an n x n grid (h: drawn taller, spanning two ions)."""
+        h = w if h is None else h
+        g = f'<rect x="{_n(x)}" y="{_n(y)}" width="{_n(w)}" height="{_n(h)}" rx="2" fill="{fill}" stroke="{c}" stroke-width="1.2"/>'
+        g += "".join(f'<path d="M{_n(x + w * k / n)} {_n(y)}V{_n(y + h)}M{_n(x)} {_n(y + h * k / n)}H{_n(x + w)}" stroke="{c}" stroke-width=".5" opacity=".6"/>'
+                     for k in range(1, n))
+        if label:
+            g += text(x + w / 2, y + h / 2 + lsize * .36, label, lsize, c, weight=800)
+        return g
+
+    import math
+    pts = [(31 + 25 * math.cos(-k * math.pi / 4), 40 + 25 * math.sin(-k * math.pi / 4)) for k in range(8)]
+    d["G1"] = ('<circle cx="31" cy="40" r="25" fill="none" stroke="#e4e7ec" stroke-width="1"/>'
+               '<path d="M4 40H58M31 13V67" stroke="#e4e7ec" stroke-width="1"/>'
+               + f'<path d="M{" L".join(f"{_n(x)} {_n(y)}" for x, y in pts)}Z" fill="none" stroke="#c2308a" stroke-width="1" opacity=".5"/>'
+               + "".join(f'<circle cx="{_n(x)}" cy="{_n(y)}" r="{3.2 if k == 1 else 2.2}" fill="{"#c2308a" if k == 1 else "#1e2761"}"/>'
+                         for k, (x, y) in enumerate(pts))
+               + text(60, 43, "1", 6.5, "#1e2761", "start", 700) + text(31, 10.5, "i", 6.5, "#1e2761", weight=700)
+               + text(7, 32, "−1", 6.5, "#1e2761", weight=700) + text(31, 75, "−i", 6.5, "#1e2761", weight=700)
+               + text(52, 18, "ω", 8, "#c2308a", "start", 800)
+               + text(90, 22, "⟨a, b, c, d, k⟩", 6.4, "#182230", weight=700, mono=True)
+               + text(90, 38, "(a + b·i +", 6.2, "#475467") + text(90, 48, "(c + d·i)·√2)", 6.2, "#475467")
+               + text(90, 58, "÷ 2ᵏ", 6.2, "#475467") + text(90, 72, "one spelling each", 5.8, "#667085"))
+
+    # two ion lines, q0 above q1, and the pulses on them in order
+    def lines(y0, y1, x0=8, x1=112):
+        return (f'<path d="M{x0} {y0}H{x1}M{x0} {y1}H{x1}" stroke="#98a2b3" stroke-width="1"/>'
+                + text(x0 - 3, y0 + 2, "q0", 5.4, D0, "end", 700) + text(x0 - 3, y1 + 2, "q1", 5.4, D1, "end", 700))
+    d["G2"] = (chain4(12, ions=((41.5, D0), (11.5, D1)))
+               + lines(38, 58, x0=14)
+               + tile(18, 33, 10, 2) + tile(31, 33, 10, 2, c="#e8890c", fill="#fdf0e2")
+               + tile(46, 33, 10, 2) + tile(59, 33, 14, 4, c="#c2308a", fill="#fbe7f2", h=30)
+               + tile(77, 33, 10, 2) + tile(77, 53, 10, 2) + tile(90, 33, 10, 2)
+               + text(29.5, 76, "H: R, VZ", 5.8, "#667085") + text(80, 76, "CX: R, MS, R, R, R", 5.8, "#667085"))
+    d["G3"] = (tile(8, 10, 22, 2) + text(19, 42, "VZ(φ+λ)", 5.8, "#6a4fd0", weight=700)
+               + tile(44, 10, 22, 2) + text(55, 42, "R(θ, π/2−λ)", 5.8, "#6a4fd0", weight=700)
+               + arrow("M32 21Q60 6 84 16", MUTED, w=1.1) + arrow("M68 21H84", MUTED, w=1.1)
+               + tile(88, 10, 22, 2, c="#0f766e", fill="#e3f4f1") + text(99, 42, "u3(θ,φ,λ)", 5.8, "#0f766e", weight=800)
+               + '<path d="M6 52H114" stroke="#e4e7ec" stroke-width="1"/>'
+               + text(60, 66, "H = VZ(π) · R(π/2, −π/2)", 6.2, "#182230", weight=700, mono=True)
+               + text(60, 76, "as the h certificate's witness has it", 5.6, "#667085"))
+    d["G4"] = (lines(24, 50, x0=14, x1=72)
+               + tile(16, 19, 10, 2) + tile(29, 19, 16, 4, c="#c2308a", fill="#fbe7f2", h=36)
+               + tile(48, 19, 10, 2) + tile(48, 45, 10, 2) + tile(61, 19, 10, 2)
+               + text(37, 64, "MS(π/2)", 5.6, "#c2308a", weight=800)
+               + text(80, 40, "=", 11, "#182230", weight=700)
+               + f'<path d="M92 24H112M92 50H112M102 24V56" stroke="#182230" stroke-width="1.3"/>'
+               + f'<circle cx="102" cy="24" r="3" fill="#182230"/><circle cx="102" cy="50" r="6" fill="#fff" stroke="#182230" stroke-width="1.3"/>'
+               + '<path d="M96 50h12M102 44v12" stroke="#182230" stroke-width="1.3"/>'
+               + '<circle cx="104" cy="70" r="6" fill="#fff" stroke="#98a2b3" stroke-width="1"/>'
+               + '<path d="M104 70L108.2 74.2" stroke="#c2308a" stroke-width="1.6" stroke-linecap="round"/>'
+               + text(96, 73, "e^(−iπ/4)", 5.4, "#667085", "end", 600))
+    rows = (("X₀", "Z⊗1"), ("Z₀", "X⊗X"), ("X₁", "1⊗X"), ("Z₁", "Z⊗Z"))      # the lesson's labels: qubits from 0
+    table = lambda x, head: (f'<rect x="{x}" y="8" width="48" height="64" rx="4" fill="#fff" stroke="#d0d5dd" stroke-width="1.1"/>'
+                             + text(x + 24, 19, head, 6.2, "#667085", weight=700)
+                             + f'<path d="M{x + 4} 23H{x + 44}" stroke="#e4e7ec" stroke-width="1"/>'
+                             + "".join(text(x + 24, 34 + i * 11, f"{a} ↦ {b}", 6.2, "#182230", weight=600, mono=True) for i, (a, b) in enumerate(rows)))
+    d["G5"] = table(4, "the circuit") + text(60, 44, "=", 11, GOOD, weight=800) + table(68, "the pulses")
+    d["G6"] = ('<path d="M10 16H54M10 32H54" stroke="#98a2b3" stroke-width="1"/>'
+               + text(8, 18, "q", 5.6, D0, "end", 700) + text(8, 34, "|0⟩", 5.2, "#667085", "end", 600)
+               + f'<path d="M24 16V35" stroke="#182230" stroke-width="1.2"/><circle cx="24" cy="16" r="2.4" fill="#182230"/>'
+               + '<circle cx="24" cy="32" r="4.4" fill="#fff" stroke="#182230" stroke-width="1.2"/><path d="M19.6 32h8.8M24 27.6v8.8" stroke="#182230" stroke-width="1.2"/>'
+               + f'<rect x="40" y="26" width="12" height="11" rx="2" fill="#fff" stroke="{MEAS}" stroke-width="1.2"/>'
+               + f'<path d="M42.5 34.5a3.5 3.5 0 0 1 7 0M46 34.5l2.2-3.8" stroke="{MEAS}" stroke-width="1" fill="none"/>'
+               + text(32, 46, "a readout is a CNOT", 5.4, "#667085")
+               + '<path d="M10 56H54M10 70H54" stroke="#98a2b3" stroke-width="1"/>'
+               + text(8, 58, "q", 5.6, D0, "end", 700) + text(8, 72, "|0⟩", 5.2, "#667085", "end", 600)
+               + '<path d="M30 56V70M27 53l6 6M33 53l-6 6M27 67l6 6M33 67l-6 6" stroke="#182230" stroke-width="1.3"/>'
+               + text(44, 63, "reset", 5.6, "#667085", "start")
+               + '<path d="M62 6V74" stroke="#e4e7ec" stroke-width="1.2"/>'
+               + pill(77, 24, "CX", GATE, 16) + pill(96, 24, "M", MEAS, 12) + good(112, 24, 4.6)
+               + pill(77, 52, "M", MEAS, 12) + pill(96, 52, "CX", GATE, 16) + bad(112, 52, 4.6)
+               + text(90, 38, "in order", 5.6, "#667085") + text(90, 66, "moved early", 5.6, BAD, weight=700))
+    d["G7"] = (rail(14, 14, 40, 14) + rail(40, 14, 56, 14) + site(14, 14, n=2, gap=7) + site(40, 14, n=2, gap=7)
+               + ion(36.5, 14, D0) + ion(43.5, 14, D1, ghost=True) + ion(17.5, 14, D1) + arrow("M40 5Q30 1 21 6", ARROW, w=1.2)
+               + tile(8, 30, 24, 4, c="#c2308a", fill="#fbe7f2")
+               + text(37, 39, "= CX·(H⊗1)", 6.2, "#182230", "start", 700, True) + text(37, 49, "up to a phase", 5.6, "#667085", "start")
+               + text(38, 68, "two witnesses, composed", 5.4, "#667085")
+               + '<path d="M76 6V74" stroke="#e4e7ec" stroke-width="1.2"/>'
+               + text(98, 14, "swap_operands", 5.2, "#182230", weight=700, mono=True)
+               + good(98, 30, 5.5) + text(98, 44, "checker", 5.8, GOOD, weight=700)
+               + bad(98, 56, 5.5) + text(98, 70, "semantics", 5.8, BAD, weight=700))
     return d
 
 
@@ -605,8 +688,9 @@ def milestones(src: str) -> dict[str, str]:
 #: Parts E-I of the tutorial are the verified compiler, in Lean, run in the reader's browser
 #: (qccd/site/book.py writes their pages).  A lesson there is a chapter, and its exercises are
 #: what a reader solves: each counts as one exercise, and earns its own difficulty in stars.
-LEAN_BADGES = {"E": "Modeller", "F": "Proof checker", "G": "Semanticist", "H": "Auditor", "I": "Compiler builder"}
-LEAN_COLOR = {"E": "#0e7c7b", "F": "#6a4fd0", "G": "#c2308a", "H": "#1f7fa8", "I": "#b5471b"}
+LEAN_BADGES = {"E": "Modeller", "F": "Proof checker", "G": "Semanticist", "H": "Auditor", "I": "Compiler builder",
+               "J": "Fault-tolerant architect"}
+LEAN_COLOR = {"E": "#0e7c7b", "F": "#6a4fd0", "G": "#c2308a", "H": "#1f7fa8", "I": "#b5471b", "J": "#3f6b2a"}
 
 
 def _ic(colour: str, body: str) -> str:
@@ -634,6 +718,12 @@ LEAN_ART = {
     "I": _ic(LEAN_COLOR["I"], "".join(f'<rect x="29" y="6" width="6" height="10" rx="1.5" transform="rotate({k * 45} 32 32)" fill="@"/>'
                                       for k in range(8))
              + '<circle cx="32" cy="32" r="16" fill="@"/><circle cx="32" cy="32" r="6.5" fill="#fff"/>'),
+    # gadgets and fault-tolerant architecture: places with doors, on a bus
+    "J": _ic(LEAN_COLOR["J"], '<path d="M6 34H58" stroke="#f2b8b5" stroke-width="5" stroke-linecap="round"/>'
+             '<rect x="8" y="10" width="20" height="18" rx="3" fill="#fff" stroke="@" stroke-width="3"/>'
+             '<rect x="36" y="10" width="20" height="18" rx="3" fill="@"/>'
+             '<rect x="22" y="40" width="20" height="16" rx="3" fill="#fff" stroke="@" stroke-width="3"/>'
+             '<path d="M18 28v6M46 28v6M32 34v6" stroke="#1c2a4a" stroke-width="3" stroke-linecap="round"/>'),
 }
 
 
@@ -648,8 +738,22 @@ def lean_parts() -> list[dict]:
         return []
     # the sources write a spaced ` -- `; a reader sees the dash the rest of the site prints
     return [dict(p, title=dash(p["title"]), about=dash(p["about"]), coming=[dash(t) for t in p.get("coming", ())],
-                 lessons=[dict(L, title=dash(L["title"]), story=plain(dash(L.get("story", "")))) for L in p["lessons"]])
+                 lessons=[dict(L, title=dash(L["title"]), story=reader_line(dash(L.get("story", "")))) for L in p["lessons"]])
             for p in tutorial_parts()]
+
+
+def reader_line(s: str) -> str:
+    """A lesson's line as a reader sees it: its marks taken off, and never a path into the
+    repository (the site's rule; `qccd.site.prose.PATH` decides what a path is).  An aside in
+    brackets that names one is dropped -- "(check_cert.py calls them NATIVE: ...)" -- and a
+    line that would still name one is not shown at all."""
+    from .prose import PATH
+    s = plain(s)
+    s = re.sub(r"\s*\([^()]*\)", lambda m: "" if PATH.search(m.group(0)) else m.group(0), s)
+    if PATH.search(s):
+        return ""
+    s = s.strip().rstrip(" :;,")
+    return s + "." if s and s[-1] not in ".!?" else s
 
 
 # ------------------------------------------------------------------------- the page

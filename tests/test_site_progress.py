@@ -95,7 +95,10 @@ def test_the_lean_parts_are_the_tutorial_and_nothing_a_reader_reads_calls_it_a_b
         pytest.skip("this tree has no Lean parts")
     page = progress.course_section(parts, less, PART_ART, PART_COLOR, lean=lean)
     live = [L for p in lean for L in p["lessons"] if L.get("live", True)]
-    assert [p["part"] for p in lean] == list("EFGHI")
+    # the Lean parts follow the studio's, in order from E (R is the studio's rules part)
+    letters = [p["part"] for p in lean]
+    assert letters == [chr(ord("E") + i) for i in range(len(letters))] and "R" not in letters, letters
+    assert all(p["part"] in progress.LEAN_BADGES and p["part"] in progress.LEAN_ART for p in lean), letters
     for p in lean:
         assert f'id="part-{p["part"]}"' in page
     assert re.findall(r'<a class="lesson chap" id="lesson-([A-Z]\d+)"', page) == [L["id"] for L in live]
@@ -106,9 +109,14 @@ def test_the_lean_parts_are_the_tutorial_and_nothing_a_reader_reads_calls_it_a_b
     text = h.unescape(re.sub(r"<[^>]+>", " ", re.sub(r"<(script|style)\b.*?</\1>", " ", page, flags=re.S)))
     assert "book" not in text.lower(), re.search(r".{40}book.{40}", text, re.I | re.S).group(0)
     assert " -- " not in text
-    # a lesson's line is prose, not its source: no markdown marks left in it
+    # a lesson's line is prose, not its source: no markdown marks left in it, and no path into
+    # the repository (G2's first sentence named check_cert.py, 2026-10-20)
+    from qccd.site.prose import PATH
+    assert PATH.search("compose (check_cert.py calls them NATIVE)") and not progress.reader_line(
+        "the compiler emits nothing else (check_cert.py calls them NATIVE: the pulses):").count("check_cert")
     for line in re.findall(r'<span class="ls">(.*?)</span>', page):
         assert "`" not in line and "**" not in line, line
+        assert not PATH.search(h.unescape(line)), line
 
 
 def test_every_studio_page_sends_its_stars_and_no_other_page_does():
