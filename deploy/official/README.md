@@ -101,7 +101,28 @@ the `include snippets/qccd-official.conf;` line and `nginx -t && systemctl reloa
 The site file as it was before the include was added is
 `/root/qccd.academy.nginx.bak-20260923-000848`.
 
-**Deployed** 2026-10-20 07:00 UTC (00:00 PDT), from commit `e9bbf0b` (pushed): compiler
+**Deployed** 2026-10-20 17:22 UTC (10:22 PDT), from commit `6ac56ad` (pushed): the proved
+checker reads its input strictly -- a file missing a field the checker relies on, or with an
+entry it cannot read (a move whose `t` is `20.0`, an op's qubit `0.5`), is REJECTED naming
+what is wrong, where before `{}` was accepted as an empty programme and an unreadable move was
+dropped (qcheck `e8acd6640fd3`, the version published for Windows and Linux the same day);
+and `check_cert.py` checks a certificate's shape before reading it, so a malformed one is
+`R10 FAILED` by name rather than a TypeError. Well-formed certificates, which is every one the
+compiler writes, get the verdicts they got before, so suite@1 was not re-pinned. Compiler
+`f88754a2fa71` is unchanged.
+
+The image was derived from `qccd-official:e9bbf0b`: the Dockerfile's Lean stage verbatim, then
+`rm` and `COPY` of `qccd/`, `arch/`, `Compiler/bridge` and `qcheck` (sha256 `923528c0…`);
+`qccdc_cli` is e9bbf0b's (sha256 `3a11247f…`, the published Linux `f88754a2fa71`). The code
+under `qccd/`, `arch/` and `Compiler/bridge` hashes the same as the git archive of `6ac56ad`;
+the 34 layers are identical on both machines. The previous deployment is in
+`.env.bak-e9bbf0b`, `VERSION.bak-e9bbf0b` and `docker-compose.prod.yml.bak-e9bbf0b`. Private
+smoke tests by the operator uploader `deploy-smoke-6ac56ad` (quota 2, token deleted): GHZ
+`os_dc4bbf2d0d94a0f7` eligible in 16 s, and the Compiler board `os_5a163b8811cfcbcd` eligible
+in 444 s, 108 valid / 0 wrong / 8 refused of 116, speedup 1.0, ler_ratio 1.000, no public pair
+different from the baseline. The local rehearsal gave the same (`os_eff78fb8ebdecfaa`, 642 s).
+
+**Before that** 2026-10-20 07:00 UTC (00:00 PDT), from commit `e9bbf0b` (pushed): compiler
 `f88754a2fa71` (built from `651f39c`), which takes a rule set (`qccdc --rules`) and without one
 writes what `dbd13d8952f3` wrote: all 216 compiles of suite@1's public pairs (`compile` and
 `rotate`) are byte-identical between the two, so suite@1 was not re-pinned. The grader now
