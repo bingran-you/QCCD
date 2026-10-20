@@ -367,6 +367,169 @@ def _diagrams() -> dict[str, str]:
                + "".join(f'<rect x="72" y="{y}" width="{w}" height="3.4" rx="1.7" fill="#d0d5dd"/>'
                          for y, w in ((26, 34), (33, 28), (40, 31), (47, 22)))
                + good(102, 61, 7) + text(88, 64, "Lean", 8, GOOD, "end", 800))
+    # ---- E: the machine as data (Lean) --------------------------------------------------------
+    def jsq(x, y, real=True):
+        """A node where rails meet: a true junction (three or more rails) grey, as the studio
+        draws it; a bend (two) faded gold."""
+        if real:
+            return f'<rect x="{_n(x - 6)}" y="{_n(y - 6)}" width="12" height="12" rx="1.5" fill="#fff" stroke="#8a94a6" stroke-width="2.3"/>'
+        return (f'<rect x="{_n(x - 5)}" y="{_n(y - 5)}" width="10" height="10" rx="1.5" fill="#fff" stroke="#f6c34a" '
+                f'stroke-width="2" opacity=".55"/>')
+
+    # grid2x3 upright: junction columns at x 34 / 86, rows at y 10 / 40 / 70
+    gx, gy = (34, 86), (10, 40, 70)
+    grid = "".join(rail(gx[0], y, gx[1], y) for y in gy) + "".join(rail(x, gy[0], x, gy[2]) for x in gx)
+    grid += "".join(jsq(x, y, real=(y == 40)) for x in gx for y in gy)
+    grid += "".join(site(60, y, n=2, gap=7) for y in gy) + "".join(site(x, y, n=2, v=True, gap=5) for x in gx for y in (25, 55))
+    d["E1"] = (grid + ion(56.5, 40, D0)
+               + arrow("M54 35Q44 31 39 27", ARROW, w=1.5) + arrow("M54 45Q44 49 39 53", ARROW, w=1.5)
+               + arrow("M66 35Q76 31 81 27", ARROW, w=1.5) + arrow("M66 45Q76 49 81 53", ARROW, w=1.5)
+               + text(23, 43, "junction", 6, "#475467", "end") + text(97, 43, "junction", 6, "#475467", "start")
+               + text(23, 12.5, "bend", 6, "#b8902a", "end") + text(97, 72.5, "bend", 6, "#b8902a", "start"))
+
+    # chain4, compact: four two-ion sites
+    def chain4(y, xs=(15, 45, 75, 105), ions=()):
+        g = "".join(rail(xs[i], y, xs[i + 1], y) for i in range(3)) + "".join(site(x, y, n=2, gap=7) for x in xs)
+        for slot_x, colour in ions:
+            g += ion(slot_x, y, colour)
+        return g
+
+    steps = (("H", (("C1", D0), ("C0", D1))), ("C1→C0", (("C0", D0), ("C0", D1))), ("cool", (("C0", D0), ("C0", D1))),
+             ("CX", (("C0", D0), ("C0", D1))), ("M", (("C0", D0), ("C0", D1))))
+    strip = ""
+    for k, (label, state) in enumerate(steps):
+        x0 = 6 + k * 22.4
+        strip += (f'<rect x="{_n(x0)}" y="38" width="19" height="12" rx="3" fill="#fff" stroke="#c3cbd8" stroke-width="1.1"/>'
+                  + text(x0 + 9.5, 46.4, label, 5.6 if len(label) > 3 else 6.5, "#182230", weight=700))
+        strip += f'<path d="M{_n(x0 + 1)} 60H{_n(x0 + 18)}" stroke="#f2b8b5" stroke-width="1.6" stroke-linecap="round"/>'
+        strip += "".join(f'<rect x="{_n(x0 + 0.6 + i * 4.8)}" y="57" width="4" height="6" rx="1.6" fill="#d3eeea"/>'
+                         for i in range(4))
+        together = len({w for w, _ in state}) == 1
+        for j, (where, colour) in enumerate(state):
+            xi = x0 + 2.6 + {"C0": 0, "C1": 1}[where] * 4.8 + ((j - 0.5) * 1.5 if together else 0)
+            strip += f'<circle cx="{_n(xi)}" cy="60" r="1.45" fill="{colour}"/>'
+        if k < 4:
+            strip += f'<path d="M{_n(x0 + 19.4)} 44h2.6" stroke="#98a2b3" stroke-width="1"/>'
+    d["E2"] = (chain4(16, ions=((40.5, D0), (11.5, D1))) + text(45, 30, "q0", 6, D0, weight=700) + text(15, 30, "q1", 6, D1, weight=700)
+               + strip + text(60, 76, "replay: the state after each statement", 6.2))
+
+    def mini2(x0, y, q0_at_c0):
+        """C0 and C1 of chain4 at the CX: q1 always in C0, q0 in C0 or still in C1."""
+        g = rail(x0, y, x0 + 26, y) + rail(x0 + 26, y, x0 + 40, y) + site(x0, y, n=2, gap=7) + site(x0 + 26, y, n=2, gap=7)
+        g += ion(x0 - 3.5, y, D1) + (ion(x0 + 3.5, y, D0) if q0_at_c0 else ion(x0 + 26 - 3.5, y, D0))
+        return g + beam(x0, y - 26, y - 8)
+
+    d["E3"] = (mini2(16, 38, True) + mini2(76, 38, False)
+               + text(30, 52, "bell", 7, "#182230", weight=700) + text(90, 52, "early", 7, "#182230", weight=700)
+               + good(48, 16) + pill(103, 16, "R6b", BAD, 20)
+               + '<path d="M60 6V74" stroke="#e4e7ec" stroke-width="1.2"/>'
+               + pill(11, 67, "R1", GOOD, 12) + pill(24, 67, "R2", GOOD, 12) + pill(37, 67, "R6", GOOD, 12) + pill(51, 67, "R6b", GOOD, 15)
+               + pill(71, 67, "R1", GOOD, 12) + pill(84, 67, "R2", GOOD, 12) + pill(97, 67, "R6", GOOD, 12) + pill(111, 67, "R6b", BAD, 15))
+
+    # ring6d's loop (data sites: no gates) with an ion under a one-ion gate at S1
+    loop = ('<rect x="8" y="18" width="48" height="42" rx="14" fill="none" stroke="#f2b8b5" stroke-width="4.5"/>'
+            + "".join(site(x, y, "data") for x, y in ((19, 18), (32, 18), (45, 18), (45, 60), (32, 60), (19, 60)))
+            + ion(32, 18, D0) + beam(32, 2, 10, D1) + text(32, 41, "S1", 7, "#667085", weight=700))
+    card = lambda y, title, rules, ok: (
+        f'<rect x="64" y="{y}" width="52" height="30" rx="4" fill="#fff" stroke="#d0d5dd" stroke-width="1.1"/>'
+        + text(68, y + 10, title, 6.8, "#182230", "start", 700) + text(68, y + 22, rules, 5.6, "#667085", "start", 600, True)
+        + (good(108, y + 9, 5.5) if ok else bad(108, y + 9, 5.5)))
+    d["E4"] = loop + card(8, "standard", "R1 R2 … R6 …", False) + card(44, "cyclone", "R1 R2 … no R6", True)
+
+    # ---- F: certificates and the proved checker ---------------------------------------------
+    cert = lambda x, y, w=34, h=30: (
+        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="4" fill="#fff" stroke="#d0d5dd" stroke-width="1.1"/>'
+        + "".join(f'<rect x="{x + 5}" y="{y + 6 + i * 6}" width="{w - 10 - (i % 2) * 6}" height="2.8" rx="1.4" fill="#d0d5dd"/>'
+                  for i in range((h - 8) // 6)))
+    d["F2"] = (chain4(16, ions=((11.5, D0), (18.5, D1))) + beam(15, 1, 9)
+               + "".join(f'<rect x="{_n(4.5 + i * 10.2)}" y="30" width="9" height="11" rx="2.5" fill="{BAD if i == 4 else GOOD}"/>'
+                         + text(9 + i * 10.2, 37.8, str(i + 1), 5.6, "#fff", weight=800) for i in range(11))
+               + cert(6, 48, 26, 26) + text(38, 59, "Implements:", 6.6, "#182230", "start", 700)
+               + text(38, 69, "11 conditions, 1 broken", 6, "#667085", "start"))
+    box = lambda x, y, w, h, label, c="#182230", size=6.5, mono=True, fill="#fff": (
+        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="3.5" fill="{fill}" stroke="#c3cbd8" stroke-width="1.1"/>'
+        + text(x + w / 2, y + h / 2 + size * .36, label, size, c, weight=700, mono=mono))
+    d["F3"] = (box(3, 6, 50, 14, "Implements bell", size=6, mono=False) + arrow("M55 13H62", MUTED, w=1.2)
+               + box(64, 6, 26, 14, "decide", c="#6a4fd0", size=6) + arrow("M92 13H99", MUTED, w=1.2)
+               + pill(108, 13, "true", GOOD, 17)
+               + box(3, 28, 114, 14, "", fill="#f2f4f7") + text(8, 37.5, "#eval", 6.2, "#667085", "start", 700, True)
+               + text(40, 37.5, "runs it, proves nothing", 6, "#667085", "start")
+               + box(3, 45, 114, 14, "", fill="#e7f5ec") + text(8, 54.5, "decide +kernel", 6.2, GOOD, "start", 700, True)
+               + text(62, 54.5, "kernel computes it", 5.8, "#182230", "start")
+               + box(3, 62, 114, 14, "", fill="#fdf3d9") + text(8, 71.5, "native_decide", 6.2, "#8a6d1f", "start", 700, True)
+               + text(58, 71.5, "trusts the compiler", 5.8, "#8a6d1f", "start"))
+    d["F4"] = (f'<rect x="4" y="24" width="40" height="32" rx="4" fill="#fff" stroke="#6a4fd0" stroke-width="1.4"/>'
+               + text(24, 37, "check c", 6.6, "#182230", weight=700, mono=True) + text(24, 46, "= true", 6.6, "#182230", weight=700, mono=True)
+               + text(24, 64, "a Bool", 6, "#667085")
+               + f'<rect x="76" y="24" width="40" height="32" rx="4" fill="#fff" stroke="#0f766e" stroke-width="1.4"/>'
+               + text(96, 37, "Implements", 6.2, "#182230", weight=700, mono=True) + text(96, 46, "c", 6.6, "#182230", weight=700, mono=True)
+               + text(96, 64, "a Prop", 6, "#667085")
+               + arrow("M46 32H73", GOOD, w=1.6) + arrow("M74 48H47", CHK, w=1.6)
+               + text(60, 16, "check_sound", 6.2, GOOD, weight=700, mono=True) + text(60, 76, "check_complete", 6.2, CHK, weight=700, mono=True)
+               + '<path d="M60 18V28M60 52V68" stroke="#e4e7ec" stroke-width="1"/>')
+
+    def tinychain(y, ions, mark, label, note=None):
+        g = (f'<path d="M8 {y}H44" stroke="#f2b8b5" stroke-width="2.6" stroke-linecap="round"/>'
+             + "".join(f'<rect x="{_n(6 + i * 11)}" y="{_n(y - 3.5)}" width="8" height="7" rx="3" fill="#d3eeea" stroke="#0f766e" stroke-width=".9"/>'
+                       for i in range(4)))
+        g += "".join(f'<circle cx="{_n(10 + p * 11 + dx)}" cy="{y}" r="2.1" fill="{c}"/>' for p, dx, c in ions)
+        g += text(52, y + 2.2, label, 6, "#182230", "start", 600, True)
+        g += (good(112, y, 4.6) if mark else bad(112, y, 4.6))
+        if note:
+            g += text(52, y + 9.5, note, 5.4, GOOD, "start", 600)
+        return g
+    ghz = ((0, -1.6, D0), (0, 1.6, D1), (1, 0, D2), (2, 0, CHK))
+    d["F5"] = (tinychain(10, ghz, True, "the GHZ chain") + '<path d="M6 18H114" stroke="#e4e7ec" stroke-width="1"/>'
+               + tinychain(27, ((0, -1.6, D0), (3, 0, D1), (1, 0, D2), (2, 0, CHK)), False, "teleport")
+               + tinychain(40, ghz, False, "shifted witness")
+               + tinychain(53, ghz + ((3, 0, "#98a2b3"),), False, "foreign ions")
+               + tinychain(66, ((0, -1.6, D1), (0, 1.6, D0), (1, 0, D2), (2, 0, CHK)), True, "swap_operands",
+                           "the pulses refuse it"))
+    layers = (("Lean kernel + propext", "proved", GOOD), ("parser Input.ofJson", "believed", "#c9971a"),
+              ("device facts (hops)", "believed", "#c9971a"), ("check_cert's semantics", "computed", MEAS))
+    d["F6"] = "".join(f'<rect x="6" y="{6 + i * 18}" width="108" height="15" rx="3" fill="#fff" stroke="#d0d5dd" stroke-width="1.1"/>'
+                      + text(11, 16 + i * 18, name, 6, "#182230", "start", 600)
+                      + pill(96, 13.5 + i * 18, tag, colour, 34)
+                      for i, (name, tag, colour) in enumerate(layers))
+
+    # ---- H: verify the website yourself -------------------------------------------------------
+    chips = "".join(f'<rect x="{_n(7 + (i % 10) * 10.8)}" y="{6 + (i // 10) * 11}" width="8.4" height="8.4" rx="2" '
+                    f'fill="{GOOD}" opacity="{1 if i == 12 else .55}"' + (' stroke="#1e2761" stroke-width="1.6"' if i == 12 else "") + "/>"
+                    for i in range(19))
+    d["H1"] = (chips + text(116, 33, "19 certificates", 5.8, "#667085", "end")
+               + arrow("M33 27V34", MUTED, w=1.1)
+               + chain4(56, xs=(18, 46, 74, 102), ions=((14.5, D0), (21.5, D1), (49.5, D2), (77.5, CHK)))
+               + "".join(f'<path d="M{a} 46Q{(a + b) / 2} 38 {b} 46" stroke="{GATE}" stroke-width="1.4" fill="none"/>'
+                         for a, b in ((14, 22), (22, 46), (46, 74), (74, 102)))
+               + text(60, 74, "the GHZ chain: four CNOT meetings", 6))
+    d["H2"] = (f'<rect x="4" y="6" width="84" height="16" rx="4" fill="#fff" stroke="#d0d5dd" stroke-width="1.1"/>'
+               + '<circle cx="13" cy="14" r="5.5" fill="#0b7a4b"/>' + text(13, 16.5, "1", 6.5, "#fff", weight=800)
+               + text(22, 16.6, "rep9", 6.8, "#182230", "start", 700) + '<rect x="40" y="11" width="24" height="5.5" rx="2.5" fill="#e4e7ec"/>'
+               + pill(77, 14, "R10", GOOD, 17)
+               + '<circle cx="80" cy="16" r="10" fill="none" stroke="#1e2761" stroke-width="2"/>'
+               + '<path d="M87 23l8 8" stroke="#1e2761" stroke-width="3.4" stroke-linecap="round"/>'
+               + rail(12, 54, 84, 54) + site(26, 54, n=9, gap=3.6) + site(70, 54, n=8, gap=3.6)
+               + "".join(f'<circle cx="{_n(26 + (i - 4) * 3.6)}" cy="54" r="1.6" fill="{(D0, D1, D2, CHK)[i % 4]}"/>' for i in range(9))
+               + "".join(f'<circle cx="{_n(70 + (i - 3.5) * 3.6)}" cy="54" r="1.6" fill="{(D1, D2, CHK, D0)[i % 4]}"/>' for i in range(8))
+               + text(26, 68, "C0", 6, "#0f766e", weight=700) + text(70, 68, "C1", 6, "#0f766e", weight=700)
+               + text(48, 77, "stationary_chain, 17 ions", 5.8) + good(104, 54, 7) + text(104, 70, "proved", 5.8, GOOD, weight=700))
+    stages = ("bundle", "device", "physics_lock", "program", "rules", "correspondence", "certificate_binding",
+              "lean_certificate", "semantics", "metrics")
+    d["H3"] = ('<path d="M10 30H110" stroke="#c3cbd8" stroke-width="1.2"/>'
+               + "".join(f'<rect x="{_n(5.5 + i * 11.1)}" y="25.5" width="9" height="9" rx="2" '
+                         f'fill="{GATE if s in ("lean_certificate", "semantics") else "#fff"}" stroke="{GATE if s in ("lean_certificate", "semantics") else "#98a2b3"}" stroke-width="1.1"/>'
+                         + text(10 + i * 11.1, 32.4, str(i + 1), 5.2, "#fff" if s in ("lean_certificate", "semantics") else "#667085", weight=700)
+                         for i, s in enumerate(stages))
+               + text(10, 46, "bundle", 5.6, "#667085", "start") + text(112, 46, "metrics", 5.6, "#667085", "end")
+               + '<path d="M83 22V18H103V22" stroke="' + GATE + '" stroke-width="1.2" fill="none"/>' + text(93, 15, "R10", 6.6, GATE, weight=800)
+               + text(114, 60, "lean_certificate", 6.2, GATE, "end", 700, True) + text(114, 70, "semantics", 6.2, GATE, "end", 700, True)
+               + text(10, 66, "R10 needs", 6, "#667085", "start") + text(10, 74, "these two", 6, "#667085", "start")
+               + text(10, 15, "ten stages", 5.8, "#667085", "start"))
+    flow = ("circuit.qasm + device", "qccdc compile", "insert_cooling", "mk_qcheck_input", "check_cert --qcheck")
+    d["H4"] = ('<rect x="3" y="3" width="114" height="74" rx="5" fill="#1f2430"/>'
+               + "".join(text(9, 15 + i * 12.2, ("$ " if i else "  ") + s, 6.2, "#e6edf3" if i else "#9fb3c8", "start", 600, True)
+                         for i, s in enumerate(flow))
+               + text(9, 73, "  R10 passed", 6.6, "#7ee787", "start", 800, True) + good(76, 70.8, 4.6))
     return d
 
 
@@ -485,7 +648,8 @@ def lean_parts() -> list[dict]:
         return []
     # the sources write a spaced ` -- `; a reader sees the dash the rest of the site prints
     return [dict(p, title=dash(p["title"]), about=dash(p["about"]), coming=[dash(t) for t in p.get("coming", ())],
-                 lessons=[dict(L, title=dash(L["title"])) for L in p["lessons"]]) for p in tutorial_parts()]
+                 lessons=[dict(L, title=dash(L["title"]), story=plain(dash(L.get("story", "")))) for L in p["lessons"]])
+            for p in tutorial_parts()]
 
 
 # ------------------------------------------------------------------------- the page

@@ -106,6 +106,9 @@ def test_the_lean_parts_are_the_tutorial_and_nothing_a_reader_reads_calls_it_a_b
     text = h.unescape(re.sub(r"<[^>]+>", " ", re.sub(r"<(script|style)\b.*?</\1>", " ", page, flags=re.S)))
     assert "book" not in text.lower(), re.search(r".{40}book.{40}", text, re.I | re.S).group(0)
     assert " -- " not in text
+    # a lesson's line is prose, not its source: no markdown marks left in it
+    for line in re.findall(r'<span class="ls">(.*?)</span>', page):
+        assert "`" not in line and "**" not in line, line
 
 
 def test_every_studio_page_sends_its_stars_and_no_other_page_does():
