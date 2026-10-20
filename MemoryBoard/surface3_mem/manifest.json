@@ -105,7 +105,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1977103,
+  "bytes": 1978863,
   "sites": 32,
   "junctions": 8,
   "loops": 1,
@@ -218,7 +218,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1823378,
+  "bytes": 1825138,
   "sites": 42,
   "junctions": 24,
   "loops": 0,
@@ -331,7 +331,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1819602,
+  "bytes": 1821362,
   "sites": 40,
   "junctions": 21,
   "loops": 0,
@@ -468,7 +468,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 2057783,
+  "bytes": 2059543,
   "sites": 168,
   "junctions": 24,
   "loops": 1,
@@ -605,7 +605,7 @@
     "kind": "warn"
    }
   ],
-  "bytes": 1902901,
+  "bytes": 1904661,
   "sites": 24,
   "junctions": 8,
   "loops": 1,
@@ -726,7 +726,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 2019733,
+  "bytes": 2021493,
   "sites": 40,
   "junctions": 0,
   "loops": 1,
@@ -839,7 +839,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1874001,
+  "bytes": 1875761,
   "sites": 144,
   "junctions": 77,
   "loops": 0,
@@ -952,7 +952,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1879494,
+  "bytes": 1881254,
   "sites": 144,
   "junctions": 77,
   "loops": 0,
@@ -1073,7 +1073,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1849834,
+  "bytes": 1851594,
   "sites": 72,
   "junctions": 0,
   "loops": 1,
@@ -1186,7 +1186,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 2086083,
+  "bytes": 2087843,
   "sites": 288,
   "junctions": 46,
   "loops": 0,
@@ -1291,7 +1291,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1782957,
+  "bytes": 1784717,
   "sites": 2,
   "junctions": 0,
   "loops": 0,
@@ -1404,7 +1404,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1842604,
+  "bytes": 1844364,
   "sites": 32,
   "junctions": 16,
   "loops": 0,
@@ -1536,7 +1536,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1804246,
+  "bytes": 1806006,
   "sites": 32,
   "junctions": 16,
   "loops": 0,
@@ -1587,7 +1587,7 @@
   "numbers": {
    "r10": false
   },
-  "bytes": 1603166,
+  "bytes": 1604926,
   "sites": 144,
   "junctions": 0,
   "loops": 2
@@ -1612,7 +1612,7 @@
   "numbers": {
    "r10": false
   },
-  "bytes": 1556574,
+  "bytes": 1558334,
   "sites": 72,
   "junctions": 0,
   "loops": 0

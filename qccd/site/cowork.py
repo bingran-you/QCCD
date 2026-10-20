@@ -322,7 +322,7 @@ BOARD_HTML = """<section id="official">
 <h2>Official submissions: more boards</h2>
 <p class="sub">Every board above lists its own submissions, with who submitted each. These are
 the other boards the official server ranks. A submission is graded again there with the
-reference checker, which runs the same ten checks as a local grade, including the proved Lean
+reference checker, which runs the same ten checks as a local grade, including the proved
 checker. Only eligible, public submissions appear; a private one never does. Read live from
 the server.</p>
 <div id="qo-boards"><p class="qo-wait">Loading the official leaderboard...</p></div>

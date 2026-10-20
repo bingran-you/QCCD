@@ -23,6 +23,7 @@ files, unedited.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import time
@@ -36,7 +37,11 @@ QCHECK = COMPILER / "lean" / ".lake" / "build" / "bin" / "qcheck.exe"
 BRIDGE = COMPILER / "bridge"
 OUT = HERE / "compiled"
 
-HEADER = 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[2];\ncreg c[2];\n'
+def header(n: int = 2) -> str:
+    return f'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[{n}];\ncreg c[{n}];\n'
+
+
+HEADER = header(2)
 
 #: The small devices the gates are compiled onto, by name: the generator call that builds
 #: each, and one line about it.  The same devices carry the Language and Rules pages.
@@ -70,6 +75,42 @@ GATES: list[tuple[str, str, str, str, str]] = [
 ]
 
 
+#: The Algorithm section's two circuits: four qubits each, chosen so that the decisions the
+#: section explains are visible in the programme -- two gates in one layer sharing an
+#: instruction, a meeting trap chosen for room rather than distance, a hop that cannot share
+#: a cycle with another because it is a different waveform, and the placer's candidates
+#: scored and hill-climbed.  Same pipeline, same files, same checks as the gates.
+ALGO: list[tuple[str, str, str, str, str]] = [
+    ("algo_par", "h q[0];\nh q[2];\ncx q[0],q[1];\ncx q[2],q[3];\ncx q[1],q[2];\nmeasure q -> c;",
+     "Two Bell pairs, then joined",
+     "four layers: two Hadamards fire in one instruction, two CNOTs run side by side in two traps, then one CNOT joins the pairs",
+     "grid2x3"),
+    ("algo_ghz", "h q[0];\ncx q[0],q[1];\ncx q[1],q[2];\ncx q[2],q[3];\nmeasure q -> c;",
+     "A GHZ chain",
+     "every CNOT shares a qubit with the next: the placer lays the chain along the register, and no ion is sent home while the next gate still needs it",
+     "chain4"),
+    # compiled by the ROTATION pass (see ALGO_CMD): one ancilla parked at a dock, three data
+    # qubits riding the loop, three contacts -- the shape of a stabilizer measurement
+    ("algo_rot", "h q[0];\ncx q[0],q[1];\ncx q[0],q[2];\ncx q[0],q[3];\nh q[0];\nmeasure q[0] -> c[0];",
+     "A three-qubit parity check, by rotation",
+     "the ancilla q0 sits at a dock, the data ride the loop; the loop turns twice and every CNOT is a contact at the dock",
+     "ring6d"),
+]
+
+#: The Algorithm section's fourth circuit: a Toffoli, so that the lowering of §2 can be drawn
+#: from the certificate's (lowered) op list and checked against the exact unitary.
+ALGO.append(("algo_ccx", "ccx q[0],q[1],q[2];", "A Toffoli, lowered",
+             "one three-qubit gate becomes six CNOTs and nine single-qubit gates before placement; R10 is decided against the exact unitary",
+             "grid2x3"))
+
+#: Which compiler command an example uses; `compile` unless listed here.
+ALGO_CMD = {"algo_rot": "rotate"}
+
+#: A circuit the Algorithm section quotes only through `qccdc decompose`: how a Toffoli
+#: lowers.  The tool's output is written beside the examples, unedited.
+LOWERING_QASM = 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[3];\ncreg c[3];\nccx q[0],q[1],q[2];\n'
+
+
 def sh(cmd: list, timeout: int = 900) -> tuple[int, str, float]:
     t0 = time.time()
     r = subprocess.run([str(c) for c in cmd], capture_output=True, text=True, timeout=timeout,
@@ -93,16 +134,21 @@ def device(name: str = "ring6d") -> tuple[Path, Path]:
     return arch, exp
 
 
-def compile_one(gid: str, body: str, title: str, note: str, arch: Path, exp: Path, dev: str = "ring6d") -> dict:
+def compile_one(gid: str, body: str, title: str, note: str, arch: Path, exp: Path, dev: str = "ring6d",
+                n_qubits: int = 2) -> dict:
     d = OUT / gid
     d.mkdir(parents=True, exist_ok=True)
     qasm = d / "circuit.qasm"
-    qasm.write_text(HEADER + body + "\n", encoding="utf-8", newline="\n")
+    qasm.write_text(header(n_qubits) + body + "\n", encoding="utf-8", newline="\n")
     prefix = d / "prog"
-    rc, log, secs = sh([QCCDC, "compile", qasm, "--arch", exp, "-o", prefix])
+    rc, log, secs = sh([QCCDC, ALGO_CMD.get(gid, "compile"), qasm, "--arch", exp, "-o", prefix])
     if rc != 0 or not (d / "prog.tsir.json").exists():
         raise SystemExit(f"{gid}: the compiler refused:\n{log[-800:]}")
     summary = next((ln.strip() for ln in log.splitlines() if "instructions" in ln and "layers" in ln), "")
+    # the compiler's own account of its decisions (the placement candidates and their
+    # scores, the hill-climb, a tight device): shown on the page as it was printed
+    notes = [ln.strip()[2:] for ln in log.splitlines() if ln.startswith("  - ")]
+    regime = re.search(r"\((\S+) regime\)", log)
     cooled = d / "prog.cooled.tsir.json"
     rc, clog, _ = sh([sys.executable, BRIDGE / "insert_cooling.py", d / "prog.tsir.json", "--arch", arch, "-o", cooled])
     if rc != 0:
@@ -116,6 +162,7 @@ def compile_one(gid: str, body: str, title: str, note: str, arch: Path, exp: Pat
     verdict = json.loads(vlog[vlog.index("{"):]) if "{" in vlog else {"error": vlog[-400:]}
     (d / "verdict.json").write_text(json.dumps(verdict, indent=1) + "\n", encoding="utf-8", newline="\n")
     meta = {"id": gid, "title": title, "note": note, "compiler": summary, "device": dev, "device_about": DEVICES[dev][2],
+            "notes": notes, "regime": regime.group(1) if regime else "", "n_qubits": n_qubits,
             "compile_seconds": round(secs, 2), "check_seconds": round(lsecs, 1)}
     (d / "meta.json").write_text(json.dumps(meta, indent=1) + "\n", encoding="utf-8", newline="\n")
     print(f"  {gid:8s} {summary[:70]:70s} rules {len(rules.get('passed', []))} passed, "
@@ -123,10 +170,10 @@ def compile_one(gid: str, body: str, title: str, note: str, arch: Path, exp: Pat
     return meta
 
 
-def load_compiled() -> list[dict]:
+def load_compiled(which: list[tuple[str, str, str, str, str]] = GATES) -> list[dict]:
     """What the page reads: every example's files, in GATES order; empty if none exist."""
     out = []
-    for gid, body, title, note, dev in GATES:
+    for gid, body, title, note, dev in which:
         d = OUT / gid
         if not (d / "verdict.json").exists():
             continue
@@ -138,14 +185,30 @@ def load_compiled() -> list[dict]:
     return out
 
 
+def load_algo() -> list[dict]:
+    return load_compiled(ALGO)
+
+
 def main(argv=None) -> int:
+    """`--only id [id ...]` compiles a subset; everything else is left as it is."""
+    args = list(sys.argv[1:] if argv is None else argv)
+    only = set(args[args.index("--only") + 1:]) if "--only" in args else None
     for exe in (QCCDC, QCHECK):
         if not exe.exists():
             raise SystemExit(f"{exe} is not built; see Compiler/README.md")
     paths = {name: device(name) for name in DEVICES}
-    print(f"{len(DEVICES)} devices; {len(GATES)} circuits")
-    for gid, body, title, note, dev in GATES:
-        compile_one(gid, body, title, note, *paths[dev], dev=dev)
+    todo = [(g, 2) for g in GATES] + [(g, 1 + max(int(x) for x in re.findall(r"q\[(\d+)\]", g[1]))) for g in ALGO]
+    if only is not None:
+        todo = [(g, n) for g, n in todo if g[0] in only]
+    print(f"{len(DEVICES)} devices; {len(todo)} circuits")
+    for (gid, body, title, note, dev), n in todo:
+        compile_one(gid, body, title, note, *paths[dev], dev=dev, n_qubits=n)
+    if only is None or "lowering" in only:
+        q = OUT / "ccx.qasm"
+        q.write_text(LOWERING_QASM, encoding="utf-8", newline="\n")
+        rc, log, _ = sh([QCCDC, "decompose", q])
+        (OUT / "lowering.txt").write_text(log, encoding="utf-8", newline="\n")
+        print("  lowering ", log.strip().splitlines()[-2:])
     print(f"-> {OUT}")
     return 0
 

@@ -308,7 +308,7 @@ def noise_page(PAGE: str, STYLE: str) -> str:
         exps = [get_experiment(k).summary() for k in EXPERIMENTS]
     except Exception:
         exps = []
-    erows = "".join(f'<tr><td><code>{_e(e.get("name"))}</code></td><td>{_e(e.get("code"))}</td>'
+    erows = "".join(f'<tr><td><code>{_e(e.get("experiment") or e.get("name"))}</code></td><td>{_e(e.get("code"))}</td>'
                     f'<td class="n">{_e(e.get("distance"))}</td><td class="n">{_e(e.get("rounds"))}</td>'
                     f'<td class="n">{_e(e.get("n_data"))} + {_e(e.get("n_ancilla"))}</td></tr>' for e in exps)
     body = [

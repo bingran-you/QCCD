@@ -35,7 +35,8 @@ import os
 import shutil
 from pathlib import Path
 
-from .compile_examples import GATES, OUT as COMPILED, load_compiled
+from .compile_examples import GATES, OUT as COMPILED, load_algo, load_compiled
+from . import algorithm
 from .examples import GRAMMAR, IR_TABLE, RULES, VERBS, build_example, machine, rule_meta
 from .md import Renderer, hints, slug
 from . import prose
@@ -275,11 +276,12 @@ svg.qc{display:block;width:100%;max-width:320px;height:auto;background:var(--pap
 /* a gate set is a long list nobody reads at a glance: name it, and open it if you want it */
 details.gset summary{cursor:pointer;color:var(--accent);font-family:var(--sans);font-size:12.5px;list-style:none}
 details.gset summary::-webkit-details-marker{display:none}
-details.gset summary:before{content:"\25b8 ";color:var(--ink3)} details.gset[open] summary:before{content:"\25be "}
+details.gset summary:before{content:"▸ ";color:var(--ink3)} details.gset[open] summary:before{content:"▾ "}
 details.gset code{display:block;margin:6px 0 2px;line-height:1.7}
 dl.native{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:14px 0 0;align-items:baseline;max-width:74ch}
 dl.native dt{font-family:var(--mono);font-size:13.5px;color:var(--head);font-weight:600;white-space:nowrap}
 dl.native dd{margin:0;color:var(--ink)}
+pre.ident{background:#f7f6f2;border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.7;white-space:pre-wrap;overflow-x:auto}
 
 /* physics, people and publications */
 .folk{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin:10px 0 0}
@@ -728,8 +730,8 @@ def landing(ts: list[dict]) -> str:
     row = next((r for r in (task["rows"] if task else []) if ex["device"] in r["key"]), None)
     if row:
         n_ins = row.get("instructions")
-        cap = (f'{ex["what"]}: {n_ins} instructions, {_t(row):.1f} ms on the jones table, '
-               f'every rule passed{", R10 passed by the proved Lean checker and the tableau" if _r10(row) else ""}. '
+        cap = (f'{ex["what"]}: {n_ins} instructions, {_t(row):.1f} ms on the leaderboard\'s clock, '
+               f'every rule holds{" and R10 holds, by the proved checker and the tableau" if _r10(row) else ""}. '
                f'Step through it &rarr;')
         page = f'board/{task["id"]}/{row["page"]}'
         url = page + "#embed&play&step=2"
@@ -838,7 +840,7 @@ def board_index(ts: list[dict]) -> str:
             f'<section class="task" id="{t["id"]}"><div><h2><a href="{t["id"]}/">{html.escape(t["title"])}</a></h2>'
             f'<p class="desc">{html.escape(t.get("description", ""))}</p>'
             f'<p class="more"><a href="{t["id"]}/">Open the ranking plot &rarr;</a></p>'
-            f'<p class="meta">{t.get("n_data", "?")} data qubits &middot; the three fastest verified designs, by time on the jones table &middot; click a bar to step the programme</p></div>'
+            f'<p class="meta">{t.get("n_data", "?")} data qubits &middot; the three fastest verified designs, by time on the leaderboard&rsquo;s clock &middot; click a bar to step the programme</p></div>'
             f'<div><div class="bars">{"".join(bars)}</div>{ref}<div class="stats">{stats}</div>'
             f'{qec_cycle.board_block(_t(best) * 1000.0 if best else None)}'
             # take part: "Try your own design", and the people's submissions with who made them (leaderboard.py)
@@ -851,8 +853,9 @@ def board_index(ts: list[dict]) -> str:
             '<section class="lb-sec" id="architecture"><h2>Architecture</h2>'
             "<p class=\"sub\">Devices, each compiled by the reference compiler. One board per task. A task is a "
             "fixed circuit, physics package and cost table; every design on a board ran that circuit, was "
-            "replayed against the 27 rules and, where it passed, checked for R10 by the proved Lean checker on its "
-            "certificate and the tableau of its pulses. "
+            "replayed and judged by every rule of the <a href=\"../rules/#set-standard\">standard rule set</a> "
+            "and, where it passed, checked for R10 by the proved checker on its certificate and by the tableau "
+            "of its pulses. "
             "A design that fails any rule is disqualified and not listed. Each row shows the three fastest verified designs of its task; open a task for the full ranking of "
             "every listed design, where you can rank by anything and click a dot to step the programme in the studio. "
             "A round is only half of a QEC cycle, so every board also carries "
@@ -993,15 +996,13 @@ def discuss_page() -> str:
                       f'data-emit-metadata="0" data-input-position="top" data-theme="light" data-lang="en" '
                       f'crossorigin="anonymous" async></script>')
         else:
-            widget = (f'<p class="note">This category is not wired yet: the repository owner enables Discussions on '
-                      f'<a href="https://github.com/{cfg["repo"]}/settings">the repository</a>, installs the '
-                      f'<a href="https://github.com/apps/giscus">giscus app</a>, and pastes the category id from '
-                      f'<a href="https://giscus.app">giscus.app</a> into the site\'s giscus configuration. '
-                      f'Until then, <a href="https://github.com/{cfg["repo"]}/discussions">discuss on GitHub</a>.</p>')
+            widget = (f'<p class="note">This category is not shown on this page yet: '
+                      f'<a href="https://github.com/{cfg["repo"]}/discussions">discuss it on GitHub</a>.</p>')
         secs.append(f'<h2 id="{cat.lower()}">{cat}</h2><p class="sub">{blurb}</p>{widget}')
     body = ("<h1>Discuss</h1><p class=\"sub\">GitHub Discussions on the repository, embedded here with giscus. "
-            "A rule change is a pull request touching the rule's doc, its Python and browser twins and the parity "
-            "test together; the discussion happens here, the decision is a merge.</p>"
+            "A rule is one assertion in the <a href=\"../rules/#language\">rule language</a>; a new rule, or a "
+            "change to one, is proposed and discussed here, and the decision is a change to the catalogue of "
+            "rules.</p>"
             "<p class=\"note\">To point at one spot instead: <b>sign in</b> from the bar, press <b>+ Comment</b>, and "
             "click the word, figure or control you mean. The note stays pinned there for every signed-in reader, who "
             "can reply under it. Only signed-in readers see comments, and accounts are by invitation: ask the site "
@@ -1060,11 +1061,12 @@ def language_page(built: dict) -> str:
             "and one machine cycle: it says what moves where, or which ions a gate, a measurement or a cooling "
             "touches. It says nothing about cost. The replay computes the cost, the duration and the heating of "
             "every cycle from the device's own primitive tables, and the rules judge each cycle as a whole. "
-            "The same text runs in the studio's Write pane and, unchanged, in Python through <code>qccd.api</code>.</p>",
+            "The same text runs in the studio's Write pane and in your own workspace.</p>",
             "<h2 id=\"syntax\">Syntax</h2>",
             f"<pre class=\"grammar\"><code>{html.escape(GRAMMAR)}</code></pre>",
-            "<p class=\"sub\">Statements are Python calls on a programme <code>p</code>; the literals are Python's. "
-            "A statement may span lines while a bracket is open, which is Python's own rule and the only "
+            "<p class=\"sub\">A statement is a call on a programme <code>p</code>, such as "
+            "<code>p.move(\"d0\", \"C1\", \"C2\")</code>: names in quotes, numbers as written, lists in square "
+            "brackets. A statement may span lines while a bracket is open, and that is the only "
             "line-joining rule there is. Positional arguments come first, keywords after.</p>",
             "<h2 id=\"semantics\">Semantics</h2>",
             "<p class=\"sub\">The machine state is a map from ions to sites, a motional excitation n&#772; per ion, "
@@ -1114,34 +1116,19 @@ def _sources(src: str) -> str:
 
 
 def rules_page(built: dict) -> str:
-    body = ["<h1>The rules</h1>",
-            "<p class=\"sub\">Twenty-seven rules a programme must obey on a QCCD machine, each traced to a source. "
-            "The verifier replays every cycle and reports each rule as one of four things; a green tick is "
-            "only ever printed for a check that ran. Each rule below has a programme that passes it and one "
-            "that fails it, both judged by the real verifier and both runnable here as the page the studio "
-            "would open on them. The rules are code: <a href=\"../docs/rules/\">the rules reference</a> is the prose, "
-            "the verifier holds the checks, the browser carries their twins, and a "
-            "parity test holds the two implementations to identical verdicts.</p>",
-            '<div class="contract"><div class="ok"><b>passed</b>the check ran and found nothing</div>'
-            '<div class="bad"><b>failed</b>the check ran and names the cycle and the reason</div>'
-            '<div class="skip"><b>skipped</b>the check could not run, and says why</div>'
-            '<div class="partial"><b>partial</b>the check ran on an approximation, and says which</div></div>',
-            "<h2 id=\"all\">All rules</h2>",
-            "<ul class=\"toc2\">" + "".join(f'<li><a href="#{r["id"]}">{r["id"]}</a></li>' for r in RULES) + "</ul>"]
-    for R in RULES:
-        meta = rule_meta(R["id"])
-        b = built[R["id"]]
-        own = any(isinstance(R.get(w), dict) and R[w].get("device") for w in ("pass", "fail"))
-        cards = "".join(_example_card(b[w], R["id"], "", b[w].get("device") if own else None)
-                        for w in ("pass", "fail") if w in b)
-        note = f'<p class="note">{R["note"]}</p>' if R.get("note") else ""
-        body.append(
-            f'<section class="rule" id="{R["id"]}"><h3>{R["id"]} <span class="st">{html.escape(meta["statement"])}</span></h3>'
-            f'<p class="checks">{R["checks"]}</p>'
-            f'<p class="src">device: {R["device"]["about"]} &middot; cost model: {b.get("model", "corrected")} &middot; sources: {_sources(meta["sources"])}</p>'
-            f'{note}<div class="pair">{cards}</div></section>')
-    return PAGE.format(title="Rules - QCCD studio", style=STYLE, extra_css="main{max-width:1120px}",
-                       body="\n".join(body))
+    """The Rules page, written from the rule language (`qccd/site/rulespage.py`)."""
+    from . import rulespage
+    from ..repro import catalog
+    from ..repro.__main__ import RULESETS
+    papers: dict[str, list] = {}
+    for p in catalog.PAPERS:
+        for prof in {r.get("profile") for r in p.get("runs", [])}:
+            n = RULESETS.get(prof)
+            if n and (p["key"], p.get("short", p["key"])) not in papers.setdefault(n, []):
+                papers[n].append((p["key"], p.get("short", p["key"])))
+        for n in rulespage.MODEL_PAPER_SETS.get(p["key"], ()):
+            papers.setdefault(n, []).append((p["key"], p.get("short", p["key"])))
+    return rulespage.page(built, {R["id"]: R for R in RULES}, PAGE, STYLE, papers)
 
 
 def build_examples(out: Path, put) -> tuple[dict, dict]:
@@ -1178,10 +1165,10 @@ def build_examples(out: Path, put) -> tuple[dict, dict]:
 # ---------------------------------------------------------------- compilation
 
 QASM_GATES = [("single-qubit", "id x y z h s sdg t tdg sx sxdg rx ry rz u1 p u2 u3 u",
-               "a turn about z, then one laser pulse"),
-              ("two-qubit", "cx cz cy ch swap cu1 cp", "cx is the primitive: R, MS(&pi;/2), R, R, R; the others are cx with single-qubit gates around it"),
-              ("three-qubit", "ccx", "the standard six-CNOT decomposition"),
-              ("non-unitary", "measure reset barrier", "readout and preparation in a zone with SPAM; barrier orders, and costs nothing")]
+               "one <code>R</code> pulse, then one <code>VZ</code>"),
+              ("two-qubit", "cx cz cy ch swap cu1 cp", "cx is one <code>MS(&pi;/2)</code> between four <code>R</code> pulses; the others are cx with single-qubit gates around it"),
+              ("three-qubit", "ccx", "the standard decomposition into six CNOTs and single-qubit gates"),
+              ("non-unitary", "measure reset barrier", "readout and preparation, in a trap equipped for them; a barrier only orders, and costs nothing")]
 
 
 def _listing(prog: dict, cert: dict) -> str:
@@ -1260,6 +1247,13 @@ def circuit_svg(ops: list[dict], n: int) -> str:
                        f'<circle cx="{cx_}" cy="{y(t)}" r="10" fill="#fff" stroke="{ink}" stroke-width="1.5"/>'
                        f'<line x1="{cx_ - 10}" y1="{y(t)}" x2="{cx_ + 10}" y2="{y(t)}" stroke="{ink}" stroke-width="1.5"/>'
                        f'<line x1="{cx_}" y1="{y(t) - 10}" x2="{cx_}" y2="{y(t) + 10}" stroke="{ink}" stroke-width="1.5"/>')
+        elif name == "ccx" and len(qs) == 3:
+            c1, c2, t = qs
+            out.append(f'<line x1="{cx_}" y1="{y(min(qs))}" x2="{cx_}" y2="{y(max(qs))}" stroke="{ink}" stroke-width="1.5"/>'
+                       f'<circle cx="{cx_}" cy="{y(c1)}" r="5" fill="{ink}"/><circle cx="{cx_}" cy="{y(c2)}" r="5" fill="{ink}"/>'
+                       f'<circle cx="{cx_}" cy="{y(t)}" r="10" fill="#fff" stroke="{ink}" stroke-width="1.5"/>'
+                       f'<line x1="{cx_ - 10}" y1="{y(t)}" x2="{cx_ + 10}" y2="{y(t)}" stroke="{ink}" stroke-width="1.5"/>'
+                       f'<line x1="{cx_}" y1="{y(t) - 10}" x2="{cx_}" y2="{y(t) + 10}" stroke="{ink}" stroke-width="1.5"/>')
         elif name == "cz" and len(qs) == 2:
             c, t = qs
             out.append(f'<line x1="{cx_}" y1="{y(c)}" x2="{cx_}" y2="{y(t)}" stroke="{ink}" stroke-width="1.5"/>'
@@ -1293,29 +1287,76 @@ def circuit_svg(ops: list[dict], n: int) -> str:
     return "".join(out)
 
 
-def _gate_row(g: dict, page: str) -> str:
+def _method_words(v: dict) -> str:
+    """How O2 was decided, in the page's words."""
+    return str(v.get("method", "")).replace("against the source QASM", "against the circuit as written")
+
+
+def _r10_words(v: dict) -> str:
+    if v.get("R10") == "passed":
+        return ("<b style=\"color:#0b7a4b\">holds</b> &mdash; O1 accepted by the proved checker; O2 by "
+                + html.escape(_method_words(v)))
+    return f"<b>{html.escape(str(v.get('R10')))}</b>"
+
+
+_STANDARD_CACHE: dict = {}
+
+
+def _standard_rules(g: dict) -> tuple[int, list[str]]:
+    """A compiled example judged by the standard rule set: (rules that hold, rules that fail)."""
+    if g["id"] in _STANDARD_CACHE:
+        return _STANDARD_CACHE[g["id"]]
+    from ..arch import Architecture
+    from ..cost import corrected_model
+    from ..ir.tsir import TSIR
+    from ..ruleset import check, load
+    from ..ruleset.compile import circuit_of_certificate
+    from ..ruleset.programme import programme_execution
+    dev = g["meta"].get("device", "ring6d")
+    arch = Architecture.from_json(json.loads((COMPILED / f"{dev}.arch.json").read_text(encoding="utf-8")))
+    v = g["verdict"]
+    exe = programme_execution(TSIR.from_json(g["tsir"]), arch, corrected_model(),
+                              circuit=circuit_of_certificate(g["cert"]),
+                              computes_circuit=(v.get("R10") == "passed") if v.get("R10") in ("passed", "FAILED") else None,
+                              check_metrics=False)
+    rep = check(load("standard"), exe)
+    out = (sum(1 for r in rep.results if r.verdict == "holds"), rep.failed())
+    _STANDARD_CACHE[g["id"]] = out
+    return out
+
+
+def _rules_words(g: dict) -> str:
+    n, failed = _standard_rules(g)
+    return f"{n} rules hold" + (f", {', '.join(failed)} fail" if failed else "")
+
+
+def _gate_row(g: dict, page: str, head: str | None = None) -> str:
     v, r, c, m = g["verdict"], g["rules"], g["cert"], g["meta"]
     final = _positions(c)
     mapping = "".join(f'<tr><td>q{q}</td><td>{ion}</td><td>{c["init"].get(ion, "?")}</td><td>{final.get(ion, "?")}</td></tr>'
                       for q, ion in sorted(c.get("map", {}).items(), key=lambda kv: int(kv[0])))
-    pulses = "".join(f'<code>op {w["dag"]} at {w["site"]}: {html.escape(", ".join(w["pulses"]))}</code>' for w in c.get("gates") or [])
+    pulses = "".join(f'<code>op {w["dag"]} at {w["site"]}: '
+                     + (html.escape(", ".join(w["pulses"])) if w.get("pulses")
+                        else f'witnessed by instruction #{w.get("instr")}, pulses in the programme')
+                     + '</code>' for w in c.get("gates") or [])
     if not pulses:
         pulses = '<span style="color:var(--ink3)">no pulses: nothing for a tableau to compose, and no witness needed</span>'
-    n_pass, failed = len(r.get("passed", [])), r.get("failed", [])
-    badges = [f'<span class="badge {"ok" if not failed else "bad"}">{n_pass} rules passed{(", " + ", ".join(failed) + " failed") if failed else ""}</span>',
-              f'<span class="badge {"ok" if v.get("R10") == "passed" else "bad"}">R10 {v.get("R10", "?")}</span>',
-              f'<span class="badge lean">O1 Lean: {v.get("lean", "?")}</span>',
+    n_hold, failed = _standard_rules(g)
+    badges = [f'<span class="badge {"ok" if not failed else "bad"}">{n_hold} rules hold{(", " + ", ".join(failed) + " fail") if failed else ""}</span>',
+              f'<span class="badge {"ok" if v.get("R10") == "passed" else "bad"}">R10 {"holds" if v.get("R10") == "passed" else v.get("R10", "?")}</span>',
+              f'<span class="badge lean">O1, proved checker: {v.get("lean", "?")}</span>',
               f'<span class="badge {"ok" if str(v.get("o2_semantics", "")).startswith("ok") else "bad"}">O2: {html.escape(str(v.get("o2_semantics", "?")))}</span>']
-    body = g["qasm"].split("creg c[2];\n", 1)[-1].strip()
+    body = re.split(r"creg c\[\d+\];\n", g["qasm"], maxsplit=1)[-1].strip()
     dev = m.get("device", "ring6d")
-    return (f'<section class="gaterow" id="{g["id"]}"><h3><code>{html.escape(body.splitlines()[0])}</code> <span class="st">{m["note"]}</span></h3>'
+    title = html.escape(head) if head else f'<code>{html.escape(body.splitlines()[0])}</code>'
+    return (f'<section class="gaterow" id="{g["id"]}"><h3>{title} <span class="st">{m["note"]}</span></h3>'
             f'<p class="src">device: <b>{dev}</b>, {html.escape(m.get("device_about", ""))}</p>'
             f'<div class="gr"><div>'
             f'<div class="lab">the circuit</div>{circuit_svg(c.get("circuit_ops", []), c.get("n_qubits", 2))}'
             f'<div class="lab">input</div><pre><code>{html.escape(body)}</code></pre>'
             f'<div class="lab">ion mapping</div><table class="kv"><tr><td>qubit</td><td>ion</td><td>starts</td><td>ends</td></tr>{mapping}</table>'
             f'<div class="lab">pulses witnessed</div><div class="pulses">{pulses}</div>'
-            f'<div class="lab">verdict &middot; {html.escape(str(v.get("method", "")))}</div><div class="badges">{"".join(badges)}</div>'
+            f'<div class="lab">verdict &middot; {html.escape(_method_words(v))}</div><div class="badges">{"".join(badges)}</div>'
             f'<a class="open" href="{page}#step=1">open the page, with the circuit beside the programme</a></div>'
             f'<div><div class="lab">the machine: press Play, or step it</div>'
             f'<div class="runbox tall"><iframe class="live" loading="lazy" src="{page}#embed&amp;step=1" title="{html.escape(m["title"])}, compiled, on its page"></iframe></div>'
@@ -1327,34 +1368,54 @@ def compilation_page(built: list[dict]) -> str:
     by = {g["id"]: g for g in built}
     bell = by.get("bell")
     body = ["<h1>Compilation</h1>",
-            "<p class=\"sub\">You write a quantum circuit. This page shows what the machine actually has to "
-            "do to run it: which ion is which qubit, which ions have to be moved next to each other, and which laser "
-            "pulses fire in what order. Every example here can be played.</p>"
-            "<p>Everything here is checked by machine: that the plan obeys what the "
-            "<a href=\"../rules/\">hardware can do</a>, and that it still computes the circuit you wrote.</p>"]
-    # the input
-    body.append("<h2 id=\"input\">What goes in</h2>"
-                "<p class=\"sub\">A circuit, written the ordinary way. No trapped-ion machine can perform those "
-                "gates as written, so each one is rewritten into the only three things this machine can actually "
-                "do:</p>"
-                "<dl class=\"native\">"
-                "<dt>A pulse on one ion</dt><dd>The laser turns that one qubit. Two numbers say how far it turns "
-                "and about which axis. Almost everything is built out of these.</dd>"
-                "<dt>A turn about z</dt><dd>A turn of the qubit about the other axis. On some machines this is free "
-                "&mdash; you leave the ion alone and adjust the pulses that come afterwards &mdash; but not on this "
-                "one: the laser beams are shared between ions, so there is no way to change what just one ion sees. "
-                "Here it costs real pulses, three of them, unless the trap has a dedicated beam for the job.</dd>"
-                "<dt>A pulse across two ions</dt><dd>One laser reaching <i>two</i> ions that sit in the same trap. "
-                "It is the only way this machine can make two qubits interact &mdash; which is why ions have to be "
-                "moved next to each other before a two-qubit gate can happen at all.</dd>"
-                "</dl>"
-                "<p>Every single-qubit gate is a turn of the qubit, and three angles are enough to describe any turn "
-                "&mdash; how far, and about which axis. So each one becomes a turn about z followed by a laser pulse. "
-                "The rewrite is not done by hand: it rests on a proved identity, so the pulses written for a gate "
-                "are that gate. That the pulses which fire are the ones for the gate you wrote is checked "
-                "separately, by composing them back (R10, below).</p>"
+            "<p class=\"sub\">The compiler takes a quantum circuit and a device, and writes the programme the "
+            "device runs: which ion holds each qubit, how ions are carried so that the two ions of every "
+            "two-qubit gate stand in the same trap, and the laser operations, in order. Every example on "
+            "this page can be played.</p>"
+            "<p>Every programme it writes is checked twice: against the <a href=\"../rules/\">rules</a> of the "
+            "machine, and against the circuit, to show that it computes what the circuit says.</p>"]
+    # the input, and what the machine can do
+    body.append("<h2 id=\"input\">The input, and the machine's three operations</h2>"
+                "<p class=\"sub\">The input is a circuit in <b>OpenQASM 2.0</b>, the standard text format for "
+                "quantum circuits (<a href=\"https://arxiv.org/abs/1707.03429\">its specification</a>). A "
+                "trapped-ion machine cannot apply most of its gates directly. This one has three operations, and "
+                "every gate is rewritten into them:</p>"
+                "<div class=\"tw\"><table><thead><tr><th>operation</th><th>acts on</th><th>what it does</th>"
+                "<th>as a matrix</th></tr></thead><tbody>"
+                "<tr><td><code>R(&theta;, &phi;)</code></td><td>one ion</td><td>One laser pulse. It rotates the "
+                "qubit by the angle <b>&theta;</b> about an axis lying in the X&ndash;Y plane, at the angle "
+                "<b>&phi;</b> from X: &phi; = 0 is a rotation about X, &phi; = &pi;/2 about Y. Written "
+                "<code>Rx(&theta;)</code> and <code>Ry(&theta;)</code> for those two.</td>"
+                "<td>cos(&theta;/2)&middot;I &minus; i&thinsp;sin(&theta;/2)&middot;(cos&thinsp;&phi;&middot;X + "
+                "sin&thinsp;&phi;&middot;Y)</td></tr>"
+                "<tr><td><code>VZ(&lambda;)</code></td><td>one ion</td><td>A rotation by the angle <b>&lambda;</b> "
+                "about Z, the one axis an <code>R</code> pulse cannot turn about.</td>"
+                "<td>diag(1, e<sup>i&lambda;</sup>)</td></tr>"
+                "<tr><td><code>MS(&theta;)</code></td><td>two ions in one trap</td><td>One laser pulse reaching "
+                "both ions, which entangles the two qubits by the angle <b>&theta;</b>. It is the only way two "
+                "qubits interact here, which is why the two ions of a two-qubit gate must first be carried into "
+                "the same trap.</td><td>cos(&theta;/2)&middot;I &minus; i&thinsp;sin(&theta;/2)&middot;X&otimes;X"
+                "</td></tr></tbody></table></div>"
+                "<p><b>What a <code>VZ</code> costs.</b> On a machine that can set the phase of the laser reaching "
+                "each ion on its own, a rotation about Z is free: no laser fires, and the phase of that ion's later "
+                "pulses is shifted instead. Here the beams are shared between ions, so the rotation has to be made "
+                "with pulses: Rx(&pi;/2)&middot;Ry(&lambda;)&middot;Rx(&minus;&pi;/2), three <code>R</code> pulses "
+                "(the rightmost first), equals <code>VZ(&lambda;)</code> up to a global phase. The programme still "
+                "writes it as one <code>VZ</code>, and the clock charges it the time of three pulses, unless the "
+                "device declares a gate that turns about Z in one pulse.</p>"
+                "<p><b>The two identities every gate is rewritten by.</b> Each is proved, so the operations written "
+                "for a gate are that gate (the rightmost factor happens first):</p>"
+                "<pre class=\"ident\">u3(&theta;, &phi;, &lambda;) = VZ(&phi; + &lambda;) &middot; R(&theta;, &pi;/2 &minus; &lambda;)\n"
+                "CX = e<sup>&minus;i&pi;/4</sup> &middot; [Ry(&minus;&pi;/2) &otimes; I] &middot; "
+                "[Rx(&minus;&pi;/2) &otimes; Rx(&minus;&pi;/2)] &middot; MS(&pi;/2) &middot; [Ry(&pi;/2) &otimes; I]</pre>"
+                "<p>The first says any single-qubit gate is one pulse followed by one rotation about Z: "
+                "<code>u3</code> is OpenQASM's general single-qubit gate, and every named one is a "
+                "<code>u3</code> with fixed angles (<code>h</code> is u3(&pi;/2, 0, &pi;), <code>t</code> is "
+                "u3(0, 0, &pi;/4)). The second says a CNOT is one <code>MS</code> between four single-ion pulses. "
+                "That the operations which actually fire are the ones for the gate you wrote is checked "
+                "separately, by composing them back into the circuit (R10, below).</p>"
                 "<div class=\"tw\"><table><thead><tr><th>what you write</th><th>which gates</th>"
-                "<th>what the machine actually does</th></tr></thead><tbody>"
+                "<th>what the machine does</th></tr></thead><tbody>"
                 + "".join(f'<tr><td>{a}</td><td><details class="gset"><summary>{len(b.split())} gates</summary>'
                           f'<code>{b}</code></details></td><td>{c}</td></tr>' for a, b, c in QASM_GATES)
                 + "</tbody></table></div>")
@@ -1364,26 +1425,63 @@ def compilation_page(built: list[dict]) -> str:
                     f'<div><div class="lab">the same circuit, drawn</div>{circuit_svg(c.get("circuit_ops", []), c.get("n_qubits", 2))}</div></div>')
     # the pipeline
     stages = [
-        ("Parse", "circuit_ops, a DAG", "the circuit is written in <b>OpenQASM 2.0</b>, the standard text format for quantum circuits "
-         "(<a href=\"https://arxiv.org/abs/1707.03429\">its specification</a>; gate names come from its standard library "
-         "<code>qelib1.inc</code>), and it becomes a list of operations with their qubits, parameters and source lines. "
-         "Between them it keeps the <b>dependency DAG</b>, a directed acyclic graph with an edge from each operation to the "
-         "next one that uses the same qubit: an operation may run only after everything with a path to it, and two operations "
-         "with no path between them may run in either order, or at once. A second front end in Python agrees on 507 of 507 test circuits."),
-        ("Rewrite", "pulses per gate", "every gate is rewritten as pulses this machine can fire: a single-qubit gate becomes a turn about z and one pulse, a CNOT becomes four single-ion pulses around one two-ion pulse, and anything bigger unfolds into those."),
-        ("Place", "map, init", "qubits are bound to ions (<code>map</code>) and ions to sites (<code>init</code>): the ion mapping. Candidates from a greedy and a spectral placement are scored by weighted interaction distance and the better one kept."),
-        ("Route and schedule", "moves, layers", "ops are scheduled in DAG layers; every two-qubit gate's operands are carried to one gate-capable trap. The general router moves one ion at a time along hops the device admits; on rings past about half occupancy the rigid-rotation pass turns the whole loop instead. Every move is recorded."),
-        ("Emit", "prog.tsir.json + prog.qcert.json", "the hardware programme in the language, every instruction stamped with the circuit op it serves (<code>meta.op</code>), and the certificate: the mapping, the moves, one witness per gate with its site, ions and pulses."),
-        ("Cool", "prog.cooled.tsir.json", "the cooling pass replays the programme under the heating model and inserts cooling where a gate would otherwise fire hot (R7)."),
-        ("Verify the rules", "rules.json", "the same verifier the studio runs replays the cooled programme and reports the 26 structural rules; R10 is what remains."),
-        ("Verify R10", "verdict.json", "<b>O1</b>: the certificate's moves are replayed from <code>init</code>; every gate witness must name exactly the ions its op's qubits are mapped to and find them together in a trap that can gate, every hop must be one the device admits, every op other than a measurement, reset or barrier witnessed exactly once and in order. The Lean checker <code>QCCDC.Cert.check</code> decides this, and <code>check_sound</code> proves that an accepted input satisfies exactly these conditions. A witness names an op, a cycle, a trap and ions, never a gate or its pulses, so O1 does not see which gate fires. The device facts it judges against are re-derived from the architecture by code the compiler never runs. <b>O2</b>: the pulses are read out of the emitted programme, composed through the mapping into a stabilizer tableau and compared with the source circuit's, each measurement and reset in its place; outside the Clifford fragment an exact unitary is compared instead, against the source circuit too. A swapped operand, a dropped gate, a wrong angle, a mis-tracked frame or one gate compiled as another all move the tableau. O2 is computed, not proved, and it is the half that says which gates the programme applies."),
-        ("Draw", "the page", "the studio joins the programme and the circuit through the stamps, but only after checking every witness against the stamp on the instruction it names; a disagreement refuses to draw."),
+        ("Read the circuit", "the operations, and the order between them",
+         "the circuit becomes a list of operations, each with its qubits and its angles. Between them the "
+         "compiler keeps the <b>dependency graph</b>: an arrow from each operation to the next one that uses "
+         "the same qubit. An operation may run only after everything with a path of arrows to it; two "
+         "operations with no path between them may run in either order, or at the same time."),
+        ("Rewrite", "native operations for each gate",
+         "every gate becomes the machine's operations by the two identities above: a single-qubit gate is one "
+         "<code>R</code> and one <code>VZ</code>, a CNOT one <code>MS</code> between four <code>R</code> pulses, "
+         "and a gate on three qubits (a Toffoli) is first unfolded into one- and two-qubit gates."),
+        ("Place", "which ion is which qubit, and where it starts",
+         "each qubit is given an ion, and each ion a starting trap, so that qubits that gate together start "
+         "close together (how, in <a href=\"#algo-layout\">&sect;3</a>)."),
+        ("Route and schedule", "the moves, in layers",
+         "operations run in layers of the dependency graph, and each qubit's operations keep the circuit's "
+         "order exactly, even where two of them would commute. Before a two-qubit gate, its two ions are "
+         "carried to one trap that can gate: one hop at a time on most devices, or, on a ring more than about "
+         "half full, by turning the whole ring at once. This is this website's compiler. The papers on "
+         "<a href=\"../reproduce/\">Reproduce</a> use their own compilers, with their own ways of routing "
+         "ions; there, each paper's schedules are replayed as its own code wrote them, and ours are set "
+         "beside them under the same rules."),
+        ("Write out", "the programme, and its certificate",
+         "the programme is one instruction per step, each marked with the operation of the circuit it "
+         "carries out. Beside it the compiler writes a <b>certificate</b>: which ion is which qubit, where "
+         "each ion starts, every move, and one <b>witness</b> per gate. A witness is the compiler's claim "
+         "about one gate of the circuit: <i>it happens at instruction k, in trap T, on ions a and b</i>. The "
+         "checks below test every claim instead of trusting it."),
+        ("Cool", "cooling where it is needed",
+         "the programme is replayed with the device's heating model, and a cooling operation is added "
+         "wherever a gate would otherwise start on ions too hot to gate (R7)."),
+        ("Check the rules", "every rule of the rule set",
+         "the cooled programme is replayed and every rule of the rule set is evaluated on it, exactly as on "
+         "the <a href=\"../rules/\">Rules</a> page: the standard rule set, unless the compiler was given "
+         "another."),
+        ("Check what it computes", "R10, in two halves",
+         "<b>O1</b>, where every gate happens: the certificate's moves are replayed from the starting "
+         "positions; every witness must name exactly the ions its gate's qubits are mapped to and find them "
+         "together in a trap that can gate, every move must be one the device allows, and every gate of the "
+         "circuit must be witnessed once, in the circuit's order on each of its qubits. O1 is decided by a "
+         "checker whose correctness is proved, and which reads the device from its description, not from "
+         "the compiler. <b>O2</b>, what the gates compute: the pulses are read out of the programme, "
+         "composed through the qubit-to-ion map, and compared with the circuit as written, each measurement "
+         "and reset in its place. A circuit of Clifford gates (H, S, CNOT and the Pauli gates, with "
+         "measurement) is compared as a <b>stabilizer tableau</b>, whose size grows only with the square of "
+         "the number of qubits, so circuits of any size are checked. Outside them (a T gate, an arbitrary "
+         "angle) the exact matrices are compared, and those grow as 4<sup>n</sup>: up to 10 qubits, counting "
+         "one more for each measurement in the middle of the circuit. Beyond that O2 is reported as not "
+         "checked, never as passing. O2 is computed, not proved; it is the half that says which gates the "
+         "programme applies."),
+        ("Draw", "the page",
+         "the page joins the programme and the circuit through the marks on the instructions, after "
+         "checking each witness against the instruction it names; a disagreement refuses to draw."),
     ]
     body.append("<h2 id=\"pipeline\">How a circuit becomes a machine programme</h2>"
-                "<p class=\"sub\">In short: read the circuit, rewrite every gate as laser pulses, decide which ion "
-                "plays which qubit, move ions so that the pairs that must interact end up in the same trap, write out "
-                "the instruction list, add cooling where the ions would be too hot to gate &mdash; then check the "
-                "result, twice. The nine steps below are that in full.</p>"
+                "<p class=\"sub\">In short: read the circuit, rewrite every gate as the machine's operations, "
+                "decide which ion plays which qubit, carry ions so that the pairs that must interact end up in the "
+                "same trap, write out the instructions, add cooling where the ions would be too hot to gate "
+                "&mdash; then check the result, twice. The nine steps below are that in full.</p>"
                 "<ol class=\"stages\">" + "".join(
         f'<li><div><b>{t}</b><span class="art">{a}</span></div><div class="out">{d}</div></li>' for t, a, d in stages) + "</ol>")
     if bell:
@@ -1396,34 +1494,37 @@ def compilation_page(built: list[dict]) -> str:
                     "does not move &mdash; and then the two traps are merged into one. The waiting ion shifts by a couple "
                     "of micrometres as the merge completes, against the hundreds it would move if it were the one being "
                     "carried. The check recomputes every position "
-                    "from <code>init</code> and the move list and checks each gate's operands are where the witness says.</p>"
+                    "from the starting positions and the list of moves, and checks that each gate's ions are where its witness says.</p>"
                     "<div class=\"two\"><div><table class=\"kv\"><tr><td>qubit</td><td>ion</td><td>starts</td><td>ends</td></tr>"
                     + "".join(f'<tr><td>q{q}</td><td>{ion}</td><td>{c["init"].get(ion)}</td><td>{final.get(ion)}</td></tr>' for q, ion in sorted(c["map"].items(), key=lambda kv: int(kv[0])))
                     + "</table><p class=\"sub\" style=\"margin-top:8px\">moves recorded: " + ", ".join(f'{m["ion"]} {m["from"]}→{m["to"]}' for m in c["moves"]) + "</p></div>"
                     f'<div><pre><code>{html.escape(_listing(bell["tsir"], c))}</code></pre></div></div>')
         body.append("<h2 id=\"pulses\">The pulse sequence, matched to the gate</h2>"
-                    "<p class=\"sub\">Each gate witness names the instruction that completes the op, the site, the ions and the "
-                    "pulses in time order. Two checks meet here: the identity behind the lowering is a theorem (these pulses equal this gate, up "
-                    "to global phase), and O2 composes the pulses actually emitted back into the circuit's semantics, so a "
-                    "pulse the compiler emitted but did not witness, or witnessed but did not emit, is caught.</p><div class=\"pulses\">"
+                    "<p class=\"sub\">Each witness names the instruction that completes the gate, the trap, the ions and "
+                    "the operations, in the order they happen. Two checks meet here: the identities above say these "
+                    "operations are this gate, and O2 composes the operations the programme actually fires back into "
+                    "the circuit, so an operation that fires without a witness, or a witness without its operation, "
+                    "is caught.</p><div class=\"pulses\">"
                     + "".join(f'<code>op {w["dag"]} ({c["circuit_ops"][w["dag"]]["name"]}) at {w["site"]}, instruction #{w["instr"]}: {html.escape(", ".join(w["pulses"]))}</code>' for w in c["gates"])
-                    + f'</div><p class="sub">Verdict for the Bell pair: rules {len(bell["rules"].get("passed", []))} passed; R10 <b style="color:#0b7a4b">{v.get("R10")}</b> &mdash; {html.escape(str(v.get("R10_reason", "")))}.</p>')
+                    + f'</div><p class="sub">Verdict for the Bell pair: {_rules_words(bell)}; R10 {_r10_words(v)}.</p>')
         body.append(f'<div class="ex pass"><span class="tag">runs</span><p class="why">The compiled Bell pair on the four-site register: press Play, or step it. The full page shows the circuit stepping beside the programme.</p>'
                     f'<div class="runbox tall"><iframe class="live" loading="lazy" src="ex/bell.html#embed&amp;step=1" title="the Bell pair, on its page"></iframe></div>'
                     f'<a class="open" href="ex/bell.html#step=1">open the page</a></div>')
     # every basic gate
     body.append("<h2 id=\"gates\">Every basic gate, compiled and verified</h2>"
-                "<p class=\"sub\">One circuit per gate, each on one of four small devices named on its card, through the same pipeline: the input, the hardware "
-                "programme it became, the ion mapping, the pulses witnessed, and the verdicts of the rules and of R10's two "
-                "halves. The gates that need no laser show a lone frame update; the two-qubit gates show the transport that "
-                "brings the ions together; the non-Clifford ones are checked against the exact unitary.</p>")
-    body.append("".join(_gate_row(g, f'ex/{g["id"]}.html') for g in built if g["id"] != "bell"))
+                "<p class=\"sub\">One circuit per gate, each on one of four small devices named on its card, through the "
+                "same steps: the input, the programme it became, the ion mapping, the operations witnessed, and the "
+                "verdicts of the rules and of R10's two halves. The two-qubit gates show the transport that brings "
+                "the ions together; the gates outside the Clifford set (t, and the rotations by an arbitrary angle) "
+                "are compared as exact matrices.</p>")
+    body.append("".join(_gate_row(g, f'ex/{g["id"]}.html') for g in built
+                        if g["id"] != "bell" and not g["id"].startswith("algo_")))
     if not built:
         body.append('<p class="note">No compiled examples in this build: the compiler and the proof checker write them, '
                     'and the site build reads them.</p>')
-    body.append("<p class=\"sub\">Phase 2 of the plan brings the compiler itself into the browser, so the Design page "
-                "can compile and check a circuit without leaving it.</p>")
-    return PAGE.format(title="Compilation - QCCD studio", style=STYLE, extra_css="main{max-width:1120px}",
+    lowering = COMPILED / "lowering.txt"
+    body.append(algorithm.section(by, lowering.read_text(encoding="utf-8") if lowering.exists() else ""))
+    return PAGE.format(title="Compilation - QCCD studio", style=STYLE, extra_css="main{max-width:1120px}" + algorithm.CSS,
                        body="\n".join(body))
 
 
@@ -1436,7 +1537,7 @@ def build_compiled_pages(out: Path, put) -> list[dict]:
     from ..ir.tsir import TSIR
     from ..verify import verify
     from ..viz.render import render_html
-    built = load_compiled()
+    built = load_compiled() + load_algo()
     if not built:
         return built
     archs: dict[str, Architecture] = {}
@@ -1485,11 +1586,21 @@ def _phys_link(target: str) -> str:
 ZONE_HEX = {"trap": "#2a78d6", "data": "#e8b940", "load": "#1baf7a", "big": "#4a3aa7"}
 
 
-def device_svg(m, labels: bool | None = None) -> str:
+_SVG_SEQ = [0]
+
+
+def device_svg(m, labels: bool | None = None, ions: dict[str, list[str]] | None = None,
+               paths: list[dict] | None = None, marks: dict[str, tuple[str, str]] | None = None,
+               hi: set[str] | None = None, crossed: set[str] | None = None,
+               hi_ions: set[str] | None = None) -> str:
     """The device as the system holds it: every node of the expanded graph at its position,
     every segment as a line.  Sites are discs coloured by zone, lattice junctions small dark
     squares, and a site where three or more axes meet gets a dark ring.  Drawn straight from
-    `m.arch.device`, so the picture cannot disagree with what the verifier walks."""
+    `m.arch.device`, so the picture cannot disagree with what the verifier walks.  `ions`
+    (site -> labels) draws the ions standing in a site as a dark pill above it; `hi_ions`
+    names the pills to draw in green.  `paths` ({nodes, color, label, dashed}) draws arrows
+    through node positions, `marks` (site -> (text, colour)) writes a note under a site,
+    `hi` rings a site in green and `crossed` strikes it out in red."""
     dev = m.arch.device
     nodes, segs = dev.nodes, dev.segments
     if not nodes:
@@ -1544,6 +1655,42 @@ def device_svg(m, labels: bool | None = None) -> str:
             out.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" fill="{fill}"{ring}/>')
         if labels:
             out.append(f'<text x="{cx:.1f}" y="{cy + r + 12:.1f}" font-size="10.5" text-anchor="middle" fill="#52514e">{html.escape(nid)}</text>')
+        if hi and nid in hi:
+            out.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r + 5:.1f}" fill="none" stroke="#0b7a4b" stroke-width="2.5"/>')
+        if crossed and nid in crossed:
+            k = r + 3
+            out.append(f'<path d="M{cx - k:.1f} {cy - k:.1f}L{cx + k:.1f} {cy + k:.1f}M{cx + k:.1f} {cy - k:.1f}L{cx - k:.1f} {cy + k:.1f}" stroke="#c62828" stroke-width="2.5" fill="none"/>')
+        if marks and nid in marks:
+            text, col = marks[nid]
+            out.append(f'<text x="{cx:.1f}" y="{cy + r + 24:.1f}" font-size="9.5" font-weight="600" text-anchor="middle" fill="{col}">{html.escape(text)}</text>')
+        if ions and nid in ions:
+            text = " ".join(ions[nid])
+            pw = 8 + 7 * len(text)
+            fill = "#0b7a4b" if hi_ions and any(i in hi_ions for i in ions[nid]) else "#1c2a4a"
+            out.append(f'<rect x="{cx - pw / 2:.1f}" y="{cy - r - 19:.1f}" width="{pw:.1f}" height="15" rx="7.5" fill="{fill}"/>'
+                       f'<text x="{cx:.1f}" y="{cy - r - 8:.1f}" font-size="10.5" font-weight="700" text-anchor="middle" fill="#fff">{html.escape(text)}</text>')
+    for p in paths or []:
+        _SVG_SEQ[0] += 1
+        mid = f"ah{_SVG_SEQ[0]}"
+        col = p.get("color", "#1c2a4a")
+        pts = [(X(nodes[n].pos[0]), Y(nodes[n].pos[1])) for n in p["nodes"] if n in nodes]
+        if len(pts) < 2:
+            continue
+        # stop short of the last node so the arrowhead sits on its rim
+        (ax, ay), (bx, by) = pts[-2], pts[-1]
+        L = ((bx - ax) ** 2 + (by - ay) ** 2) ** 0.5 or 1.0
+        pts[-1] = (bx - (bx - ax) / L * (r + 3), by - (by - ay) / L * (r + 3))
+        d = "M" + "L".join(f"{x:.1f} {y:.1f}" for x, y in pts)
+        dash = ' stroke-dasharray="5 4"' if p.get("dashed") else ""
+        out.append(f'<defs><marker id="{mid}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">'
+                   f'<path d="M0 0L10 5L0 10z" fill="{col}"/></marker></defs>'
+                   f'<path d="{d}" fill="none" stroke="{col}" stroke-width="{p.get("width", 2.6)}" stroke-linejoin="round"{dash} marker-end="url(#{mid})"/>')
+        if p.get("label"):
+            mx = sum(x for x, _ in pts) / len(pts)
+            my = sum(y for _, y in pts) / len(pts)
+            lab = html.escape(p["label"])
+            out.append(f'<rect x="{mx - 3.5 * len(lab) - 3:.1f}" y="{my - 16:.1f}" width="{7 * len(lab) + 6:.1f}" height="14" rx="4" fill="#fff" opacity="0.9"/>'
+                       f'<text x="{mx:.1f}" y="{my - 5:.1f}" font-size="10" font-weight="700" text-anchor="middle" fill="{col}">{lab}</text>')
     out.append("</svg>")
     return "".join(out)
 
@@ -1823,6 +1970,8 @@ def build(out: Path) -> int:
     index += [{"t": f"{R['id']} · {rule_meta(R['id'])['statement'][:70]}", "d": "a rule, with a passing and a failing programme",
                "u": f"rules/#{R['id']}", "k": "rule"} for R in RULES]
     index += [{"t": f"compile {title}", "d": note[:90], "u": f"compilation/#{gid}", "k": "compiled"} for gid, body, title, note, dev in GATES]
+    index += [{"t": text, "d": "Compilation · the algorithm", "u": f"compilation/#{hid}", "k": "page"}
+              for hid, text in algorithm.HEADINGS]
     index.append({"t": "Compilation", "d": "from QASM to hardware instructions, and how R10 is decided", "u": "compilation/", "k": "page"})
     index.append({"t": "Physics background", "d": "from trapping one ion to the noise model, and how the website simulates it",
                   "u": "physics/", "k": "page"})
@@ -1928,6 +2077,10 @@ def build(out: Path) -> int:
     lang, rules = build_examples(out, put)
     put("language/index.html", language_page(lang), 1, "language")
     put("rules/index.html", rules_page(rules), 1, "rules")
+    from . import rulespage
+    for rel, blob in rulespage.downloads():
+        (out / rel).parent.mkdir(parents=True, exist_ok=True)
+        (out / rel).write_bytes(blob)
     compiled = build_compiled_pages(out, put)
     put("compilation/index.html", compilation_page(compiled), 1, "compilation")
     print(f"  compilation  {len(compiled)} compiled examples")

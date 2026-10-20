@@ -492,7 +492,22 @@ def build_example(ex: dict, m: Machine, model_name: str, page_path, *, kicker: s
     model = deck_model() if model_name == "deck" else corrected_model()
     m.render(prog, page_path, model=model, kicker=kicker, headline=headline, lede=lede, open_pane="R")
     return {"text": text, "ir": ir, "why": ex.get("why", ""), "expect": ex.get("expect"),
-            "tag": ex.get("tag"), "verdict": judge(m, prog, model_name, focus, check_metrics)}
+            "tag": ex.get("tag"), "verdict": judge(m, prog, model_name, focus, check_metrics),
+            "rules": judge_by_rules(m, prog, model, focus, check_metrics)}
+
+
+def judge_by_rules(m: Machine, prog, model, focus: str | None, check_metrics: bool) -> dict:
+    """The example judged by the standard rule set, rule by rule: what the Rules page prints."""
+    from ..ruleset import check, load
+    from ..ruleset.programme import programme_execution
+    rep = check(load("standard"), programme_execution(prog, m.arch, model, check_metrics=check_metrics))
+    res = {r.id: r for r in rep.results}
+    out: dict = {"fails": [r.id for r in rep.results if r.verdict == "fails"]}
+    f = res.get(focus) if focus else None
+    if f is not None:
+        out["focus"] = {"id": f.id, "verdict": f.verdict, "count": f.count,
+                        "examples": f.examples[:3], "reason": f.reason}
+    return out
 
 
 def rule_meta(rule: str) -> dict:

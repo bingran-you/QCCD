@@ -28,6 +28,21 @@ CHECK_NAMES = [
     ("declared_locks", "their locks", "the artifact's own statement of what each operation holds"),
     ("broadcast", "one waveform", "transport between traps is broadcast: one class of move per cycle, and cycles never overlap"),
     ("circuit", "circuit", "the two-qubit gates run are the circuit's, each once, in an allowed order"),
+    ("structure", "well formed", "every operation names ions, traps and rails that exist, and ends after it starts"),
+    # the model papers' own replays (TrapSIMD, IonShuttler) check their models' further rules
+    ("intra", "moves inside a trap", "a shift or swap inside a trap moves an ion between neighbouring positions, its split and merge joined up"),
+    ("inter", "moves between traps", "a move between traps crosses one junction, between the edge positions of two traps, in its declared class"),
+    ("modes", "one cycle at a time", "a cycle of moves between traps overlaps no other cycle and nothing happening inside a trap"),
+    ("zones", "gate zones", "gates and swaps happen in gate zones, one gate per trap at a time"),
+    ("program", "the worked example", "the schedule is the paper's worked example, operation for operation"),
+    ("layout", "the layout", "every ion starts in the memory, on a rail the device has"),
+    ("junctions", "junctions", "a junction is passed by one chain at a time"),
+    ("path", "paths", "every move follows rails the device has"),
+    ("nodes", "nodes", "a node is passed by one chain in a step, except where the paper's code allows two"),
+    ("pz", "processing zone", "ions enter and leave the processing zone by its entry and exit rails, and it is empty at the end"),
+    ("gates", "gates", "a gate runs on ions standing on the gate site, one gate at a time"),
+    ("sequence", "the circuit", "the gates run are the circuit's, in its order"),
+    ("sequence_code", "the code's order", "the paper's code's own order of the processing zone's queue"),
 ]
 
 CSS = """
@@ -60,6 +75,9 @@ table.rp td small.rp-where{display:block;white-space:normal;color:#6b6a66;max-wi
 table.rp td:first-child{min-width:170px}
 .rp-cmd{font:13px var(--mono,ui-monospace,monospace);background:#f6f5f1;padding:2px 6px;border-radius:4px}
 .rp-watch{font-size:12.5px;white-space:nowrap}
+pre.assert{background:#f6f7fb;border:1px solid #dfe3ee;border-radius:6px;padding:8px 10px;font-size:13px;line-height:1.5;white-space:pre-wrap;margin:6px 0}
+pre.assert a{color:#0b5cad;text-decoration:none}pre.assert .s{color:#8a3b12}
+a.rp-pill{text-decoration:none}
 """
 
 
@@ -99,6 +117,104 @@ def _checks(row: dict) -> str:
         return f"{name}: fails" if name == "circuit" else f"{name}: {count} events"
     bad = "".join(f'<span class="rp-pill bad">{_e(what(n, c))}</span>' for n, c in failed)
     return bad + f' <span class="rp-pill ok" title="{_e(title)}">{len(passed)} others pass</span>'
+
+
+def _rule_titles() -> dict[str, str]:
+    from ..ruleset import catalogue
+    return {r.id: r.title for r in catalogue().rules}
+
+
+def _rules_pill(rules: dict | None) -> str:
+    """What a run's rule set decided, as one link to the paper's table of rules: every rule
+    that holds counted, every one that fails named."""
+    if not rules or not rules.get("results"):
+        return ""
+    res = rules["results"]
+    titles = _rule_titles()
+    hold = [r for r in res if r["verdict"] == "holds"]
+    fail = [r for r in res if r["verdict"] == "fails"]
+    other = [r for r in res if r["verdict"] not in ("holds", "fails")]
+    tip = "; ".join(f'{r["id"]} {r["verdict"]}' for r in res)
+    if not fail:
+        out = f'<a class="rp-pill ok" href="#rules" title="{_e(tip)}">all {len(hold)} rules hold</a>'
+    else:
+        out = "".join(
+            f'<a class="rp-pill bad" href="#rules" title="{_e(titles.get(r["id"], ""))}: '
+            f'{_e("; ".join(r.get("examples", [])[:1]))}">{_e(r["id"])} fails</a>'
+            for r in fail)
+        out += f' <a class="rp-pill ok" href="#rules" title="{_e(tip)}">{len(hold)} others hold</a>'
+    if other:
+        why = "; ".join(r["id"] + ": " + r.get("reason", "") for r in other)
+        out += f' <span class="rp-pill skip" title="{_e(why)}">{len(other)} do not apply</span>'
+    return out
+
+
+def _rules_section(p: dict, res: dict | None) -> str:
+    """Every run of the paper, theirs and ours, against every rule of the paper's rule set:
+    which rule was checked, which holds and which fails, and what each rule says."""
+    from ..ruleset import catalogue, load, rule_order
+    from .rulespage import highlight
+    rows = [(r.get("label", r["id"]), r["rules"]) for r in (res or {}).get("runs", [])
+            if r.get("rules")]
+    for o in (res or {}).get("ours", []):
+        for pr in (o.get("profiles") or {}).values():
+            if pr.get("rules"):
+                rows.append((f'ours: {o.get("label", o["id"])}', pr["rules"]))
+    if not rows:
+        return ""
+    sets: list[str] = []
+    for _, r in rows:
+        if r["ruleset"] not in sets:
+            sets.append(r["ruleset"])
+    cat = {r.id: r for r in catalogue().rules}
+    ids: list[str] = []
+    for _, r in rows:
+        for x in r["results"]:
+            if x["id"] not in ids:
+                ids.append(x["id"])
+    ids.sort(key=rule_order)
+    names = ", ".join(f'<a href="../../rules/#set-{_e(n)}">{_e(load(n).title)}</a>' for n in sets)
+    plural = "s" if len(sets) > 1 else ""
+    out = ['<h3 id="rules">The rules each run is judged by</h3>',
+           f"<p>This paper's model is written as the rule set{plural} {names}. Every run above "
+           "was replayed and each rule of the set evaluated on it. Our schedules are held to the "
+           "same rules, and also keep each qubit's gates in the circuit's exact order (R25): our "
+           "compiler may not reorder a circuit, even where its gates commute.</p>",
+           '<div class="rp-wide"><table class="rp rp-rules"><tr><th>run</th>'
+           + "".join(f'<th title="{_e(cat[i].title if i in cat else i)}">'
+                     f'<a href="#rule-{_e(i)}">{_e(i)}</a></th>' for i in ids) + "</tr>"]
+    titles = {n: load(n).title for n in sets}
+    for label, r in rows:
+        if len(sets) > 1:
+            label = f"{label} · {titles[r['ruleset']]}"
+        by = {x["id"]: x for x in r["results"]}
+        cells = []
+        for i in ids:
+            x = by.get(i)
+            if x is None:
+                cells.append('<td class="n"><span class="rp-skip" title="not in this rule set">·</span></td>')
+            elif x["verdict"] == "holds":
+                cells.append('<td class="n"><span class="rp-ok" title="holds">✓</span></td>')
+            elif x["verdict"] == "fails":
+                ex = "; ".join(x.get("examples", [])[:2])
+                cells.append(f'<td class="n"><span class="rp-bad" title="{_e(ex)}">✗ {x.get("count", "")}</span></td>')
+            else:
+                cells.append(f'<td class="n"><span class="rp-skip" title="{_e(x.get("reason", ""))}">–</span></td>')
+        out.append(f"<tr><td>{_e(label)}</td>{''.join(cells)}</tr>")
+    out.append("</table></div>")
+    out.append("<p><small>✓ the rule holds on that run; ✗ it fails, with the number of "
+               "counterexamples (hover for the first); – it does not apply to that run (hover for "
+               "why); · the rule is not in that run's rule set.</small></p>")
+    out.append("<details><summary>what each rule says</summary>")
+    for i in ids:
+        r = cat.get(i)
+        if r is None:
+            continue
+        text = (f"when {r.when_text}:\n" if r.when is not None else "") + r.text
+        out.append(f'<div id="rule-{_e(i)}" style="margin:8px 0"><b>{_e(i)}</b> {_e(r.title)}'
+                   f'<pre class="assert">{highlight(text)}</pre><small>{_e(r.about)}</small></div>')
+    out.append("</details>")
+    return "\n".join(out)
 
 
 def _compare_cells(row: dict, metric: str) -> tuple[str, str, str]:
@@ -175,7 +291,7 @@ def _paper_section(p: dict, res: dict | None) -> str:
         head = {"last_start_us": "start of the last step", "moves": "shuttles"}.get(metric, "time")
         out.append('<table class="rp"><tr><th>configuration</th>'
                    f'<th>{head}: their code</th><th>our replay</th><th>the paper</th>'
-                   '<th>checks under the paper\'s rules</th></tr>')
+                   '<th>the paper\'s rules</th></tr>')
         for r in rows:
             t, o, pp = _compare_cells(r, metric)
             fid = ""
@@ -188,7 +304,7 @@ def _paper_section(p: dict, res: dict | None) -> str:
                      else f'<br><a class="rp-watch" href="{_e(p["key"])}/{_e(r["id"])}.html">▶ watch it in the Studio</a>'
                      + _timed_link(p, r["id"]))
             out.append(f'<tr><td>{_e(r.get("label", r["id"]))}{watch}</td><td class="n">{t}</td>'
-                       f'<td class="n">{o}</td><td class="n">{pp}</td><td>{_checks(r)}</td></tr>{fid}')
+                       f'<td class="n">{o}</td><td class="n">{pp}</td><td>{_rules_pill(r.get("rules")) or _checks(r)}</td></tr>{fid}')
         out.append("</table>")
     ratios = (res or {}).get("ratios", [])
     if ratios:
@@ -205,10 +321,58 @@ def _paper_section(p: dict, res: dict | None) -> str:
     for note in catalog.NOTES.get(key, []):
         out.append(f'<div class="rp-note"><b>{_e(note["title"])}</b>{_e(note["text"])}</div>')
     out.append(_ours_box(p, res))
-    note = _studio_note(p, res)
+    out.append(_rules_section(p, res))
+    note = _studio_note(p, res) or _clock_note(p, res)
     if note:
         out.append(note)
     return "\n".join(out)
+
+
+def _clock_note(p: dict, res: dict | None) -> str:
+    """For a paper whose operations overlap (Jones et al.): the Studio's runtime is its
+    instructions added up, which is not the schedule's time; the time is the paper's clock,
+    in the tables.  Measured on the first run and on ours, as the pages play them."""
+    if p["key"] not in HEADLINE_CLOCK or p["key"] in CLOCK_IN_HEADLINE:
+        return ""
+    from ..cost.models import corrected_model
+    model = corrected_model("local")
+    runs = {r["id"]: r for r in (res or {}).get("runs", []) if "missing" not in r}
+    ours = {o["against"]: o for o in (res or {}).get("ours", []) if o.get("ok")}
+    metric = _metric_of(p)
+    cands = [r for r in p["runs"] if r["id"] in runs and r["id"] in ours]
+    if not cands:
+        return ""
+    # the run to show: the first whose sums put the two schedules in the opposite order to
+    # the paper's clock (the case a reader is misled by), else the first
+    pick = None
+    for first in cands:
+        o = ours[first["id"]]
+        spec = next(x for x in catalog.OURS.get(p["key"], {}).get("runs", []) if x["id"] == o["id"])
+        m, prog, _, _ = _run_programme(p, first)
+        theirs_sum = m.run(prog, model=model, check_metrics=False).report.result.total_us
+        m2, prog2, _, _ = _ours_programme(p, spec, first)
+        ours_sum = m2.run(prog2, model=model, check_metrics=False).report.result.total_us
+        t_clock = runs[first["id"]]["measured"][metric]
+        o_clock = o["measured"][metric]
+        here = (first, theirs_sum, ours_sum, t_clock, o_clock)
+        pick = pick or here
+        if (theirs_sum < ours_sum) != (t_clock < o_clock):
+            pick = here
+            break
+    first, theirs_sum, ours_sum, t_clock, o_clock = pick
+    who = p["short"]
+    lab = first.get("label", first["id"])
+    return ("<p><small><b>The Studio's runtime is not the schedule's time.</b> A Studio page plays "
+            "a schedule as a programme in our language: operations of one kind that start at the "
+            "same moment are one instruction, and each instruction starts when the one before it "
+            "has ended, so the runtime in the Studio's price bar is its instructions added up. "
+            f"For {_e(lab)} that sum is {_num(theirs_sum, 'makespan_us')} for {who}'s schedule and "
+            f"{_num(ours_sum, 'makespan_us')} for ours; on {who}'s clock, where operations overlap "
+            f"whenever the paper's rules allow, the same schedules take {_num(t_clock, 'makespan_us')} "
+            f"and {_num(o_clock, 'makespan_us')}"
+            + (" (each to the start of its last step, as the paper counts)" if metric == "last_start_us" else "")
+            + ". The tables above, and each Studio page's headline, give the time on the paper's "
+            "clock; the sums are not times either schedule takes, and do not rank them.</small></p>")
 
 
 def _timed_link(p: dict, rid: str) -> str:
@@ -343,14 +507,18 @@ def _ours_box(p: dict, res: dict | None) -> str:
             + (["their run in the circuit's order", ""] if in_order else [])
             + (["fidelity: theirs", "ours"] if fid else []))
     out.append('<table class="rp"><tr><th>configuration</th>'
-               + "".join(f"<th>{_e(c)}</th>" for c in cols) + "<th>checks</th></tr>")
+               + "".join(f"<th>{_e(c)}</th>" for c in cols) + "<th>the paper's rules</th></tr>")
     for o in rows:
         m, t = o["measured"], o["theirs"]
         watch = (f'<br><a class="rp-watch" href="{_e(key)}/{_e(o["id"])}.html">▶ watch ours in the Studio</a>'
                  + _timed_link(p, o["id"]))
         n = sum(1 for pr in o["profiles"].values() for v in pr["checks"].values() if v == "passed")
         names = " and ".join(books.get(k, "the paper's rules") for k in o["profiles"])
-        pill = (f'<span class="rp-pill ok" title="strict durations; the circuit; same device and '
+        pills = [_rules_pill(pr.get("rules")) for pr in o["profiles"].values()]
+        pill = None
+        if pills and all(pills):
+            pill = "<br>".join(pills) + f"<br><small>under {_e(names)}, each qubit's order kept</small>"
+        pill = pill or (f'<span class="rp-pill ok" title="strict durations; the circuit; same device and '
                 f'ions as the paper\'s run">all {n} checks pass</span><br><small>under {_e(names)}</small>')
         if moves_first:
             al = (o.get("also") or {}).get("measured", {})
@@ -390,35 +558,44 @@ def _ours_box(p: dict, res: dict | None) -> str:
 
 
 def _rules_table(papers: list[dict]) -> str:
-    """Which rule each paper's own model imposes -- read from the profiles the checker runs."""
-    from ..repro.__main__ import PROFILES
-
+    """Which rules each paper's model assumes: its rule set (qccd/ruleset/library), rule by
+    rule, as the replay evaluates them."""
+    from ..repro.__main__ import RULESETS
+    from ..ruleset import catalogue, load, rule_order
+    from .rulespage import MODEL_PAPER_SETS
     cols = []
     for p in papers:
-        if p["key"] == "schoenberger2024":
-            from ..repro.ionshuttler import IONSHUTTLER_SAT as prof
-        elif p.get("kind") == "model":
-            from ..repro.trapsimd import TRAPSIMD as prof
-        elif not p.get("runs"):
-            continue
-        else:
-            prof = PROFILES[p["runs"][0]["profile"]]
-        on = {"positions": True, "capacity": True, "ion_serial": True, "durations": True,
-              "segment_mutex": prof.segment_mutex, "junction_mutex": prof.junction_mutex,
-              "trap_serial": bool(prof.trap_serial), "chain_order": bool(prof.chain_order),
-              "declared_locks": prof.declared_locks, "broadcast": bool(prof.broadcast),
-              "circuit": p.get("kind") == "model" or any(r.get("circuit") for r in p["runs"])}
-        cols.append((p, on))
+        sets = list(MODEL_PAPER_SETS.get(p["key"], ()))
+        for r in p.get("runs", []):
+            n = RULESETS.get(r.get("profile"))
+            if n and n not in sets:
+                sets.append(n)
+        if sets:
+            cols.append((p, [load(n) for n in sets]))
+    if not cols:
+        return ""
+    cat = {r.id: r for r in catalogue().rules}
+    ids = sorted({i for _, rss in cols for rs in rss for i in rs.ids}, key=rule_order)
     out = ['<table class="rp rp-rules"><tr><th>rule</th>'
            + "".join(f"<th>{_e(p['short'])}</th>" for p, _ in cols) + "</tr>"]
-    for key, short, why in CHECK_NAMES:
-        out.append(f"<tr><td><b>{_e(short)}</b><br><small>{_e(why)}</small></td>"
-                   + "".join('<td class="n">' + ('<span class="rp-ok">✓</span>' if on.get(key)
-                                                 else '<span class="rp-skip">–</span>')
-                             + "</td>" for _, on in cols) + "</tr>")
+    for i in ids:
+        r = cat.get(i)
+        title = r.title if r else i
+        cells = []
+        for _, rss in cols:
+            n_in = sum(1 for rs in rss if i in rs.ids)
+            if n_in == len(rss):
+                cells.append('<td class="n"><span class="rp-ok">✓</span></td>')
+            elif n_in:
+                cells.append('<td class="n"><span class="rp-ok" title="in some of its rule sets">(✓)</span></td>')
+            else:
+                cells.append('<td class="n"><span class="rp-skip">–</span></td>')
+        out.append(f'<tr><td><a href="../../rules/#{_e(i)}"><b>{_e(i)}</b></a><br><small>{_e(title)}</small></td>'
+                   + "".join(cells) + "</tr>")
     out.append("</table>")
-    return ('<p><small>✓ the paper\'s model has the rule, and every replay is held to it; '
-            "– the paper's model does not have it, so it is not checked.</small></p>"
+    return ("<p><small>✓ the paper's model has the rule, and every replay is held to it; (✓) only some "
+            "of its configurations do; – the paper's model does not have it, so it is not checked. Each "
+            "rule is written out on the <a href=\"../../rules/\">Rules</a> page.</small></p>"
             '<div class="rp-wide">' + "".join(out) + "</div>")
 
 
@@ -606,7 +783,7 @@ def _design_ours(p: dict, res: dict) -> str:
     circ = res.get("circuits", [])
     ok = [c for c in circ if not str((c.get("compile") or {}).get("verdict", "refused")).startswith("refused")]
     release = (res.get("compiler") or {}).get("release")
-    who = f"The published compiler (release {_e(release)})" if release else "Our compiler"
+    who = "The published compiler" if release else "Our compiler"
     exs = res.get("minimal_examples", [])
     fixed = [m for m in exs if _example_fixed(m)]
     open_ = [m for m in exs if not _example_fixed(m)]
@@ -796,8 +973,7 @@ def page(PAGE: str, STYLE: str) -> str:
         '<div class="rp-wide">' + "".join(rows) + "</div>",
         '<p class="rp-more"><a href="method/">How a paper is checked, and which rules each '
         'paper\'s model has</a> · <a href="method/#considered">Papers we read and did not '
-        "reproduce</a> · every number here can be rerun with "
-        '<span class="rp-cmd">python -m qccd.repro check</span></p>',
+        "reproduce</a> · <a href=\"../rules/#sets\">every paper's rule set</a></p>",
         "<script>document.querySelectorAll('tr.rp-row').forEach(function(r){"
         "r.addEventListener('click',function(e){if(e.target.closest('a'))return;"
         "location.href=r.getAttribute('data-href');});});</script>",
@@ -817,11 +993,13 @@ def _method_page(PAGE: str, STYLE: str) -> str:
         "and end time) is written out.</li>"
         "<li><b>Rebuild their machine in our language.</b> The traps, junctions and segments become "
         "an architecture document, priced by the paper's own timing table.</li>"
-        "<li><b>Replay under their rules.</b> Our checker replays the schedule event by event and "
-        "checks it against the rules the paper states: where every ion is, trap capacity at every "
-        "instant, one ion per segment and per junction, one operation per trap, which end of a "
-        "chain an ion leaves from, how long each operation takes, and whether the gates run are "
-        "the circuit's.</li>"
+        "<li><b>Replay under their rules.</b> Each paper's model is written as a "
+        "<a href=\"../../rules/#sets\">rule set</a>: one assertion per rule about the machine and "
+        "the schedule, such as where every ion is, trap capacity at every instant, one ion per rail "
+        "and per junction, one operation per trap, which end of a chain an ion leaves from, how long "
+        "each operation takes, and whether the gates run are the circuit's. The schedule is "
+        "replayed event by event and every rule of the set evaluated on it; each paper's page lists "
+        "every run against every rule.</li>"
         "<li><b>Compare three numbers.</b> What their code printed, what our replay measures (these "
         "must be identical), and what the paper reports.</li>"
         "<li><b>Then compile it ourselves.</b> The same circuit on the same machine, checked by the "
@@ -834,7 +1012,8 @@ def _method_page(PAGE: str, STYLE: str) -> str:
         "<p>The same goes for the Studio pages. Each replayed run opens in the Studio as a "
         "programme in our language, and the Studio plays it one instruction at a time (the "
         "operations of one kind that start together), so the runtime it shows is its "
-        "instructions added up, and its rule panel judges the run by our rules. Where a "
+        "instructions added up. Its Report shows the paper's rule set first, as the replay judged "
+        "the run, and then this website's own rules, which the paper did not assume. Where a "
         "paper's operations overlap in time, that sum is longer than the schedule; the time "
         "that is checked, and compared, is the one in the tables, on the paper's clock.</p>",
         '<h2 id="rules">The rules each paper\'s model has</h2>',
@@ -908,12 +1087,24 @@ STUDIO_PRICING = {
 #: Studio's runtime adds its instructions one after another, which an asynchronous
 #: schedule does not do (thread 44)
 CLOCK_IN_HEADLINE = {"leblond2023"}
+#: Papers whose Studio pages say, in the headline, the schedule's time on the paper's own
+#: clock -- every paper whose operations overlap, so that the Studio's runtime (its
+#: instructions added up) is not mistaken for it (threads 44 and 62).
+HEADLINE_CLOCK = {"leblond2023", "jones2025"}
 
 
-def _headline(p: dict, label: str, makespan: float | None) -> str:
-    if p["key"] not in CLOCK_IN_HEADLINE or makespan is None:
+def _headline(p: dict, label: str, measured: dict | None) -> str:
+    """The run's label, after its time on the paper's clock, measured the way the paper
+    reports it (Jones et al.: the start of the last step)."""
+    measured = measured or {}
+    metric = _metric_of(p)
+    if metric not in ("makespan_us", "last_start_us"):
+        metric = "makespan_us"
+    v = measured.get(metric)
+    if p["key"] not in HEADLINE_CLOCK or v is None:
         return label
-    return f"{_num(makespan, 'makespan_us')} on {p['short']}'s clock · {label}"
+    what = " (the start of its last step)" if metric == "last_start_us" else ""
+    return f"{_num(v, 'makespan_us')} on {p['short']}'s clock{what} · {label}"
 
 
 def _layout_for(p: dict, run: dict) -> tuple[str, dict]:
@@ -1075,9 +1266,9 @@ def studio_pages(tmp: Path, only: set[str] | None = None):
             row = next((x for x in res.get("runs", []) if x["id"] == run["id"]), {})
             out = tmp / f"{name}.html"
             m.render(prog, out, model=model, kicker=f"REPRODUCED · {p['short'].upper()}",
-                     headline=_headline(p, run.get("label", run["id"]),
-                                        row.get("measured", {}).get("makespan_us")),
-                     source=_source(prog, _circuit_source(p, run, s, prog), s, run))
+                     headline=_headline(p, run.get("label", run["id"]), row.get("measured")),
+                     source=_source(prog, _circuit_source(p, run, s, prog), s, run),
+                     ruleset=_page_ruleset(p, row.get("rules")))
             yield studio_rel(p, run), out.read_text(encoding="utf-8"), ""
 
 
@@ -1176,18 +1367,35 @@ def _ours_programme(p: dict, o: dict, spec: dict):
     return m, to_tsir(s, name=o["id"], arch=name, gate=_gate(p, spec)), s, name
 
 
+def _page_ruleset(p: dict, rules: dict | None, ours: bool = False) -> dict | None:
+    """What a run's Studio page says first in its Report: the paper's rule set, rule by rule,
+    as the replay judged the schedule when the page was built."""
+    if not rules or not rules.get("results"):
+        return None
+    who = p["short"]
+    note = (f"These are {who}'s rules, the ones the schedule was written for"
+            + (", with each qubit's gates kept in the circuit's exact order (R25)" if ours else "")
+            + ". The badges below are this website's own machine, which {who} does not assume: "
+            "a rule of ours failing here is a difference between the two models, not a fault "
+            "in the schedule.").replace("{who}", who)
+    return {"ruleset": rules["ruleset"], "title": rules.get("title") or rules["ruleset"],
+            "results": rules["results"], "note": note}
+
+
 def _ours_studio(p: dict, o: dict, spec: dict, row: dict, tmp: Path, model):
     """One of our schedules as a Studio page, drawn like the paper's run it beats (or not)."""
     m, prog, s, name = _ours_programme(p, o, spec)
     out = tmp / f"{name}.html"
-    label = _headline(p, f"{o['label']}: our schedule", row.get("measured", {}).get("makespan_us"))
+    label = _headline(p, f"{o['label']}: our schedule", row.get("measured"))
     relabel = None
     if o.get("circuit_relabel") == "checks":
         from ..repro.importers import checks_as_scheduled
         gates = [tuple(e.ions) for e in s.events if e.kind == "gate"]
         relabel = lambda pairs: checks_as_scheduled(pairs, gates)[0]
+    rules = next((pr.get("rules") for pr in (row.get("profiles") or {}).values() if pr.get("rules")), None)
     m.render(prog, out, model=model, kicker=f"OURS · {p['short'].upper()}", headline=label,
-             source=_source(prog, _circuit_source(p, spec, s, prog, relabel), s, spec))
+             source=_source(prog, _circuit_source(p, spec, s, prog, relabel), s, spec),
+             ruleset=_page_ruleset(p, rules, ours=True))
     return f"reproduce/{p['key']}/{o['id']}.html", out.read_text(encoding="utf-8"), ""
 
 

@@ -57,7 +57,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1566260,
+  "bytes": 1568020,
   "sites": 2,
   "junctions": 0,
   "loops": 0
@@ -128,7 +128,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1623118,
+  "bytes": 1624878,
   "sites": 72,
   "junctions": 0,
   "loops": 1
@@ -199,7 +199,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1632888,
+  "bytes": 1634648,
   "sites": 40,
   "junctions": 0,
   "loops": 1
@@ -262,7 +262,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1631557,
+  "bytes": 1633317,
   "sites": 40,
   "junctions": 21,
   "loops": 0
@@ -325,7 +325,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1695916,
+  "bytes": 1697676,
   "sites": 144,
   "junctions": 77,
   "loops": 0
@@ -388,7 +388,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1701430,
+  "bytes": 1703190,
   "sites": 144,
   "junctions": 77,
   "loops": 0
@@ -459,7 +459,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1636134,
+  "bytes": 1637894,
   "sites": 42,
   "junctions": 24,
   "loops": 0
@@ -549,7 +549,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1619777,
+  "bytes": 1621537,
   "sites": 32,
   "junctions": 16,
   "loops": 0
@@ -632,7 +632,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1679680,
+  "bytes": 1681440,
   "sites": 41,
   "junctions": 17,
   "loops": 0
@@ -703,7 +703,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1759463,
+  "bytes": 1761223,
   "sites": 288,
   "junctions": 46,
   "loops": 0
@@ -774,7 +774,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1663635,
+  "bytes": 1665395,
   "sites": 32,
   "junctions": 16,
   "loops": 0
@@ -845,7 +845,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1620572,
+  "bytes": 1622332,
   "sites": 32,
   "junctions": 8,
   "loops": 1
@@ -916,7 +916,7 @@
     "kind": "note"
    }
   ],
-  "bytes": 1770005,
+  "bytes": 1771765,
   "sites": 168,
   "junctions": 24,
   "loops": 1
@@ -941,7 +941,7 @@
   "numbers": {
    "r10": false
   },
-  "bytes": 1602979,
+  "bytes": 1604739,
   "sites": 144,
   "junctions": 0,
   "loops": 2
@@ -966,7 +966,7 @@
   "numbers": {
    "r10": false
   },
-  "bytes": 1556486,
+  "bytes": 1558246,
   "sites": 72,
   "junctions": 0,
   "loops": 0

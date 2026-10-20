@@ -12,9 +12,10 @@
   "claim": "the study's starting point: the rotation pass laying riders out by stride. 546 batches of 1.6 contacts each is why it takes 520 ms.",
   "status": "ok",
   "page": "01_baseline_stride.html",
-  "instructions": 5382,
+  "instructions": 5388,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 5,
@@ -29,7 +30,7 @@
     "step": 7,
     "id": 6,
     "label": "batch 1 of 546 / a 1-contact batch (292 of 546)",
-    "note": "a dock: 1 riders pull into their spurs at once. Each batch pays dock + undock + one forced cool (about 725 us) whatever its size; mean fill here is 1.6 contacts of 5 possible.  ALSO: one rider docks alone, and the batch still pays its full overhead: 292 such batches cost about 213.2 ms for 33.8% of the contacts. This is the 52%-fill headroom the taxonomy names.",
+    "note": "a dock: 1 riders pull into their spurs at once. Each batch pays dock + undock + one forced cool (about 725 us) whatever its size; mean fill here is 1.6 contacts of 5 possible.  ALSO: one rider docks alone, and the batch still pays its full overhead: 292 such batches cost about 213.2 ms for 33.8% of the contacts.",
     "kind": "warn"
    },
    {
@@ -66,8 +67,8 @@
    }
   ],
   "numbers": {
-   "T_jones": 520.38,
-   "T_transport": 415.01,
+   "T_jones": 522.05,
+   "T_transport": 416.672,
    "ions_per_instruction": 49.05,
    "transport_instructions": 1638,
    "pairs_per_gate": 1.58,
@@ -83,9 +84,10 @@
     "min_gap": 0,
     "rf_dc_clearance": 44
    },
-   "r10": true
+   "r10": true,
+   "T_source": "replay"
   },
-  "bytes": 2873546,
+  "bytes": 3520238,
   "sites": 168,
   "junctions": 24,
   "loops": 1
@@ -103,9 +105,10 @@
   "claim": "the same device and circuit with the code-aware placer and binder: 55 batches instead of 546. The compilation axis alone is 7.5x.",
   "status": "ok",
   "page": "02_shipped_ring_code_aware.html",
-  "instructions": 539,
+  "instructions": 545,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 5,
@@ -149,8 +152,8 @@
    }
   ],
   "numbers": {
-   "T_jones": 69.83,
-   "T_transport": 59.21,
+   "T_jones": 69.99,
+   "T_transport": 59.375,
    "ions_per_instruction": 57.95,
    "transport_instructions": 164,
    "pairs_per_gate": 15.71,
@@ -166,9 +169,10 @@
     "min_gap": 0,
     "rf_dc_clearance": 44
    },
-   "r10": true
+   "r10": true,
+   "T_source": "replay"
   },
-  "bytes": 1583567,
+  "bytes": 2176997,
   "sites": 168,
   "junctions": 24,
   "loops": 1
@@ -188,9 +192,10 @@
   "claim": "the first buildable answer: DRC clean with wells, 22.8 mm2.",
   "status": "ok",
   "page": "03_h3_v24_192.html",
-  "instructions": 638,
+  "instructions": 644,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 5,
@@ -242,7 +247,7 @@
    }
   ],
   "numbers": {
-   "T_jones": 87.295,
+   "T_jones": 87.46,
    "batches": 66,
    "hops": 343,
    "rules_ok": true,
@@ -264,10 +269,11 @@
     "12": 60,
     "24": 6
    },
-   "T_transport": 74.557,
-   "r10": false
+   "T_transport": 74.722,
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 1672598,
+  "bytes": 2261266,
   "sites": 216,
   "junctions": 24,
   "loops": 1
@@ -287,9 +293,10 @@
   "claim": "height 4: buildable only after the electrode builder's keep-out was corrected.",
   "status": "ok",
   "page": "04_h4_v24_216.html",
-  "instructions": 540,
+  "instructions": 546,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 5,
@@ -333,7 +340,7 @@
    }
   ],
   "numbers": {
-   "T_jones": 70.66,
+   "T_jones": 70.825,
    "batches": 55,
    "hops": 382,
    "rules_ok": true,
@@ -355,10 +362,11 @@
     "12": 38,
     "24": 17
    },
-   "T_transport": 60.934,
-   "r10": false
+   "T_transport": 61.099,
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 1659978,
+  "bytes": 2247554,
   "sites": 240,
   "junctions": 24,
   "loops": 1
@@ -377,12 +385,13 @@
    36
   ],
   "r10": true,
-  "claim": "46 batches, 341 hops, R10 passed by the proved Lean checker. Its rotation schedule is within 10.7% of its lower bound; its batches are 52% full.",
+  "claim": "46 batches, 341 hops, R10 passed: the proved Lean checker and the tableau. Its rotation schedule is within 10.7% of its lower bound; its batches are 52% full.",
   "status": "ok",
   "page": "05_h3_v36_288_ANSWER.html",
-  "instructions": 454,
+  "instructions": 458,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 5,
@@ -425,17 +434,17 @@
     "kind": "note"
    },
    {
-    "frame": 99,
-    "step": 100,
+    "frame": 100,
+    "step": 101,
     "id": 90,
     "label": "a 1-contact batch (8 of 46)",
-    "note": "one rider docks alone, and the batch still pays its full overhead: 8 such batches cost about 5.8 ms for 0.9% of the contacts. This is the 52%-fill headroom the taxonomy names.",
+    "note": "one rider docks alone, and the batch still pays its full overhead: 8 such batches cost about 5.8 ms for 0.9% of the contacts.",
     "kind": "warn"
    }
   ],
   "numbers": {
-   "T_jones": 55.485,
-   "T_transport": 47.797,
+   "T_jones": 55.62,
+   "T_transport": 47.932,
    "ions_per_instruction": 72.0,
    "transport_instructions": 138,
    "pairs_per_gate": 18.78,
@@ -464,9 +473,10 @@
     "35": 4,
     "36": 8
    },
-   "r10": true
+   "r10": true,
+   "T_source": "replay"
   },
-  "bytes": 1704794,
+  "bytes": 2290946,
   "sites": 324,
   "junctions": 36,
   "loops": 1
@@ -486,9 +496,10 @@
   "claim": "the same 36 ancillas on a taller, longer loop: the same clock for twice the die.",
   "status": "ok",
   "page": "06_h5_v36_360.html",
-  "instructions": 454,
+  "instructions": 458,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 5,
@@ -531,16 +542,16 @@
     "kind": "note"
    },
    {
-    "frame": 99,
-    "step": 100,
+    "frame": 100,
+    "step": 101,
     "id": 90,
     "label": "a 1-contact batch (8 of 46)",
-    "note": "one rider docks alone, and the batch still pays its full overhead: 8 such batches cost about 5.8 ms for 0.9% of the contacts. This is the 52%-fill headroom the taxonomy names.",
+    "note": "one rider docks alone, and the batch still pays its full overhead: 8 such batches cost about 5.8 ms for 0.9% of the contacts.",
     "kind": "warn"
    }
   ],
   "numbers": {
-   "T_jones": 55.91,
+   "T_jones": 56.045,
    "batches": 46,
    "hops": 426,
    "rules_ok": true,
@@ -567,10 +578,11 @@
     "35": 4,
     "36": 8
    },
-   "T_transport": 48.817,
-   "r10": false
+   "T_transport": 48.952,
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 1746182,
+  "bytes": 2332298,
   "sites": 396,
   "junctions": 36,
   "loops": 1
@@ -590,9 +602,10 @@
   "claim": "48 docks lose to 36: 48 does not divide the placement's period, and the schedule sits 43% above its rotation bound where 36 sits at 11%.",
   "status": "ok",
   "page": "07_h3_v48_384.html",
-  "instructions": 484,
+  "instructions": 488,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 5,
@@ -636,7 +649,7 @@
    }
   ],
   "numbers": {
-   "T_jones": 63.215,
+   "T_jones": 63.32,
    "batches": 50,
    "hops": 433,
    "rules_ok": true,
@@ -659,10 +672,11 @@
     "24": 14,
     "36": 4
    },
-   "T_transport": 55.077,
-   "r10": false
+   "T_transport": 55.182,
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 1779867,
+  "bytes": 2366348,
   "sites": 432,
   "junctions": 48,
   "loops": 1
@@ -682,9 +696,10 @@
   "claim": "the model's optimum, 2.2x faster than the answer, and 36 design-rule violations. No 72-dock ring is buildable in this technology.",
   "status": "ok",
   "page": "08_h4_v72_360_unbuildable.html",
-  "instructions": 193,
+  "instructions": 195,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 5,
@@ -728,7 +743,7 @@
    }
   ],
   "numbers": {
-   "T_jones": 24.855,
+   "T_jones": 24.93,
    "batches": 19,
    "hops": 209,
    "rules_ok": true,
@@ -754,10 +769,11 @@
     "60": 4,
     "72": 5
    },
-   "T_transport": 22.07,
-   "r10": false
+   "T_transport": 22.145,
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 1682070,
+  "bytes": 2265005,
   "sites": 432,
   "junctions": 72,
   "loops": 1
@@ -775,9 +791,10 @@
   "claim": "the second family that runs the round. Its router issues one SIMD class of the 18 the device declares, 4.8 ions at a time.",
   "status": "ok",
   "page": "09_grid13x13.html",
-  "instructions": 2022,
+  "instructions": 3718,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 1,
@@ -788,33 +805,25 @@
     "kind": "note"
    },
    {
-    "frame": 8,
-    "step": 9,
-    "id": 8,
-    "label": "a typical shuttle",
-    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.",
+    "frame": 5,
+    "step": 6,
+    "id": 5,
+    "label": "a typical shuttle / 1 directions at once",
+    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.  ALSO: ions moving 1 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 1 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
     "kind": "note"
    },
    {
-    "frame": 535,
-    "step": 536,
-    "id": 511,
-    "label": "8 directions at once",
-    "note": "ions moving 8 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 8 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
-    "kind": "note"
-   },
-   {
-    "frame": 683,
-    "step": 684,
-    "id": 653,
-    "label": "the busiest shuttle (19 ions)",
-    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 4.8. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
+    "frame": 2648,
+    "step": 2649,
+    "id": 2583,
+    "label": "the busiest shuttle (15 ions)",
+    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 2.7. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
     "kind": "note"
    }
   ],
   "numbers": {
-   "T_jones": 206.32,
-   "T_transport": 215.56,
+   "T_jones": 417.94,
+   "T_transport": 438.989,
    "ions_per_instruction": 4.8,
    "transport_instructions": 1319,
    "pairs_per_gate": 9.71,
@@ -830,9 +839,10 @@
     "min_gap": 0,
     "rf_dc_clearance": 0
    },
-   "r10": false
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 2354812,
+  "bytes": 3365053,
   "sites": 312,
   "junctions": 165,
   "loops": 0
@@ -849,9 +859,10 @@
   "claim": "the fastest lattice, and a die with zero electrodes: every trap is 112.5 um from two junctions whose keep-outs reach 180 um.",
   "status": "ok",
   "page": "10_grid11x11.html",
-  "instructions": 1911,
+  "instructions": 3587,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 1,
@@ -865,30 +876,22 @@
     "frame": 5,
     "step": 6,
     "id": 5,
-    "label": "a typical shuttle",
-    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.",
+    "label": "a typical shuttle / 1 directions at once",
+    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.  ALSO: ions moving 1 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 1 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
     "kind": "note"
    },
    {
-    "frame": 271,
-    "step": 272,
-    "id": 258,
-    "label": "8 directions at once",
-    "note": "ions moving 8 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 8 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
-    "kind": "note"
-   },
-   {
-    "frame": 1583,
-    "step": 1584,
-    "id": 1510,
-    "label": "the busiest shuttle (21 ions)",
-    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 4.9. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
+    "frame": 2317,
+    "step": 2318,
+    "id": 2257,
+    "label": "the busiest shuttle (12 ions)",
+    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 2.6. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
     "kind": "note"
    }
   ],
   "numbers": {
-   "T_jones": 192.01,
-   "T_transport": 200.47,
+   "T_jones": 400.045,
+   "T_transport": 420.177,
    "ions_per_instruction": 4.95,
    "transport_instructions": 1208,
    "pairs_per_gate": 9.71,
@@ -904,9 +907,10 @@
     "min_gap": 0,
     "rf_dc_clearance": 0
    },
-   "r10": false
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 2231548,
+  "bytes": 3224986,
   "sites": 220,
   "junctions": 117,
   "loops": 0
@@ -923,9 +927,10 @@
   "claim": "node-for-node the same graph as 10, pulled apart to hold its electrodes: same 192 ms, same 20 rules, 35.6 mm2 instead of 9.4.",
   "status": "ok",
   "page": "11_grid11x11_s2_buildable.html",
-  "instructions": 1911,
+  "instructions": 3587,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 1,
@@ -939,30 +944,22 @@
     "frame": 5,
     "step": 6,
     "id": 5,
-    "label": "a typical shuttle",
-    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.",
+    "label": "a typical shuttle / 1 directions at once",
+    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.  ALSO: ions moving 1 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 1 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
     "kind": "note"
    },
    {
-    "frame": 271,
-    "step": 272,
-    "id": 258,
-    "label": "8 directions at once",
-    "note": "ions moving 8 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 8 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
-    "kind": "note"
-   },
-   {
-    "frame": 1583,
-    "step": 1584,
-    "id": 1510,
-    "label": "the busiest shuttle (21 ions)",
-    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 4.9. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
+    "frame": 2317,
+    "step": 2318,
+    "id": 2257,
+    "label": "the busiest shuttle (12 ions)",
+    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 2.6. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
     "kind": "note"
    }
   ],
   "numbers": {
-   "T_jones": 192.01,
-   "T_transport": 200.47,
+   "T_jones": 400.045,
+   "T_transport": 420.177,
    "ions_per_instruction": 4.95,
    "transport_instructions": 1208,
    "pairs_per_gate": 9.71,
@@ -978,9 +975,10 @@
     "min_gap": 0,
     "rf_dc_clearance": 0
    },
-   "r10": false
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 2232377,
+  "bytes": 3225815,
   "sites": 220,
   "junctions": 117,
   "loops": 0
@@ -997,9 +995,10 @@
   "claim": "byte-identical programme at 57 DACs. It passes R4: the worst instruction wants 8 directions and the device declares 32 channels.",
   "status": "ok",
   "page": "12_grid13x13_broadcast.html",
-  "instructions": 2022,
+  "instructions": 3718,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 1,
@@ -1010,33 +1009,25 @@
     "kind": "note"
    },
    {
-    "frame": 8,
-    "step": 9,
-    "id": 8,
-    "label": "a typical shuttle",
-    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.",
+    "frame": 5,
+    "step": 6,
+    "id": 5,
+    "label": "a typical shuttle / 1 directions at once",
+    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.  ALSO: ions moving 1 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 1 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
     "kind": "note"
    },
    {
-    "frame": 535,
-    "step": 536,
-    "id": 511,
-    "label": "8 directions at once",
-    "note": "ions moving 8 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 8 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
-    "kind": "note"
-   },
-   {
-    "frame": 683,
-    "step": 684,
-    "id": 653,
-    "label": "the busiest shuttle (19 ions)",
-    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 4.8. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
+    "frame": 2648,
+    "step": 2649,
+    "id": 2583,
+    "label": "the busiest shuttle (15 ions)",
+    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 2.7. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
     "kind": "note"
    }
   ],
   "numbers": {
-   "T_jones": 206.32,
-   "T_transport": 215.56,
+   "T_jones": 417.94,
+   "T_transport": 438.989,
    "ions_per_instruction": 4.8,
    "transport_instructions": 1319,
    "pairs_per_gate": 9.71,
@@ -1052,9 +1043,10 @@
     "min_gap": 0,
     "rf_dc_clearance": 0
    },
-   "r10": false
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 2365148,
+  "bytes": 3375217,
   "sites": 312,
   "junctions": 165,
   "loops": 0
@@ -1069,18 +1061,38 @@
   "claim": "compiles, then fails R2 at instruction 5: a coupled ancilla site is degree 3, and a junction may hold one ion. It cannot both house an ancilla and receive a rider.",
   "status": "ok",
   "page": "13_dual144_c24_R2.html",
-  "instructions": 1816,
+  "instructions": 1824,
   "rules_failed": [
-   "R2"
+   "R2",
+   "R20",
+   "R22",
+   "R23"
   ],
-  "rules_passed": 19,
+  "rules_passed": 21,
+  "disqualified": true,
   "marks": [
+   {
+    "frame": 0,
+    "step": 1,
+    "id": 0,
+    "label": "R20 fails on this device",
+    "note": "rails EA143 and C0 meet at AT0 at 26.6 degrees, less than the 60 degrees the device requires (budget.min_rail_angle_deg)",
+    "kind": "fail"
+   },
+   {
+    "frame": 1,
+    "step": 2,
+    "id": 1,
+    "label": "R23 fails here",
+    "note": "ion q144 comes to rest on junction AT0 (3 rails meet there) while the traps off the junctions have room for all 168 ions (480 places); a junction is crossed in one move, not stood on",
+    "kind": "fail"
+   },
    {
     "frame": 5,
     "step": 6,
     "id": 5,
-    "label": "R2 fails here / batch 1 of 183",
-    "note": "junction AT0 (degree 3) holds 2 ions  ALSO: a dock: 12 riders pull into their spurs at once. Each batch pays dock + undock + one forced cool (about 725 us) whatever its size; mean fill here is 4.7 contacts of 18 possible.",
+    "label": "R2 fails here / R22 fails here / batch 1 of 183",
+    "note": "junction AT0 (degree 3) holds 2 ions  ALSO: 12 ions move in 2 different ways in one cycle (dock -x-y and dock -y); one cycle is one waveform, so unlike motions need 2 cycles  ALSO: a dock: 12 riders pull into their spurs at once. Each batch pays dock + undock + one forced cool (about 725 us) whatever its size; mean fill here is 4.7 contacts of 18 possible.",
     "kind": "fail"
    },
    {
@@ -1116,16 +1128,16 @@
     "kind": "note"
    },
    {
-    "frame": 236,
-    "step": 237,
+    "frame": 237,
+    "step": 238,
     "id": 213,
     "label": "a 1-contact batch (39 of 183)",
-    "note": "one rider docks alone, and the batch still pays its full overhead: 39 such batches cost about 28.5 ms for 4.5% of the contacts. This is the 52%-fill headroom the taxonomy names.",
+    "note": "one rider docks alone, and the batch still pays its full overhead: 39 such batches cost about 28.5 ms for 4.5% of the contacts.",
     "kind": "warn"
    },
    {
-    "frame": 916,
-    "step": 917,
+    "frame": 920,
+    "step": 921,
     "id": 829,
     "label": "the fullest batch (18 contacts)",
     "note": "every ancilla in use at once: this is what the lockstep placement is engineered to make happen, and the per-batch overhead is amortised best here.",
@@ -1133,9 +1145,12 @@
    }
   ],
   "numbers": {
-   "r10": false
+   "r10": false,
+   "T_jones": 200.725,
+   "T_transport": 164.125,
+   "T_source": "replay"
   },
-  "bytes": 2041509,
+  "bytes": 2649998,
   "sites": 288,
   "junctions": 48,
   "loops": 2
@@ -1151,12 +1166,13 @@
   "page": "14_racetrack240.html",
   "instructions": 0,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [],
   "numbers": {
    "r10": false
   },
-  "bytes": 1263047,
+  "bytes": 1660721,
   "sites": 240,
   "junctions": 0,
   "loops": 1
@@ -1172,12 +1188,13 @@
   "page": "15_racetrack480.html",
   "instructions": 0,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [],
   "numbers": {
    "r10": false
   },
-  "bytes": 1397422,
+  "bytes": 1795087,
   "sites": 480,
   "junctions": 0,
   "loops": 1
@@ -1193,12 +1210,13 @@
   "page": "16_chain400.html",
   "instructions": 0,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [],
   "numbers": {
    "r10": false
   },
-  "bytes": 1331757,
+  "bytes": 1729420,
   "sites": 400,
   "junctions": 0,
   "loops": 0
@@ -1214,12 +1232,13 @@
   "page": "17_dual240_c0.html",
   "instructions": 0,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [],
   "numbers": {
    "r10": false
   },
-  "bytes": 1410943,
+  "bytes": 1808574,
   "sites": 480,
   "junctions": 0,
   "loops": 2
@@ -1235,12 +1254,13 @@
   "page": "18_ladder144_r12.html",
   "instructions": 0,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [],
   "numbers": {
    "r10": false
   },
-  "bytes": 1469330,
+  "bytes": 1866995,
   "sites": 576,
   "junctions": 46,
   "loops": 0
@@ -1256,12 +1276,13 @@
   "page": "19_grid9x9.html",
   "instructions": 0,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [],
   "numbers": {
    "r10": false
   },
-  "bytes": 1254303,
+  "bytes": 1647171,
   "sites": 144,
   "junctions": 77,
   "loops": 0
@@ -1278,10 +1299,23 @@
   "claim": "a periodic lattice, every row and column a closed loop, with one ancilla per check pair: 97 ms, half the planar grid's time at 24 ancillas. The wrap is worth 1.3x, the ancillas 1.7x.",
   "status": "ok",
   "page": "20_torus12_own_a72.html",
-  "instructions": 988,
-  "rules_failed": [],
-  "rules_passed": 20,
+  "instructions": 991,
+  "rules_failed": [
+   "R20",
+   "R21",
+   "R22"
+  ],
+  "rules_passed": 22,
+  "disqualified": true,
   "marks": [
+   {
+    "frame": 0,
+    "step": 1,
+    "id": 0,
+    "label": "R20 fails on this device / R21 fails on this device",
+    "note": "rails T0_0h.a and T11_0h.b meet at J0_0 at 0.0 degrees, less than the 60 degrees the device requires (budget.min_rail_angle_deg)  ALSO: rail T0_11v.b (T0_11v-J0_0) passes through node J0_1, which it does not end at; a rail may only meet a node it is joined to",
+    "kind": "fail"
+   },
    {
     "frame": 1,
     "step": 2,
@@ -1289,6 +1323,14 @@
     "label": "cool",
     "note": "the lattice cools too; 13% of its round.",
     "kind": "note"
+   },
+   {
+    "frame": 5,
+    "step": 6,
+    "id": 5,
+    "label": "R22 fails here",
+    "note": "6 ions move in 5 different ways in one cycle (shuttle +y,-x and shuttle -x,-x); one cycle is one waveform, so unlike motions need 5 cycles",
+    "kind": "fail"
    },
    {
     "frame": 6,
@@ -1307,8 +1349,8 @@
     "kind": "note"
    },
    {
-    "frame": 545,
-    "step": 546,
+    "frame": 546,
+    "step": 547,
     "id": 517,
     "label": "the busiest shuttle (48 ions)",
     "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 8.7. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
@@ -1316,8 +1358,8 @@
    }
   ],
   "numbers": {
-   "T_jones": 97.16,
-   "T_transport": 101.23,
+   "T_jones": 97.565,
+   "T_transport": 101.639,
    "ions_per_instruction": 8.73,
    "transport_instructions": 582,
    "us_per_ion": 14.32,
@@ -1328,9 +1370,10 @@
    "buildable": false,
    "drc_clean": false,
    "rules_ok": true,
-   "r10": true
+   "r10": true,
+   "T_source": "replay"
   },
-  "bytes": 2079461,
+  "bytes": 2673147,
   "sites": 288,
   "junctions": 144,
   "loops": 0
@@ -1347,10 +1390,23 @@
   "claim": "the code's cell (i, j) laid at columns i, rows 2j and 2j+1 via --init-placement: no better than the compiler's own placer. The individual router, not the layout, is the ceiling at ~9 ions per instruction.",
   "status": "ok",
   "page": "21_torus12_code_a72.html",
-  "instructions": 1001,
-  "rules_failed": [],
-  "rules_passed": 20,
+  "instructions": 1004,
+  "rules_failed": [
+   "R20",
+   "R21",
+   "R22"
+  ],
+  "rules_passed": 22,
+  "disqualified": true,
   "marks": [
+   {
+    "frame": 0,
+    "step": 1,
+    "id": 0,
+    "label": "R20 fails on this device / R21 fails on this device",
+    "note": "rails T0_0h.a and T11_0h.b meet at J0_0 at 0.0 degrees, less than the 60 degrees the device requires (budget.min_rail_angle_deg)  ALSO: rail T0_11v.b (T0_11v-J0_0) passes through node J0_1, which it does not end at; a rail may only meet a node it is joined to",
+    "kind": "fail"
+   },
    {
     "frame": 1,
     "step": 2,
@@ -1358,6 +1414,14 @@
     "label": "cool",
     "note": "the lattice cools too; 13% of its round.",
     "kind": "note"
+   },
+   {
+    "frame": 5,
+    "step": 6,
+    "id": 5,
+    "label": "R22 fails here",
+    "note": "6 ions move in 2 different ways in one cycle (shuttle +x,+y and shuttle +x,-y); one cycle is one waveform, so unlike motions need 2 cycles",
+    "kind": "fail"
    },
    {
     "frame": 7,
@@ -1376,8 +1440,8 @@
     "kind": "note"
    },
    {
-    "frame": 530,
-    "step": 531,
+    "frame": 531,
+    "step": 532,
     "id": 502,
     "label": "the busiest shuttle (43 ions)",
     "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 9.5. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
@@ -1385,8 +1449,8 @@
    }
   ],
   "numbers": {
-   "T_jones": 98.78,
-   "T_transport": 102.95,
+   "T_jones": 99.19,
+   "T_transport": 103.355,
    "ions_per_instruction": 9.5,
    "transport_instructions": 595,
    "us_per_ion": 13.16,
@@ -1397,9 +1461,10 @@
    "buildable": false,
    "drc_clean": false,
    "rules_ok": true,
-   "r10": false
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 2111223,
+  "bytes": 2704931,
   "sites": 288,
   "junctions": 144,
   "loops": 0
@@ -1416,9 +1481,10 @@
   "claim": "the same planar grid as q06h's lattices with 72 ancillas instead of 24: 122 ms instead of 205. The lattice family's earlier numbers were ancilla-starved.",
   "status": "ok",
   "page": "22_planar12_own_a72.html",
-  "instructions": 1192,
+  "instructions": 2668,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 1,
@@ -1429,33 +1495,25 @@
     "kind": "note"
    },
    {
-    "frame": 6,
-    "step": 7,
-    "id": 6,
-    "label": "a typical shuttle",
-    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.",
+    "frame": 5,
+    "step": 6,
+    "id": 5,
+    "label": "a typical shuttle / 1 directions at once",
+    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.  ALSO: ions moving 1 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 1 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
     "kind": "note"
    },
    {
-    "frame": 79,
-    "step": 80,
-    "id": 75,
-    "label": "8 directions at once",
-    "note": "ions moving 8 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 8 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
-    "kind": "note"
-   },
-   {
-    "frame": 690,
-    "step": 691,
-    "id": 661,
-    "label": "the busiest shuttle (42 ions)",
-    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 8.0. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
+    "frame": 1173,
+    "step": 1174,
+    "id": 1150,
+    "label": "the busiest shuttle (26 ions)",
+    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 3.6. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
     "kind": "note"
    }
   ],
   "numbers": {
-   "T_jones": 122.1,
-   "T_transport": 127.6,
+   "T_jones": 305.695,
+   "T_transport": 321.515,
    "ions_per_instruction": 8.04,
    "transport_instructions": 786,
    "us_per_ion": 15.46,
@@ -1466,9 +1524,10 @@
    "buildable": false,
    "drc_clean": true,
    "rules_ok": true,
-   "r10": false
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 2146795,
+  "bytes": 3089461,
   "sites": 264,
   "junctions": 140,
   "loops": 0
@@ -1485,9 +1544,10 @@
   "claim": "the control for the ancilla count: the q06h tier, 205 ms, 4.8 ions per instruction.",
   "status": "ok",
   "page": "23_planar12_own_a24.html",
-  "instructions": 2018,
+  "instructions": 3735,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 1,
@@ -1498,33 +1558,25 @@
     "kind": "note"
    },
    {
-    "frame": 8,
-    "step": 9,
-    "id": 8,
-    "label": "a typical shuttle",
-    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.",
+    "frame": 5,
+    "step": 6,
+    "id": 5,
+    "label": "a typical shuttle / 1 directions at once",
+    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.  ALSO: ions moving 1 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 1 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
     "kind": "note"
    },
    {
-    "frame": 584,
-    "step": 585,
-    "id": 558,
-    "label": "8 directions at once",
-    "note": "ions moving 8 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 8 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
-    "kind": "note"
-   },
-   {
-    "frame": 681,
-    "step": 682,
-    "id": 651,
-    "label": "the busiest shuttle (19 ions)",
-    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 4.8. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
+    "frame": 2656,
+    "step": 2657,
+    "id": 2591,
+    "label": "the busiest shuttle (15 ions)",
+    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 2.6. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.",
     "kind": "note"
    }
   ],
   "numbers": {
-   "T_jones": 205.12,
-   "T_transport": 214.33,
+   "T_jones": 419.465,
+   "T_transport": 440.633,
    "ions_per_instruction": 4.77,
    "transport_instructions": 1315,
    "us_per_ion": 26.11,
@@ -1535,9 +1587,10 @@
    "buildable": false,
    "drc_clean": true,
    "rules_ok": true,
-   "r10": false
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 2305235,
+  "bytes": 3317025,
   "sites": 264,
   "junctions": 140,
   "loops": 0
@@ -1554,9 +1607,10 @@
   "claim": "the torus drawn as a chip with no crossings: each row a closed ring, the columns radial spokes. 106 ms -- it keeps most of the torus's 97 and beats the planar grid's 122, and it is a shape a die can carry.",
   "status": "ok",
   "page": "24_cylinder12_own_a72.html",
-  "instructions": 1060,
+  "instructions": 3253,
   "rules_failed": [],
-  "rules_passed": 20,
+  "rules_passed": 25,
+  "disqualified": false,
   "marks": [
    {
     "frame": 1,
@@ -1567,25 +1621,25 @@
     "kind": "note"
    },
    {
-    "frame": 6,
-    "step": 7,
-    "id": 6,
+    "frame": 5,
+    "step": 6,
+    "id": 5,
     "label": "a typical shuttle",
     "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.",
     "kind": "note"
    },
    {
-    "frame": 599,
-    "step": 600,
-    "id": 572,
-    "label": "the busiest shuttle (43 ions) / 41 directions at once",
-    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 8.3. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.  ALSO: ions moving 41 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 41 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
+    "frame": 1862,
+    "step": 1863,
+    "id": 1834,
+    "label": "the busiest shuttle (15 ions) / 15 directions at once",
+    "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 2.4. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.  ALSO: ions moving 15 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 15 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
     "kind": "note"
    }
   ],
   "numbers": {
-   "T_jones": 105.94,
-   "T_transport": 110.52,
+   "T_jones": 379.355,
+   "T_transport": 399.263,
    "ions_per_instruction": 8.31,
    "transport_instructions": 654,
    "us_per_ion": 15.01,
@@ -1596,9 +1650,10 @@
    "buildable": false,
    "drc_clean": true,
    "rules_ok": true,
-   "r10": false
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 2097090,
+  "bytes": 3169543,
   "sites": 276,
   "junctions": 144,
   "loops": 0
@@ -1615,10 +1670,23 @@
   "claim": "a true torus on a plane needs 120 crossings, and every one lands on a ring wire, so the x-hops pay for the y-wrap: 181 ms. The wrap is not worth its crossings.",
   "status": "ok",
   "page": "25_annulus12_own_a72.html",
-  "instructions": 847,
-  "rules_failed": [],
-  "rules_passed": 20,
+  "instructions": 850,
+  "rules_failed": [
+   "R20",
+   "R21",
+   "R22"
+  ],
+  "rules_passed": 22,
+  "disqualified": true,
   "marks": [
+   {
+    "frame": 0,
+    "step": 1,
+    "id": 0,
+    "label": "R20 fails on this device / R21 fails on this device",
+    "note": "rails T0_0h.a and T0_11v.11 meet at J0_0 at 57.1 degrees, less than the 60 degrees the device requires (budget.min_rail_angle_deg)  ALSO: rail T0_11v.1 (T0_11v-X0_10) passes through node T0_11h, which it does not end at; a rail may only meet a node it is joined to",
+    "kind": "fail"
+   },
    {
     "frame": 1,
     "step": 2,
@@ -1626,6 +1694,14 @@
     "label": "cool",
     "note": "the lattice cools too; 13% of its round.",
     "kind": "note"
+   },
+   {
+    "frame": 5,
+    "step": 6,
+    "id": 5,
+    "label": "R22 fails here",
+    "note": "7 ions move in 7 different ways in one cycle (shuttle +x-y,-x-y,+x-y and shuttle +y,-x-y,+x-y); one cycle is one waveform, so unlike motions need 7 cycles",
+    "kind": "fail"
    },
    {
     "frame": 7,
@@ -1636,8 +1712,8 @@
     "kind": "note"
    },
    {
-    "frame": 503,
-    "step": 504,
+    "frame": 504,
+    "step": 505,
     "id": 474,
     "label": "the busiest shuttle (42 ions) / 42 directions at once",
     "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 9.1. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.  ALSO: ions moving 42 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 42 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
@@ -1645,8 +1721,8 @@
    }
   ],
   "numbers": {
-   "T_jones": 180.69,
-   "T_transport": 183.78,
+   "T_jones": 181.1,
+   "T_transport": 184.187,
    "ions_per_instruction": 9.07,
    "transport_instructions": 441,
    "us_per_ion": 39.06,
@@ -1657,9 +1733,10 @@
    "buildable": false,
    "drc_clean": true,
    "rules_ok": true,
-   "r10": false
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 2140420,
+  "bytes": 2736069,
   "sites": 288,
   "junctions": 264,
   "loops": 0
@@ -1676,10 +1753,23 @@
   "claim": "28 random swaps take the torus from diameter 12 to 8 and the round from 97 to 82 ms. Distance is what the router pays for. Not drawable: every shortcut would be crossings on a chip.",
   "status": "ok",
   "page": "26_rewired_p0.1.html",
-  "instructions": 870,
-  "rules_failed": [],
-  "rules_passed": 20,
+  "instructions": 873,
+  "rules_failed": [
+   "R20",
+   "R21",
+   "R22"
+  ],
+  "rules_passed": 22,
+  "disqualified": true,
   "marks": [
+   {
+    "frame": 0,
+    "step": 1,
+    "id": 0,
+    "label": "R20 fails on this device / R21 fails on this device",
+    "note": "rails T0.a and T2.a meet at J0 at 44.6 degrees, less than the 60 degrees the device requires (budget.min_rail_angle_deg)  ALSO: rails T0.a (J0-T0) and T122.a (J51-T122) cross without a junction; rails may only cross at a node they share",
+    "kind": "fail"
+   },
    {
     "frame": 1,
     "step": 2,
@@ -1687,6 +1777,14 @@
     "label": "cool",
     "note": "the lattice cools too; 13% of its round.",
     "kind": "note"
+   },
+   {
+    "frame": 5,
+    "step": 6,
+    "id": 5,
+    "label": "R22 fails here",
+    "note": "6 ions move in 4 different ways in one cycle (shuttle +x-y,+x+y and shuttle -x+y,-x-y); one cycle is one waveform, so unlike motions need 4 cycles",
+    "kind": "fail"
    },
    {
     "frame": 7,
@@ -1697,8 +1795,8 @@
     "kind": "note"
    },
    {
-    "frame": 501,
-    "step": 502,
+    "frame": 502,
+    "step": 503,
     "id": 472,
     "label": "the busiest shuttle (39 ions) / 39 directions at once",
     "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 9.8. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.  ALSO: ions moving 39 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 39 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
@@ -1706,17 +1804,18 @@
    }
   ],
   "numbers": {
-   "T_jones": 82.41,
-   "T_transport": 85.66,
+   "T_jones": 82.815,
+   "T_transport": 86.063,
    "ions_per_instruction": 9.79,
    "transport_instructions": 464,
    "us_per_ion": 12.76,
    "p_eff_vs_threshold": 0.319,
    "rules_ok": true,
    "diameter": 8,
-   "r10": false
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 2281026,
+  "bytes": 2874723,
   "sites": 288,
   "junctions": 144,
   "loops": 0
@@ -1733,10 +1832,23 @@
   "claim": "the torus's degrees with none of its geometry: diameter 6, 82 ms. An expander beats every lattice on paper and has hundreds of crossings in practice.",
   "status": "ok",
   "page": "27_regular4.html",
-  "instructions": 869,
-  "rules_failed": [],
-  "rules_passed": 20,
+  "instructions": 872,
+  "rules_failed": [
+   "R20",
+   "R21",
+   "R22"
+  ],
+  "rules_passed": 22,
+  "disqualified": true,
   "marks": [
+   {
+    "frame": 0,
+    "step": 1,
+    "id": 0,
+    "label": "R20 fails on this device / R21 fails on this device",
+    "note": "rails T5.a and T6.a meet at J1 at 28.9 degrees, less than the 60 degrees the device requires (budget.min_rail_angle_deg)  ALSO: rails T0.a (J0-T0) and T102.b (T102-J142) cross without a junction; rails may only cross at a node they share",
+    "kind": "fail"
+   },
    {
     "frame": 1,
     "step": 2,
@@ -1749,13 +1861,13 @@
     "frame": 5,
     "step": 6,
     "id": 5,
-    "label": "a typical shuttle",
-    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.",
-    "kind": "note"
+    "label": "R22 fails here / a typical shuttle",
+    "note": "5 ions move in 5 different ways in one cycle (shuttle +x+y,-x+y and shuttle +x-y,+x-y); one cycle is one waveform, so unlike motions need 5 cycles  ALSO: a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.",
+    "kind": "fail"
    },
    {
-    "frame": 480,
-    "step": 481,
+    "frame": 481,
+    "step": 482,
     "id": 452,
     "label": "the busiest shuttle (42 ions) / 42 directions at once",
     "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 9.5. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.  ALSO: ions moving 42 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 42 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
@@ -1763,17 +1875,18 @@
    }
   ],
   "numbers": {
-   "T_jones": 82.28,
-   "T_transport": 85.53,
+   "T_jones": 82.69,
+   "T_transport": 85.931,
    "ions_per_instruction": 9.45,
    "transport_instructions": 463,
    "us_per_ion": 13.22,
    "p_eff_vs_threshold": 0.319,
    "rules_ok": true,
    "diameter": 6,
-   "r10": false
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 2278919,
+  "bytes": 2872754,
   "sites": 288,
   "junctions": 144,
   "loops": 0
@@ -1790,10 +1903,24 @@
   "claim": "a hub per check and per data qubit, a contact trap on each of the 864 Tanner edges: no device makes the contacts shorter, and it runs in 79.5 ms -- the individual router's floor, 3 ms under a random expander.",
   "status": "ok",
   "page": "28_tanner_own.html",
-  "instructions": 847,
-  "rules_failed": [],
-  "rules_passed": 20,
+  "instructions": 850,
+  "rules_failed": [
+   "R19",
+   "R20",
+   "R21",
+   "R22"
+  ],
+  "rules_passed": 21,
+  "disqualified": true,
   "marks": [
+   {
+    "frame": 0,
+    "step": 1,
+    "id": 0,
+    "label": "R19 fails on this device / R20 fails on this device / R21 fails on this device",
+    "note": "node C0 has degree 7, but a junction on this device may join at most 4 rails (budget.max_junction_degree)  ALSO: rails K0_1.a and K0_2.a meet at C0 at 4.5 degrees, less than the 60 degrees the device requires (budget.min_rail_angle_deg)  ALSO: rails K0_1.b (K0_1-D1) and K4_0.b (K4_0-D0) cross without a junction; rails may only cross at a node they share",
+    "kind": "fail"
+   },
    {
     "frame": 1,
     "step": 2,
@@ -1806,13 +1933,13 @@
     "frame": 5,
     "step": 6,
     "id": 5,
-    "label": "a typical shuttle",
-    "note": "a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.",
-    "kind": "note"
+    "label": "R22 fails here / a typical shuttle",
+    "note": "5 ions move in 4 different ways in one cycle (shuttle +x+y,+x+y and shuttle +x-y,-x+y); one cycle is one waveform, so unlike motions need 4 cycles  ALSO: a handful of ions, each on its own route: the 80% of this round that is transport is made of instructions like this one.",
+    "kind": "fail"
    },
    {
-    "frame": 499,
-    "step": 500,
+    "frame": 500,
+    "step": 501,
     "id": 470,
     "label": "the busiest shuttle (41 ions) / 41 directions at once",
     "note": "the most ions this router ever moves at once, against a ring rotation's 144. The mean is 9.1. The device declares 18 SIMD classes (row and column shifts); the router issues only `shuttle`.  ALSO: ions moving 41 different ways in one instruction. A ring rotation asks for one. On the 32-channel broadcast block this needs 41 channels -- legal, and the reason q06h's 'a lattice cannot use broadcast' was withdrawn.",
@@ -1820,17 +1947,18 @@
    }
   ],
   "numbers": {
-   "T_jones": 79.53,
-   "T_transport": 82.62,
+   "T_jones": 79.94,
+   "T_transport": 83.027,
    "ions_per_instruction": 9.1,
    "transport_instructions": 441,
    "us_per_ion": 13.74,
    "p_eff_vs_threshold": 0.319,
    "rules_ok": true,
    "diameter": null,
-   "r10": false
+   "r10": false,
+   "T_source": "replay"
   },
-  "bytes": 3744893,
+  "bytes": 4344614,
   "sites": 1152,
   "junctions": 288,
   "loops": 0
@@ -1845,13 +1973,18 @@
   "status": "ok",
   "page": "29_geometric.html",
   "instructions": 0,
-  "rules_failed": [],
-  "rules_passed": 20,
+  "rules_failed": [
+   "R19",
+   "R20",
+   "R21"
+  ],
+  "rules_passed": 22,
+  "disqualified": true,
   "marks": [],
   "numbers": {
    "r10": false
   },
-  "bytes": 1821190,
+  "bytes": 2219959,
   "sites": 379,
   "junctions": 124,
   "loops": 0
