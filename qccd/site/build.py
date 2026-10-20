@@ -1856,10 +1856,16 @@ def people_page() -> str:
         body.append(f'<h2 id="{gid}">{html.escape(gtitle)}</h2><p class="sub">{html.escape(gblurb)}</p><div class="folk">')
         for p in mine:
             links = "".join(f'<a href="{html.escape(u)}">{html.escape(k)}</a>' for k, u in (p.get("links") or {}).items())
+            # every card has a face: the person's photo, or the blank template until there is one
+            photo = (f'<img class="ph" src="../static/people/{html.escape(p["photo"])}" alt="{html.escape(p["name"])}" '
+                     f'width="72" height="72" loading="lazy">' if p.get("photo") else
+                     '<img class="ph" src="../static/people/blank.svg" alt="" width="72" height="72">')
             # an empty field leaves no empty box behind
-            body.append(f'<div class="person" id="{slug(p["name"])}"><b>{html.escape(p["name"])}</b>'
+            body.append(f'<div class="person" id="{slug(p["name"])}"><div class="phead">{photo}<div>'
+                        f'<b>{html.escape(p["name"])}</b>'
                         + (f'<div class="role">{html.escape(p["role"])}</div>' if p.get("role") else "")
                         + (f'<div class="aff">{html.escape(p["affiliation"])}</div>' if p.get("affiliation") else "")
+                        + "</div></div>"
                         + (f'<p>{html.escape(p["about"])}</p>' if p.get("about") else "")
                         + (f'<div class="links">{links}</div>' if links else "") + "</div>")
         body.append("</div>")
@@ -1876,7 +1882,12 @@ def people_page() -> str:
     body.append("</div>")
     body.append(f'<p class="note">{Renderer({}, lambda t: t).inline(JOIN, hint=False)} '
                 f'<a href="{REPO}/graphs/contributors">Contributors on GitHub &rarr;</a></p>')
-    return PAGE.format(title="People - QCCD studio", style=STYLE, extra_css="", body="\n".join(body))
+    # the photo beside the name: this page's own rules, so no other page changes
+    photo_css = (".person .phead{display:flex;gap:14px;align-items:center;margin:0 0 10px}"
+                 ".person .ph{width:72px;height:72px;border-radius:50%;object-fit:cover;flex:none;"
+                 "border:1px solid var(--line);background:#e9e7e1}"
+                 ".person .phead .aff{margin-bottom:0}")
+    return PAGE.format(title="People - QCCD studio", style=STYLE, extra_css=photo_css, body="\n".join(body))
 
 
 def _pub_links(p: dict) -> str:

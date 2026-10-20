@@ -1,21 +1,47 @@
 """The People page: who takes part in the project.  Pure data; edit the lists.
 
 Every entry is one card on `site/people/`.  `role` is one line, `about` one or two
-sentences, `links` a mapping of label to URL.  Add a person by adding a dict; groups are
-rendered in the order of GROUPS, and a person whose `group` names none of them is shown
-under the last one.  The institutions are the footer's leads and funders, then the places
-the project's contributors are based.
+sentences, `links` a mapping of label to URL, `photo` a file in `static/people/` (a
+square head-and-shoulders crop; a card without one shows `static/people/blank.svg`).  Add a
+person by adding a dict; groups are rendered in the order of GROUPS, and a person whose
+`group` names none of them is shown under the last one.  The institutions are the footer's
+leads and funders, then the places the project's contributors are based.
+
+Photos: John's is his own; Jens Palsberg's is from his UCLA Samueli profile, Hartmut Häffner's
+and Ke Sun's from the Häffner group's members page (ions.berkeley.edu/members).
 """
 
 from __future__ import annotations
 
 GROUPS = (
-    ("team", "The team", "The people who build the compiler, the verifier, the studio and this website."),
+    ("faculty", "Leading Faculty", "The faculty who lead the collaboration."),
+    ("team", "PhD Students and Postdocs", "The people who build the compiler, the verifier, the studio and this website."),
     ("collaborators", "Collaborators and advisors", "The physicists and computer scientists the design questions are worked out with."),
     ("alumni", "Alumni", "Earlier contributors."),
 )
 
 PEOPLE: list[dict] = [
+    {
+        "name": "Jens Palsberg",
+        "role": "Professor of Computer Science",
+        "affiliation": "University of California, Los Angeles",
+        "group": "faculty",
+        "about": "Professor and former chair of Computer Science at UCLA, working on programming "
+                 "languages, software engineering and quantum computing.",
+        "links": {"Homepage": "https://web.cs.ucla.edu/~palsberg/"},
+        "photo": "jens-palsberg.jpg",
+    },
+    {
+        "name": "Hartmut Häffner",
+        "role": "Professor of Physics",
+        "affiliation": "University of California, Berkeley",
+        "group": "faculty",
+        "about": "Leads the trapped-ion group at UC Berkeley, whose recent work includes "
+                 "ultra-low-noise and 3D-printed ion traps, control of a quantum rotor and "
+                 "trapped electrons.",
+        "links": {"Group": "https://ions.berkeley.edu/"},
+        "photo": "hartmut-haffner.jpg",
+    },
     {
         "name": "John Zhuoyang Ye",
         "role": "Lead developer",
@@ -24,6 +50,7 @@ PEOPLE: list[dict] = [
         "about": "Builds the compiler, the Lean-checked verifier, the studio and this website, "
                  "and runs the architecture studies behind the leaderboard.",
         "links": {"GitHub": "https://github.com/yezhuoyang"},
+        "photo": "john-zhuoyang-ye.jpg",
     },
     {
         "name": "Ke Sun",
@@ -37,6 +64,7 @@ PEOPLE: list[dict] = [
                  "and gate primitives, analyzing fabrication constraints, and exploring 3D "
                  "shuttling concepts.",
         "links": {},
+        "photo": "ke-sun.jpg",
     },
     {
         "name": "Zhuangzhuang Chen",
