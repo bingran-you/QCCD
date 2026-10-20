@@ -238,7 +238,10 @@ def test_the_checker_refuses_a_malformed_input_by_name(tmp_path):
              '"hops": [{"from": "S0", "to": "S1"}]}')
     cases = {"{}": ("{}", 'the field "circuit" is missing'),
              "float t": (whole.replace("MOVE", '{"t": 20.0, "ion": "a", "from": "S0", "to": "S1"}'),
-                         "moves[0] is malformed"),
+                         'moves[0] is malformed: "t" is not a whole number'),
+             "qubit 0.5": (whole.replace("MOVE", "").replace('"circuit_ops": []',
+                                                             '"circuit_ops": [{"i": 0, "name": "h", "qubits": [0.5]}]'),
+                           'circuit_ops[0] is malformed: "qubits" is not a list of whole numbers'),
              "no hops": (whole.replace("MOVE", "").replace(', "hops": [{"from": "S0", "to": "S1"}]', ""),
                          'the field "hops" is missing')}
     for name, (text, says) in cases.items():

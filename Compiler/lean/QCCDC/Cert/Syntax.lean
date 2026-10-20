@@ -189,29 +189,69 @@ That is what a page wants that shows a certificate, and it is not what a checker
 a move whose `t` is `20.0` dropped is a programme with one move fewer, and `{}` read as empty
 is a programme with nothing to check, which `check` then accepts.  So `qcheck` reads with
 `Input.parse`: every field the checker relies on must be present and of its type, and every
-entry of every list must read, or the file is refused with the first thing that is wrong.
-What it returns on success is what `Input.ofJson` returns, since every entry read. -/
+entry of every list must read -- the lists inside an entry too (an op's qubits, a witness's
+ions) -- or the file is refused, naming the first thing that is wrong and why. -/
+
+/-- What a field must be: a whole number, an integer, a string, or a list of either. -/
+private inductive Kind where
+  | nat | int | str | nats | strs
+
+private def Kind.says : Kind → String
+  | .nat => "a whole number"
+  | .int => "an integer"
+  | .str => "a string"
+  | .nats => "a list of whole numbers"
+  | .strs => "a list of strings"
+
+private def natList? (j : Json) : Option (List Nat) :=
+  match j.getArr? with
+  | .ok a => a.toList.mapM nat?
+  | .error _ => none
+
+private def strList? (j : Json) : Option (List String) :=
+  match j.getArr? with
+  | .ok a => a.toList.mapM str?
+  | .error _ => none
+
+private def Kind.reads (v : Json) : Kind → Bool
+  | .nat => (nat? v).isSome
+  | .int => (int? v).isSome
+  | .str => (str? v).isSome
+  | .nats => (natList? v).isSome
+  | .strs => (strList? v).isSome
+
+/-- Why the entry `x` does not read as `fields`: the first field missing or not of its kind. -/
+private def why (fields : List (String × Kind)) (x : Json) : String :=
+  match fields.find? (fun (k, kind) =>
+      match x.getObjVal? k with
+      | .ok v => !kind.reads v
+      | .error _ => true) with
+  | some (k, kind) =>
+    match x.getObjVal? k with
+    | .ok _ => s!"\"{k}\" is not {kind.says}"
+    | .error _ => s!"\"{k}\" is missing"
+  | none => "it is not an object"
 
 private def need (j : Json) (k : String) : Except String Json :=
   match j.getObjVal? k with
   | .ok v => .ok v
   | .error _ => .error s!"the field \"{k}\" is missing"
 
-private def eachGo {α : Type} (what : String) (f : Json → Option α) :
+private def eachGo {α : Type} (what : String) (f : Json → Option α) (explain : Json → String) :
     Nat → List Json → Array α → Except String (List α)
   | _, [], acc => .ok acc.toList
   | i, x :: xs, acc =>
     match f x with
-    | some y => eachGo what f (i + 1) xs (acc.push y)
-    | none => .error s!"{what}[{i}] is malformed: {x.compress}"
+    | some y => eachGo what f explain (i + 1) xs (acc.push y)
+    | none => .error s!"{what}[{i}] is malformed: {explain x}: {x.compress}"
 
 /-- The list under `k`: every entry read by `f`.  An optional field that is absent is empty. -/
 private def listField {α : Type} (j : Json) (k : String) (f : Json → Option α)
-    (optional : Bool := false) : Except String (List α) :=
+    (explain : Json → String) (optional : Bool := false) : Except String (List α) :=
   match j.getObjVal? k with
   | .ok v =>
     match v.getArr? with
-    | .ok a => eachGo k f 0 a.toList #[]
+    | .ok a => eachGo k f explain 0 a.toList #[]
     | .error _ => .error s!"\"{k}\" is not a list"
   | .error _ => if optional then .ok [] else .error s!"the field \"{k}\" is missing"
 
@@ -232,7 +272,21 @@ private def strField (j : Json) (k : String) : Except String String := do
 private def natField (j : Json) (k : String) : Except String Nat := do
   match nat? (← need j k) with
   | some n => pure n
-  | none => throw s!"\"{k}\" is not a natural number"
+  | none => throw s!"\"{k}\" is not a whole number"
+
+/-- The entries, read strictly: the lists inside them must read whole as well. -/
+private def opStrict (j : Json) : Option Op := do
+  let i ← nat? (field j "i")
+  let n ← str? (field j "name")
+  let qs ← natList? (field j "qubits")
+  pure { idx := i, name := n, qubits := qs }
+
+private def gateStrict (j : Json) : Option GateW := do
+  let dag ← nat? (field j "dag")
+  let t ← nat? (field j "t")
+  let s ← str? (field j "site")
+  let ions ← strList? (field j "ions")
+  pure { dag := dag, t := t, site := s, ions := ions }
 
 /-- Parse the checker's input, refusing anything malformed (see above). -/
 def Input.parse (j : Json) : Except String Input := do
@@ -242,22 +296,28 @@ def Input.parse (j : Json) : Except String Input := do
   let qmap ← (← objField j "map").mapM fun (k, v) =>
     match k.toNat?, str? v with
     | some n, some s => .ok (n, s)
-    | _, _ => .error s!"map[\"{k}\"] is malformed: {v.compress}"
+    | none, _ => .error s!"map[\"{k}\"] is malformed: the qubit is not a whole number"
+    | _, none => .error s!"map[\"{k}\"] is malformed: the ion is not a string: {v.compress}"
   let init ← (← objField j "init").mapM fun (k, v) =>
     match str? v with
     | some s => .ok (k, s)
-    | none => .error s!"init[\"{k}\"] is malformed: {v.compress}"
+    | none => .error s!"init[\"{k}\"] is malformed: the trap is not a string: {v.compress}"
   let loops ← (← objField j "loops" (optional := true)).mapM fun (k, v) =>
-    match v.getArr? with
-    | .ok a => (eachGo s!"loops[\"{k}\"]" str? 0 a.toList #[]).map fun ns => (k, ns)
-    | .error _ => .error s!"loops[\"{k}\"] is not a list"
+    match strList? v with
+    | some ns => .ok (k, ns)
+    | none => .error s!"loops[\"{k}\"] is malformed: it is not a list of strings: {v.compress}"
   pure { circuit, arch, nQubits, qmap, init, loops
-         ops := ← listField j "circuit_ops" opOf
+         ops := ← listField j "circuit_ops" opStrict
+                  (why [("i", .nat), ("name", .str), ("qubits", .nats)])
          moves := ← listField j "moves" moveOf
-         rots := ← listField j "rotations" rotOf (optional := true)
-         gates := ← listField j "gates" gateOf
-         unrealised := ← listField j "unrealised" nat? (optional := true)
-         gateSites := ← listField j "gate_sites" str?
-         hops := ← listField j "hops" pairOf }
+                  (why [("t", .nat), ("ion", .str), ("from", .str), ("to", .str)])
+         rots := ← listField j "rotations" rotOf
+                  (why [("t", .nat), ("loop", .str), ("delta", .int)]) (optional := true)
+         gates := ← listField j "gates" gateStrict
+                  (why [("dag", .nat), ("t", .nat), ("site", .str), ("ions", .strs)])
+         unrealised := ← listField j "unrealised" nat? (fun _ => "it is not a whole number")
+                  (optional := true)
+         gateSites := ← listField j "gate_sites" str? (fun _ => "it is not a string")
+         hops := ← listField j "hops" pairOf (why [("from", .str), ("to", .str)]) }
 
 end QCCDC.Cert
