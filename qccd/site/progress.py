@@ -358,18 +358,31 @@ def _diagrams() -> dict[str, str]:
                + text(11, 43, "   --tsir x.tsir.json", 6.6, "#e6edf3", "start", 500, True)
                + text(11, 54, "   --qasm x.qasm -o x.html", 6.6, "#e6edf3", "start", 500, True)
                + '<rect x="11" y="59" width="5" height="8" fill="#7ee787"/>')
+    # ---- F: certificates and the proved checker ---------------------------------------------
+    d["F1"] = (rail(10, 54, 52, 54) + site(10, 54) + site(48, 54, n=2) + ion(10, 54, D1, ghost=True)
+               + ion(43.5, 54, D0) + ion(52.5, 54, D1) + arrow("M14 44Q28 34 40 44") + beam(48, 22, 46)
+               + text(30, 74, "a Bell pair", 6.5)
+               + '<rect x="66" y="8" width="48" height="64" rx="5" fill="#fff" stroke="#d0d5dd" stroke-width="1.2"/>'
+               + text(90, 20, "certificate", 6.5)
+               + "".join(f'<rect x="72" y="{y}" width="{w}" height="3.4" rx="1.7" fill="#d0d5dd"/>'
+                         for y, w in ((26, 34), (33, 28), (40, 31), (47, 22)))
+               + good(102, 61, 7) + text(88, 64, "Lean", 8, GOOD, "end", 800))
     return d
 
 
 DIAGRAMS = _diagrams()
 
+#: a Lean chapter without a picture of its own: a proof, checked
+PROOF = (text(46, 54, "\u22a2", 34, "#1e2761", weight=400) + text(74, 50, "proved", 9, "#1e2761", "start", 700)
+         + good(88, 30, 9))
 
-def diagram(lid: str, part: str) -> str:
+
+def diagram(lid: str, part: str, lean: bool = False) -> str:
     """The lesson's picture: what its exercise is about, drawn the way the studio draws it.
-    A lesson with no picture of its own gets the part's pictogram's colour and its id."""
+    A lesson with no picture of its own gets its id; a Lean chapter, a checked proof."""
     body = DIAGRAMS.get(lid)
     if body is None:
-        body = text(60, 46, lid, 18, "#98a2b3", weight=800)
+        body = PROOF if lean else text(60, 46, lid, 18, "#98a2b3", weight=800)
     marks = "".join(f'<marker id="{lid}-{k}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4.2" markerHeight="4.2" orient="auto">'
                     f'<path d="M0 0L10 5L0 10z" fill="{c}"/></marker>'
                     for k, c in (("o", ARROW), ("r", BAD), ("g", GOOD), ("p", CHK), ("m", MUTED)))
@@ -424,24 +437,88 @@ def milestones(src: str) -> dict[str, str]:
             re.findall(r"\{ id: '([A-Z])', title: '(?:[^'\\]|\\.)*',\s*milestone: '((?:[^'\\]|\\.)*)'", src)}
 
 
+# ------------------------------------------------------------------------- the Lean parts
+
+#: Parts E-I of the tutorial are the verified compiler, in Lean, run in the reader's browser
+#: (qccd/site/book.py writes their pages).  A lesson there is a chapter, and its exercises are
+#: what a reader solves: each counts as one exercise, and earns its own difficulty in stars.
+LEAN_BADGES = {"E": "Modeller", "F": "Proof checker", "G": "Semanticist", "H": "Auditor", "I": "Compiler builder"}
+LEAN_COLOR = {"E": "#0e7c7b", "F": "#6a4fd0", "G": "#c2308a", "H": "#1f7fa8", "I": "#b5471b"}
+
+
+def _ic(colour: str, body: str) -> str:
+    return f'<svg class="ic" viewBox="0 0 64 64" aria-hidden="true">{body.replace("@", colour)}</svg>'
+
+
+LEAN_ART = {
+    # the machine as data: a device graph, as a term
+    "E": _ic(LEAN_COLOR["E"], '<path d="M14 44L32 16L50 44Z" fill="none" stroke="@" stroke-width="3" stroke-linejoin="round"/>'
+             '<circle cx="14" cy="44" r="6" fill="@"/><circle cx="32" cy="16" r="6" fill="@"/><circle cx="50" cy="44" r="6" fill="@"/>'
+             '<path d="M8 56h48" stroke="#1c2a4a" stroke-width="3" stroke-linecap="round"/>'),
+    # certificates and the proved checker: a certificate, ticked
+    "F": _ic(LEAN_COLOR["F"], '<rect x="10" y="8" width="34" height="44" rx="4" fill="none" stroke="@" stroke-width="3"/>'
+             '<path d="M17 20h20M17 28h20M17 36h12" stroke="@" stroke-width="3" stroke-linecap="round"/>'
+             '<circle cx="46" cy="46" r="11" fill="@"/><path d="M40.5 46l4 4 7-8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'),
+    # semantics: the gate as a matrix
+    "G": _ic(LEAN_COLOR["G"], '<path d="M16 12h-6v40h6M48 12h6v40h-6" fill="none" stroke="@" stroke-width="3" stroke-linecap="round"/>'
+             '<circle cx="24" cy="24" r="4" fill="@"/><circle cx="40" cy="24" r="4" fill="#1c2a4a"/>'
+             '<circle cx="24" cy="40" r="4" fill="#1c2a4a"/><circle cx="40" cy="40" r="4" fill="@"/>'),
+    # verify the website yourself: a page under a magnifier
+    "H": _ic(LEAN_COLOR["H"], '<rect x="8" y="8" width="32" height="42" rx="4" fill="none" stroke="#1c2a4a" stroke-width="3"/>'
+             '<path d="M15 19h18M15 27h14" stroke="#1c2a4a" stroke-width="3" stroke-linecap="round"/>'
+             '<circle cx="38" cy="38" r="11" fill="#fff" stroke="@" stroke-width="3.5"/><path d="M46 46l9 9" stroke="@" stroke-width="5" stroke-linecap="round"/>'),
+    # build your own compiler: a gear
+    "I": _ic(LEAN_COLOR["I"], "".join(f'<rect x="29" y="6" width="6" height="10" rx="1.5" transform="rotate({k * 45} 32 32)" fill="@"/>'
+                                      for k in range(8))
+             + '<circle cx="32" cy="32" r="16" fill="@"/><circle cx="32" cy="32" r="6.5" fill="#fff"/>'),
+}
+
+
+def lean_parts() -> list[dict]:
+    """The tutorial's Lean parts, as qccd/site/book.py lays them out (`tutorial_parts`):
+    [{part, title, about, lessons: [{id, title, story, href, exercises, stars, live}], coming}].
+    A tree without them builds a tutorial of the studio's parts alone; an error inside them
+    is not hidden."""
+    try:
+        from .book import dash, tutorial_parts
+    except ImportError:
+        return []
+    # the sources write a spaced ` -- `; a reader sees the dash the rest of the site prints
+    return [dict(p, title=dash(p["title"]), about=dash(p["about"]), coming=[dash(t) for t in p.get("coming", ())],
+                 lessons=[dict(L, title=dash(L["title"])) for L in p["lessons"]]) for p in tutorial_parts()]
+
+
 # ------------------------------------------------------------------------- the page
 
-def course_section(parts: list[dict], less: list[dict], part_art: dict, part_color: dict) -> str:
-    """The Learn page's course: the progress panel, then each part and its lesson cards."""
+def course_section(parts: list[dict], less: list[dict], part_art: dict, part_color: dict,
+                   lean: list[dict] | None = None) -> str:
+    """The Learn page's tutorial: the progress panel, then every part with its lesson cards --
+    the studio's parts (A-D: a lesson is an exercise in the design tool) and the Lean parts
+    (E-I: a lesson is a chapter, its exercises solved in the browser) in one list, one ladder,
+    one count."""
     src = TUTORIAL_JS.read_text(encoding="utf-8") if TUTORIAL_JS.exists() else ""
     meta, ms = lesson_meta(src), milestones(src)
     lessons = [dict(L, **meta.get(L["id"], {"story": "", "max": 1})) for L in less]
-    total, stars = len(lessons), sum(L["max"] for L in lessons)
-    # the ladder: Apprentice at the first lesson, then a part's badge at the number of
-    # lessons up to and including that part
+    lean = lean_parts() if lean is None else lean
+    chapters = [dict(L, part=p["part"]) for p in lean for L in p["lessons"] if L.get("live", True)]
+    n_ex = sum(len(L["exercises"]) for L in chapters)
+    total = len(lessons) + n_ex
+    stars = sum(L["max"] for L in lessons) + sum(sum(L["stars"]) for L in chapters)
+    # what a part holds: a studio part its lessons, a Lean part its chapters' exercises
+    units = [(p["id"], sum(1 for L in lessons if L["part"] == p["id"]), BADGES.get(p["id"], f"Part {p['id']}"),
+              part_color.get(p["id"], "#2a78d6"), f"Finish Part {p['id']}") for p in parts]
+    units += [(p["part"], sum(len(L["exercises"]) for L in chapters if L["part"] == p["part"]),
+               LEAN_BADGES.get(p["part"], f"Part {p['part']}"), LEAN_COLOR.get(p["part"], "#6a4fd0"),
+               f"Solve Part {p['part']}'s exercises") for p in lean]
+    # the ladder: Apprentice at the first exercise, then each part's badge at the number of
+    # exercises up to and including that part
     levels, upto = [[0, "Newcomer"], [1, "Apprentice"]], 0
-    for p in parts:
-        upto += sum(1 for L in lessons if L["part"] == p["id"])
-        if p["id"] in BADGES and upto > 1:
-            levels.append([upto, BADGES[p["id"]]])
-    badges = [{"id": p["id"], "name": BADGES.get(p["id"], f"Part {p['id']}"), "colour": part_color.get(p["id"], "#2a78d6"),
-               "need": f"Finish Part {p['id']}"} for p in parts]
-    badges += [{"id": "all", "name": "Course complete", "colour": "#0b7a4b", "need": f"Finish all {total} lessons"},
+    for pid, n, name, _, _ in units:
+        upto += n
+        if n and upto > 1:
+            levels.append([upto, name])
+    badges = [{"id": pid, "name": name, "colour": colour, "need": need} for pid, n, name, colour, need in units if n]
+    badges += [{"id": "all", "name": "Tutorial complete", "colour": "#0b7a4b", "need": f"Finish all {total} exercises"},
                {"id": "stars", "name": "Every star", "colour": "#d59a00", "need": f"Earn all {stars} stars"}]
     first = lessons[0] if lessons else None
 
@@ -452,7 +529,7 @@ def course_section(parts: list[dict], less: list[dict], part_art: dict, part_col
            'stroke-dasharray="326.73" stroke-dashoffset="326.73" transform="rotate(-90 60 60)"/>'
            '<defs><linearGradient id="you-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a78d6"/>'
            '<stop offset="1" stop-color="#1baf7a"/></linearGradient></defs></svg>'
-           '<div class="you-pct"><b id="you-pct">0%</b><span>of the course</span></div></div>',
+           '<div class="you-pct"><b id="you-pct">0%</b><span>of the tutorial</span></div></div>',
            '<div class="you-main">',
            '<div class="you-who"><span class="you-face" id="you-face" hidden></span><span id="you-who">Your progress</span></div>',
            '<div class="you-level">Level <b id="you-lvn">1</b> &middot; <span id="you-lv">Newcomer</span></div>',
@@ -468,7 +545,7 @@ def course_section(parts: list[dict], less: list[dict], part_art: dict, part_col
            '<div class="you-acct" id="you-acct">Your progress is kept in this browser.</div>',
            '<div class="you-new" id="you-new" hidden></div>',
            '</div>',
-           '<div class="you-bdg" id="you-bdg">']
+           f'<div class="you-bdg" id="you-bdg" style="--nb:{len(badges)}">']
     for b in badges:
         glyph = "trophy" if b["id"] == "all" else "star" if b["id"] == "stars" else b["id"]
         out.append(f'<div class="bdg" data-badge="{b["id"]}" title="{html.escape(b["need"])}">'
@@ -481,10 +558,10 @@ def course_section(parts: list[dict], less: list[dict], part_art: dict, part_col
         blurb, art = part_art.get(p["id"], ("", ""))
         colour = part_color.get(p["id"], "#2a78d6")
         out.append(f'<section class="part" id="part-{p["id"]}" style="--pc:{colour}">'
-                   f'<div class="ph">{art}<div class="phx"><div class="kick">Part {p["id"]} &middot; {len(mine)} lessons</div>'
+                   f'<div class="ph">{art}<div class="phx"><div class="kick">Part {p["id"]} &middot; {len(mine)} lessons &middot; in the design tool</div>'
                    f'<h3>{html.escape(p["title"])}</h3><p class="sum">{blurb}</p>'
                    f'<div class="pmeta"><span class="pbar"><span class="pfill" data-part="{p["id"]}"></span></span>'
-                   f'<span class="prog" data-part="{p["id"]}" data-n="{len(mine)}">0 of {len(mine)} done</span>'
+                   f'<span class="prog" data-part="{p["id"]}" data-unit="done">0 of {len(mine)} done</span>'
                    f'<span class="pbadge" data-part="{p["id"]}">Badge: {html.escape(BADGES.get(p["id"], "Part " + p["id"]))}</span></div></div></div>'
                    + (f'<p class="pdone" data-part="{p["id"]}" hidden>{html.escape(ms[p["id"]])}</p>' if p["id"] in ms else "")
                    + '<div class="cards2">')
@@ -501,15 +578,51 @@ def course_section(parts: list[dict], less: list[dict], part_art: dict, part_col
                 f'<span class="lgo">Start</span></span></a>')
         out.append("</div></section>")
 
+    for p in lean:
+        mine = [L for L in chapters if L["part"] == p["part"]]
+        n = sum(len(L["exercises"]) for L in mine)
+        pid, colour = p["part"], LEAN_COLOR.get(p["part"], "#6a4fd0")
+        what = (f'{len(mine)} chapter{"s" if len(mine) != 1 else ""} live' if mine else "coming soon")
+        out.append(f'<section class="part lean" id="part-{pid}" style="--pc:{colour}">'
+                   f'<div class="ph">{LEAN_ART.get(pid, "")}<div class="phx"><div class="kick">Part {pid} &middot; {what} &middot; in Lean, in this browser</div>'
+                   f'<h3>{html.escape(p["title"])}</h3><p class="sum">{html.escape(p["about"])}</p>'
+                   + (f'<div class="pmeta"><span class="pbar"><span class="pfill" data-part="{pid}"></span></span>'
+                      f'<span class="prog" data-part="{pid}" data-unit="exercises">0 of {n} exercises</span>'
+                      f'<span class="pbadge" data-part="{pid}">Badge: {html.escape(LEAN_BADGES.get(pid, "Part " + pid))}</span></div>' if n else "")
+                   + '</div></div>')
+        if mine:
+            out.append('<div class="cards2">')
+            for L in mine:
+                k = len(L["exercises"])
+                out.append(
+                    f'<a class="lesson chap" id="lesson-{L["id"]}" data-chapter="{L["id"]}" href="{html.escape(L["href"])}">'
+                    f'<span class="av">{diagram(L["id"], pid, lean=True)}</span>'
+                    f'<span class="lx"><span class="lh"><span class="lid">{L["id"]}</span>'
+                    f'<span class="lt">{html.escape(L["title"])}</span></span>'
+                    f'<span class="ls">{html.escape(L.get("story", ""))}</span></span>'
+                    f'<span class="lr"><span class="lst">Not started</span>'
+                    f'<span class="lex">0 of {k} exercise{"s" if k != 1 else ""}</span>'
+                    f'<span class="lgo">Start</span></span></a>')
+            out.append("</div>")
+        if p.get("coming"):
+            out.append(f'<p class="coming"><b>Coming next in this part:</b> '
+                       + " &middot; ".join(html.escape(t) for t in p["coming"]) + "</p>")
+        out.append("</section>")
+
     course = {"lessons": [{"id": L["id"], "part": L["part"], "title": L["title"], "max": L["max"]} for L in lessons],
-              "parts": [{"id": p["id"], "n": sum(1 for L in lessons if L["part"] == p["id"])} for p in parts],
+              "chapters": [{"id": L["id"], "part": L["part"], "title": L["title"], "href": L["href"],
+                            "ex": L["exercises"], "st": L["stars"]} for L in chapters],
+              "parts": [{"id": pid, "n": n} for pid, n, _, _, _ in units],
               "levels": levels, "badges": [b["id"] for b in badges], "total": total, "stars": stars}
     hints = {"learn:signin": {"t": "Sign in to save your progress",
-                              "d": "Opens the site's sign-in dialog. Signed in, the lessons you finish are kept on "
-                                   "your account and shown here on any device."}}
+                              "d": "Opens the site's sign-in dialog. Signed in, the lessons and exercises you finish "
+                                   "are kept on your account and shown here on any device."}}
     out.append("<script>window.QCCD_HINTS = Object.assign(window.QCCD_HINTS || {}, "
                + json.dumps(hints) + ");</script>")
     out.append(sync_script())
+    if chapters:
+        # the Lean parts' exercises keep their own store (qccd/site/book/book-progress.js)
+        out.append('<script src="../book/book-progress.js"></script>')
     out.append("<script>" + LEARN_JS.replace("__COURSE__", json.dumps(course, separators=(",", ":"))) + "</script>")
     return "\n".join(out)
 
@@ -551,7 +664,7 @@ LEARN_CSS = r"""
 .you-acct{font-size:12.5px;color:var(--ink3)} .you-acct.ok{color:#0b7a4b}
 .you-new{margin-top:8px;font-size:13px;background:#fff7dc;border:1px solid #f1dc95;color:#6d5300;border-radius:9px;padding:7px 11px}
 .you-new[hidden]{display:none}
-.you-bdg{grid-column:1/-1;display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:14px;padding-top:14px;border-top:1px dashed #d5dcea}
+.you-bdg{grid-column:1/-1;display:grid;grid-template-columns:repeat(var(--nb,7),minmax(0,1fr));gap:8px;margin-top:14px;padding-top:14px;border-top:1px dashed #d5dcea}
 .bdg{text-align:center;font-size:11.5px;line-height:1.25;color:var(--ink2)}
 .bdg svg{width:42px;height:49px;display:block;margin:0 auto 3px;background:transparent;transition:transform .3s}
 .bdg b{display:block;color:var(--head);font-size:11.5px} .bdg small{display:block;color:var(--ink3);font-size:10.5px}
@@ -591,6 +704,9 @@ LEARN_CSS = r"""
 .lesson .lst{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);white-space:nowrap}
 .lesson .lstars{font-size:16px;letter-spacing:1px;color:#cfccc4;white-space:nowrap;line-height:1}
 .lesson .lstars i{font-style:normal;color:#f0a500}
+.lesson .lex{font-size:12px;color:var(--ink2);white-space:nowrap}
+.lesson.done .lex{color:#0b7a4b;font-weight:600}
+.coming{margin:12px 0 0 82px;font:13px/1.5 var(--sans);color:var(--ink3)} .coming b{color:var(--ink2);font-weight:600}
 .lesson .lgo{font-size:12.5px;font-weight:600;color:var(--accent);border:1px solid #c6d4ec;border-radius:8px;padding:3px 11px;background:#fff;white-space:nowrap}
 .lesson.done{border-left-color:#1baf7a;background:linear-gradient(90deg,#f1faf5,var(--card) 40%)}
 .lesson.done .lst{color:#0b7a4b}
@@ -604,7 +720,7 @@ LEARN_CSS = r"""
  letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
 @media (prefers-reduced-motion:reduce){.bdg.fresh svg{animation:none}#you-arc,.pfill,.you-gbar span{transition:none}}
 @media (max-width:760px){.you{grid-template-columns:1fr;justify-items:start}.you-bdg{grid-template-columns:repeat(4,1fr)}
- .cards2,.pdone{margin-left:0}.lesson{grid-template-columns:90px 1fr;gap:12px}.lesson .av,.lesson .dg{width:90px;height:60px}
+ .cards2,.pdone,.coming{margin-left:0}.lesson{grid-template-columns:90px 1fr;gap:12px}.lesson .av,.lesson .dg{width:90px;height:60px}
  .lesson .lr{grid-column:2;flex-direction:row;align-items:center;justify-content:flex-start;gap:10px;min-width:0}}
 """
 
@@ -706,7 +822,9 @@ SYNC_JS = r"""
 """
 
 
-# The Learn page: the cards' states, the panel and the badges, from QCCDPROGRESS.
+# The Learn page: the cards' states, the panel and the badges.  The studio's lessons come from
+# QCCDPROGRESS (the course's stars); the Lean parts' exercises from QCCDBOOK (their own store,
+# book-progress.js).  Both count in the one panel.
 LEARN_JS = r"""
 (function(){
   var C = __COURSE__, SEEN = 'qccd.course.seen';
@@ -716,6 +834,11 @@ LEARN_JS = r"""
     var p = null; try { p = JSON.parse(localStorage.getItem('qccd.studio.tutorial') || 'null'); } catch(e){}
     return { status: 'local', user: null, stars: (p && p.stars) || {}, done: {}, current: (p && p.current) || null };
   }
+  function solved(){
+    if(window.QCCDBOOK){ try { return QCCDBOOK.state().done || {}; } catch(e){} }
+    var p = null; try { p = JSON.parse(localStorage.getItem('qccd.book.progress') || 'null'); } catch(e){}
+    return (p && p.done) || {};
+  }
   function day(t){ try { return new Date(t * 1000).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); } catch(e){ return ''; } }
   function starsHTML(n, max){ var s = ''; for(var i = 1; i <= max; i++) s += i <= n ? '<i>★</i>' : '☆'; return s; }
   function initials(name){ var w = String(name || '?').trim().split(/\s+/); return ((w[0] || '?').charAt(0) + (w.length > 1 ? w[w.length - 1].charAt(0) : '')).toUpperCase(); }
@@ -723,23 +846,36 @@ LEARN_JS = r"""
   var celebrated = false, FRESH = {};
   function render(st){
     st = st || stateNow();
-    var stars = st.stars || {}, done = 0, got = 0, next = null, bonus = null, parts = {}, doneIds = [], i, L;
+    var stars = st.stars || {}, bd = solved(), done = 0, got = 0, next = null, bonus = null, parts = {}, doneIds = [], names = {}, i, j, L;
     for(i = 0; i < C.lessons.length; i++){
       L = C.lessons[i]; var n = Math.min(stars[L.id] || 0, L.max), p = parts[L.part] || (parts[L.part] = { done: 0, n: 0 });
       p.n++; got += n;
       if(n){ done++; p.done++; doneIds.push(L.id); if(n < L.max && !bonus) bonus = L; }
       else if(!next) next = L;
     }
-    // where the reader is: the lesson they left open, if it is not done, else the first one not done
+    // the Lean parts: a chapter's exercises, each one exercise and its own stars
+    var chapNext = null, byId = {};
+    for(i = 0; i < C.chapters.length; i++){
+      var H = C.chapters[i], q = parts[H.part] || (parts[H.part] = { done: 0, n: 0 }), k2 = 0;
+      byId[H.id] = H;
+      for(j = 0; j < H.ex.length; j++){
+        names[H.ex[j]] = H.id + ' exercise ' + (j + 1); q.n++;
+        if(bd[H.ex[j]]){ k2++; done++; q.done++; got += H.st[j]; doneIds.push(H.ex[j]); }
+      }
+      H.k = k2;
+      if(k2 < H.ex.length && !chapNext) chapNext = H;
+    }
+    // where the reader is: the lesson they left open, if it is not done, else the first one not
+    // done -- the design tool's parts first, then the Lean parts
     var cur = null;
     for(i = 0; i < C.lessons.length; i++) if(C.lessons[i].id === st.current && !(stars[st.current] > 0)) cur = C.lessons[i];
-    var go = cur || next;
+    var go = cur || next, goChap = go ? null : chapNext;
     // what is new since this page last saw this reader's progress (kept for the whole visit)
     var who = st.user ? 'u' + st.user.id : 'local', seen = null, fresh = FRESH;
     try { seen = JSON.parse(localStorage.getItem(SEEN) || 'null'); } catch(e){ seen = null; }
     if(seen && seen.who === who && seen.ids && st.status !== 'loading')
       for(i = 0; i < doneIds.length; i++) if(seen.ids.indexOf(doneIds[i]) < 0) fresh[doneIds[i]] = 1;
-    // the cards
+    // the cards: the design tool's lessons
     var cards = document.querySelectorAll('.lesson[data-lesson]');
     for(i = 0; i < cards.length; i++){
       var c = cards[i], id = c.getAttribute('data-lesson'), max = +c.getAttribute('data-max') || 1, k = Math.min(stars[id] || 0, max);
@@ -751,12 +887,26 @@ LEARN_JS = r"""
       c.querySelector('.lstars').title = k >= max ? 'Every star earned' : k ? (max - k) + ' bonus star' + (max - k > 1 ? 's' : '') + ' still to earn' : max + ' star' + (max > 1 ? 's' : '') + ' to earn';
       c.querySelector('.lgo').textContent = k ? (k < max ? 'Bonus ★' : 'Again') : isNext ? (cur && cur.id === id ? 'Continue' : 'Start') : 'Start';
     }
+    // ... and the Lean chapters
+    var chs = document.querySelectorAll('.lesson[data-chapter]');
+    for(i = 0; i < chs.length; i++){
+      var e = chs[i], H2 = byId[e.getAttribute('data-chapter')];
+      if(!H2) continue;
+      var all = H2.ex.length, kk = H2.k, nextC = !kk && goChap && goChap.id === H2.id, isNew = false;
+      for(j = 0; j < all; j++) if(fresh[H2.ex[j]]) isNew = true;
+      e.classList.toggle('done', all > 0 && kk >= all); e.classList.toggle('next', !!nextC); e.classList.toggle('new', isNew);
+      e.querySelector('.lst').textContent = kk >= all ? 'Done' : kk ? 'In progress' : nextC ? 'Next up' : 'Not started';
+      e.querySelector('.lex').textContent = kk + ' of ' + all + ' exercise' + (all > 1 ? 's' : '');
+      e.querySelector('.lgo').textContent = kk >= all ? 'Again' : kk ? 'Continue' : 'Start';
+    }
     // the parts
     var badges = 0, on = {};
     for(i = 0; i < C.parts.length; i++){
       var P = C.parts[i], pp = parts[P.id] || { done: 0, n: P.n }, full = pp.n > 0 && pp.done >= pp.n;
       var f = document.querySelector('.pfill[data-part="' + P.id + '"]'); if(f) f.style.width = (pp.n ? 100 * pp.done / pp.n : 0) + '%';
-      var g = document.querySelector('.prog[data-part="' + P.id + '"]'); if(g) g.textContent = full ? 'All ' + pp.n + ' done' : pp.done + ' of ' + pp.n + ' done';
+      var g = document.querySelector('.prog[data-part="' + P.id + '"]');
+      if(g){ var unit = g.getAttribute('data-unit') === 'exercises' ? ' exercises' : ' done';
+             g.textContent = full ? 'All ' + pp.n + unit : pp.done + ' of ' + pp.n + unit; }
       var b = document.querySelector('.pbadge[data-part="' + P.id + '"]'); if(b) b.classList.toggle('on', full);
       var m = document.querySelector('.pdone[data-part="' + P.id + '"]'); if(m) m.hidden = !full;
       if(full){ badges++; on[P.id] = 1; }
@@ -783,14 +933,18 @@ LEARN_JS = r"""
            : left + ' more exercise' + (left > 1 ? 's' : '') + ' to reach level ' + (lv + 2) + ': ' + nx[1] + '.';
       gfill = 100 * (done - base) / Math.max(1, nx[0] - base);
     } else if(got < C.stars){
-      goal = 'Course complete! ' + (C.stars - got) + ' bonus star' + (C.stars - got > 1 ? 's' : '') + ' left: the boundary and challenge exercises.';
+      goal = 'Tutorial complete! ' + (C.stars - got) + ' bonus star' + (C.stars - got > 1 ? 's' : '') + ' left: the boundary and challenge exercises.';
       gfill = 100 * got / C.stars;
     } else { goal = 'Every exercise and every star. Nothing left but the leaderboard.'; gfill = 100; }
     $('you-goal').textContent = goal; $('you-gfill').style.width = gfill + '%';
-    var a = $('you-go'), target = go || bonus;
+    var a = $('you-go');
     if(a){
-      if(target){ a.href = '../studio.html#learn=' + target.id;
-        a.textContent = (go ? (done || cur ? 'Continue with ' : 'Start with ') : 'Earn a bonus star in ') + target.id + ': ' + target.title + ' →'; }
+      if(go){ a.href = '../studio.html#learn=' + go.id;
+        a.textContent = (done || cur ? 'Continue with ' : 'Start with ') + go.id + ': ' + go.title + ' →'; }
+      else if(goChap){ a.href = goChap.href;
+        a.textContent = (goChap.k ? 'Continue with ' : 'On to ') + goChap.id + ': ' + goChap.title + ' →'; }
+      else if(bonus){ a.href = '../studio.html#learn=' + bonus.id;
+        a.textContent = 'Earn a bonus star in ' + bonus.id + ': ' + bonus.title + ' →'; }
       else { a.href = '../board/'; a.textContent = 'On to the leaderboard →'; }
     }
     // who is reading, and where the progress is kept
@@ -800,11 +954,12 @@ LEARN_JS = r"""
       face.hidden = false; face.textContent = initials(st.user.name);
       face.style.background = COLOURS[(st.user.color || 0) % COLOURS.length];
       $('you-who').textContent = (done ? 'Welcome back, ' : 'Welcome, ') + st.user.name;
-    } else { face.hidden = true; $('you-who').textContent = done ? 'Your progress' : 'Start the course'; }
+    } else { face.hidden = true; $('you-who').textContent = done ? 'Your progress' : 'Start the tutorial'; }
     acct.className = 'you-acct';
     if(st.user && st.status === 'synced'){
       acct.className = 'you-acct ok';
-      acct.textContent = '✓ Saved to your account' + (st.updated ? ': last exercise finished ' + day(st.updated) + '.' : '. Finish a lesson and it is kept here, on every device.');
+      acct.textContent = '✓ Saved to your account' + (st.updated ? ': last lesson finished ' + day(st.updated) + '.'
+                         : done ? '.' : '. Finish an exercise and it is kept here, on every device.');
     } else if(st.user){ acct.textContent = 'Your account could not be reached just now; your progress is kept in this browser and saved next time.'; }
     else if(st.status === 'anon'){ acct.textContent = 'Kept in this browser only. Sign in and every exercise you finish is saved to your account, on any device.'; }
     else if(st.status === 'loading'){ acct.textContent = 'Checking your account…'; }
@@ -815,7 +970,8 @@ LEARN_JS = r"""
     if(newIds.length && !celebrated){
       celebrated = true;
       var nb = $('you-new'); nb.hidden = false;
-      nb.textContent = '✨ New since your last visit: ' + newIds.join(', ') + '. ' + (lv + 1 < C.levels.length ? 'Keep going!' : 'Well done!');
+      nb.textContent = '✨ New since your last visit: ' + newIds.map(function(x){ return names[x] || x; }).join(', ') + '. '
+                     + (lv + 1 < C.levels.length ? 'Keep going!' : 'Well done!');
       for(i = 0; i < bs.length; i++) if(on[bs[i].getAttribute('data-badge')] && seen && seen.badges && seen.badges.indexOf(bs[i].getAttribute('data-badge')) < 0) bs[i].classList.add('fresh');
     }
     if(st.status !== 'loading'){
@@ -823,6 +979,7 @@ LEARN_JS = r"""
     }
   }
   if(window.QCCDPROGRESS) QCCDPROGRESS.subscribe(render);
+  if(window.QCCDBOOK) QCCDBOOK.subscribe(function(){ render(); });
   var sb = $('you-signin');
   if(sb) sb.addEventListener('click', function(){ var s = document.getElementById('qc-signin'); if(s) s.click(); });
   render();

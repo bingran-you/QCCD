@@ -84,6 +84,30 @@ def test_the_section_writes_one_card_per_lesson_and_declares_its_control():
     assert "window.QCCDPROGRESS" in html                      # the sync rides along
 
 
+@needs_course
+def test_the_lean_parts_are_the_tutorial_and_nothing_a_reader_reads_calls_it_a_book():
+    """The verified compiler's chapters are Parts E-I of the one tutorial: cards like A-D's, in
+    the same panel and count -- not a separate "book" beside it (the user, 2026-10-20)."""
+    import html as h
+    import re
+    lean = progress.lean_parts()
+    if not lean:
+        pytest.skip("this tree has no Lean parts")
+    page = progress.course_section(parts, less, PART_ART, PART_COLOR, lean=lean)
+    live = [L for p in lean for L in p["lessons"] if L.get("live", True)]
+    assert [p["part"] for p in lean] == list("EFGHI")
+    for p in lean:
+        assert f'id="part-{p["part"]}"' in page
+    assert re.findall(r'<a class="lesson chap" id="lesson-([A-Z]\d+)"', page) == [L["id"] for L in live]
+    # one count: the studio's lessons and every live chapter's exercises
+    total = len(less) + sum(len(L["exercises"]) for L in live)
+    assert f'<b id="you-done">0</b> of {total} exercises' in page
+    # what a reader reads: the text outside tags, scripts and styles
+    text = h.unescape(re.sub(r"<[^>]+>", " ", re.sub(r"<(script|style)\b.*?</\1>", " ", page, flags=re.S)))
+    assert "book" not in text.lower(), re.search(r".{40}book.{40}", text, re.I | re.S).group(0)
+    assert " -- " not in text
+
+
 def test_every_studio_page_sends_its_stars_and_no_other_page_does():
     """A lesson can be done on any page that carries the course -- the studio, a leaderboard
     entry, a gadget's studio -- so `with_nav` gives each of them the sync, once; a document page,
@@ -119,6 +143,9 @@ def fixture_site(tmp_path: Path) -> Path:
     # a book page opened between two readers must not vouch for the course's stars
     book_js = ROOT / "qccd" / "site" / "book" / "book-progress.js"
     if book_js.exists():
+        # the Learn page loads it by URL for the Lean parts' exercises
+        (out / "book").mkdir(exist_ok=True)
+        shutil.copyfile(book_js, out / "book" / "book-progress.js")
         book = ('<!doctype html><html><head><meta charset="utf-8"><title>book</title></head><body><main><p>a book page</p></main>'
                 "<script>" + book_js.read_text(encoding="utf-8") + "</script></body></html>")
         page = with_nav(book, 0, None, "[]")

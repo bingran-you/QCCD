@@ -193,6 +193,20 @@ try {
   p = await panel();
   step('and only once', p.fresh.length === 0 && p.nw === null, p);
 
+  // 6b. the Lean parts are the same tutorial: an exercise solved there counts in the same panel
+  if (await evaluate("!!document.querySelector('.lesson[data-chapter]') && !!window.QCCDBOOK")) {
+    const before6 = await evaluate("+document.getElementById('you-done').textContent");
+    const chap = await evaluate("document.querySelector('.lesson[data-chapter]').getAttribute('data-chapter')");
+    const ex = await evaluate(`(function(){ var s = document.scripts, m; for (var i = 0; i < s.length; i++) { m = /"ex":\\["([^"]+)"/.exec(s[i].textContent); if (m) return m[1]; } return null; })()`);
+    await evaluate(`QCCDBOOK.mark(${JSON.stringify(ex)}); true`);
+    await until(`+document.getElementById('you-done').textContent === ${before6 + 1}`, 'the panel to count the Lean exercise');
+    const card = await evaluate(`document.querySelector('#lesson-${chap} .lex').textContent + ' | ' + document.querySelector('.prog[data-part="${chap[0]}"]').textContent`);
+    let onAccount = false;
+    for (let t = 0; t < 6000 && !onAccount; t += 250) { await sleep(250); onAccount = (await run([API_PY, 'progress', '--db', db, ADA.email])).includes(ex); }
+    step('a Lean exercise counts in the one panel, on its chapter card and part, and on the account',
+         /^1 of \d+ exercises \| 1 of \d+ exercises$/.test(card) && onAccount, { ex, card, onAccount });
+  }
+
   // 7. a star the course awards in the studio reaches the account
   await open('studio.html');
   await until("!!window.QCCDPROGRESS && QCCDPROGRESS.state().status === 'synced'", 'the studio page to match the account');

@@ -747,21 +747,19 @@ def landing(ts: list[dict]) -> str:
 def learn_page(parts: list[dict], less: list[dict], docs: dict, ts: list[dict]) -> str:
     from . import progress
     body = ["<h1>Learn</h1>",
-            "<p class=\"sub\">One path: the course inside the design tool, then the reference, "
-            "then a real design stepped instruction by instruction. Every lesson opens the studio on "
-            "its exercise and checks your work against the page's own verdicts. Your progress is kept "
-            "in this browser, and on your account when you are signed in. "
-            "<a href=\"../studio.html#learn\">Open the course</a>.</p>",
-            "<h2>The course</h2>"]
+            "<p class=\"sub\">One path: the tutorial, then the reference, then a real design stepped "
+            "instruction by instruction. Its first parts open the design tool on an exercise and check "
+            "your work against the page's own verdicts; its later parts are the verified compiler, in "
+            "Lean, run in this browser. Your progress is kept in this browser, and on your account when "
+            "you are signed in. <a href=\"../studio.html#learn\">Open the tutorial</a>.</p>",
+            "<h2>The tutorial</h2>"]
     if not parts:
-        body.append('<p class="note">This build carries no course: the lessons were not in the tree it was '
+        body.append('<p class="note">This build carries no tutorial: the lessons were not in the tree it was '
                     'built from.</p>')
     else:
-        # one card per lesson, and the reader's progress over them (qccd/site/progress.py)
+        # one card per lesson -- the studio's parts and the Lean parts alike -- and the
+        # reader's progress over them (qccd/site/progress.py)
         body.append(progress.course_section(parts, less, PART_ART, PART_COLOR))
-    # the book (qccd/site/book.py): its chapters and the reader's exercises solved in each
-    from . import book as book_
-    body.append(book_.learn_section())
     body.append("<h2>The reference</h2><div class=\"docs\">")
     body.append('<a class="doc" href="../physics/"><span class="tag">background</span><b>The physics, from one trapped ion to the noise model</b>'
                 '<span>Traps, qubits, gates, transport, the control system, where the noise comes from and how this website simulates it.</span></a>')
@@ -1963,8 +1961,13 @@ def build(out: Path) -> int:
 
     # the search index, before any page is written: every page carries it
     index: list[dict] = [{"t": label, "d": blurb, "u": u, "k": "part"} for key, label, u, blurb in PARTS]
-    index += [{"t": f"Lesson {L['id']} · {L['title']}", "d": f"the course, part {L['part']}",
+    index += [{"t": f"Lesson {L['id']} · {L['title']}", "d": f"the tutorial, part {L['part']}",
                "u": f"studio.html#learn={L['id']}", "k": "lesson"} for L in less]
+    # the tutorial's Lean parts: each live chapter is a lesson too (qccd/site/progress.py)
+    from .progress import lean_parts
+    index += [{"t": f"Lesson {L['id']} · {L['title']}", "d": f"the tutorial, part {p['part']}, in Lean",
+               "u": L["href"].replace("../", "", 1), "k": "lesson"}
+              for p in lean_parts() for L in p["lessons"] if L.get("live", True)]
     for name in DOC_NAMES:
         for lvl, sid, text in docs[name]["headings"]:
             index.append({"t": html.unescape(re.sub(r"<[^>]+>", "", text)),
