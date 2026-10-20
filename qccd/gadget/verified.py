@@ -39,7 +39,8 @@ def _load(alg) -> Algorithm:
 
 def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: bool = False,
                     leaves: LeafLibrary | None = None, studio_dir=None, log=print,
-                    floorplan=None, parallel: bool = True, refresh: bool = True) -> dict:
+                    floorplan=None, parallel: bool = True, refresh: bool = True,
+                    inline: bool = False, focus: str | None = None) -> dict:
     """Schedule, check and sign off one algorithm on a floorplan (the town unless `floorplan`
     names a `.floor` file), and write its page.  With `studio_dir`, the studio page of every
     op the schedule uses is rendered there (shared by several builds) and linked from the
@@ -47,7 +48,9 @@ def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: boo
     adds syndrome rounds wherever a block would otherwise wait past its coherence budget
     (`qccd.gadget.refresh`).  A program the flat sign-off cannot follow -- too many branches,
     or frames that are products of bits -- is signed off compositionally
-    (`qccd.gadget.logic.compose`); every build writes both reports."""
+    (`qccd.gadget.logic.compose`); every build writes both reports.  `inline` puts every
+    leaf's data in the page itself, so `index.html` is the whole of it (`embed_page`), and
+    `focus` is what the page shows first (a place, a kind of place, or an instruction)."""
     log = log or (lambda *a, **k: None)
     t_start = time.time()
     alg = _load(alg)
@@ -119,8 +122,13 @@ def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: boo
     (out / f"{alg.name}.alg").write_text(alg.source, encoding="utf-8")
     # the leaves go on the website as written: provenance thinned, as build.py's are
     from .build import published
-    leaf_files = {}
+    leaf_files, inline_leaves = {}, {}
     for name in lib.leaf_masters():
+        if inline:
+            # no file beside the page: the page alone is the figure
+            inline_leaves[name] = published(leaves.data[name])
+            leaf_files[name] = ""
+            continue
         payload = json.dumps(published(leaves.data[name])).replace("</", "<\\/")
         (out / "leaf" / f"{name}.js").write_text(
             f"window.__gadgetLeaf&&window.__gadgetLeaf({payload});\n", encoding="utf-8")
@@ -131,6 +139,7 @@ def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: boo
         studio_pages = _studio_pages(lib, leaves, gir, out, log, Path(studio_dir))
     from .page import render_page
     render_page(out / "index.html", lib=lib, gir=gir, checks=checks, leaf_files=leaf_files,
+                inline_leaves=inline_leaves, focus=focus,
                 studio_pages=studio_pages, rules=PLACE_RULES,
                 machine_rules=rules, compositional=compositional, traffic=stats["traffic"],
                 floorplan=(Path(floorplan).read_text(encoding="utf-8") if floorplan else None),

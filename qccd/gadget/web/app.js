@@ -437,6 +437,9 @@
   const CLASSICAL = new Set(["decoder", "archive"]);
   const putAway = (cm) => !S.showClassical && CLASSICAL.has(cm.family);
   const sims = {};
+  // before the leaves arrive: a page with its leaves inline (a tutorial figure) hands them
+  // over right here, not after the page has loaded
+  const portCache = new Map();
   window.__gadgetLeaf = function (d) {
     M.leafData[d.master] = d;
     sims[d.master] = new LeafSim(d);
@@ -453,7 +456,6 @@
 
   // ------------------------------------------------------------------ geometry
 
-  const portCache = new Map();
   // Where port `port` of master `mname` sits in the master's own frame.
   function portXY(mname, port) {
     const key = mname + "|" + port;
@@ -1628,7 +1630,10 @@
       }
     }
     const nf = (mr.failed || []).length;
-    $("checksCount").textContent = `${(mr.passed || []).length} of ${(mr.rules || []).length} hold`;
+    // a rule that does not apply (F9 on a floorplan without regions) is not one that failed
+    const na = Object.keys(mr.not_applicable || {}).length;
+    $("checksCount").textContent = `${(mr.passed || []).length} of ${(mr.rules || []).length - na} hold` +
+      (na ? ` · ${na} does not apply` : "");
     const b = $("checksBadge");
     b.textContent = nf ? `${nf} rule${nf === 1 ? "" : "s"} failed` : "F1–F9 · G1–G14 ✓";
     b.className = nf ? "bad" : "ok";
@@ -2157,6 +2162,33 @@
     const h = new URLSearchParams(location.hash.slice(1));
     if (h.has("t")) S.t = +h.get("t") || 0;
     if (h.has("p") && h.get("p") in M.nodes) S.path = h.get("p");
+    return { focus: h.get("f") || D.focus || null, t: h.has("t") ? S.t : null };
+  }
+
+  // WHAT A PAGE THAT EMBEDS THIS ONE POINTS AT (the tutorial's figures).  A place on the
+  // floorplan by its path ("row1.msf15_0") or by its kind ("msf15": the first one), or an
+  // instruction of the program by its number ("i5") or its line ("L13"), which also moves the
+  // clock to where it starts.  False when the page has no such thing.
+  function focusOn(id) {
+    id = String(id == null ? "" : id);
+    const ins = M.gir.program.instructions || [];
+    let k = /^i\d+$/.test(id) ? +id.slice(1)
+      : /^L\d+$/.test(id) ? (ins.find((x) => x.line === +id.slice(1)) || { id: -1 }).id : null;
+    if (k !== null) {
+      const sp = M.insSpan[k];
+      if (!sp) return false;
+      const dec = DECODE_OF[k];
+      seek(dec ? dec.show : sp[0]);
+      focusInstruction(k);
+      return true;
+    }
+    let path = id in M.nodes ? id : null;
+    if (path === null) for (const p in M.nodes) if (p && M.nodes[p].master === id) { path = p; break; }
+    if (path === null) return false;
+    if (path === "") { go(""); return true; }
+    go(M.node(path).parent || "");
+    select({ kind: "inst", path });
+    return true;
   }
 
   // ------------------------------------------------------------------ input
@@ -2454,7 +2486,7 @@
 
   // ------------------------------------------------------------------ boot
 
-  readHash();
+  const ASKED = readHash();
   $("designTitle").textContent = `${M.gir.program.title || M.masters[M.top].title} · ${M.gir.stats ? M.gir.stats.ions.toLocaleString() + " ions" : ""}`;
   document.title = `${M.gir.program.title || M.gir.program.name} — QCCD gadgets`;
   $("rate").value = String(S.rate);
@@ -2470,6 +2502,8 @@
   legend();
   go(S.path);
   fit();
+  if (ASKED.focus) focusOn(ASKED.focus);
+  if (ASKED.t !== null) seek(ASKED.t);
   requestAnimationFrame(frame);
 
   // the handle a headless test drives
@@ -2481,4 +2515,11 @@
     redraw: () => { S.dirty = true; },
     ready: () => Object.keys(D.leafFiles || {}).every((m) => M.leafData[m]) };
   if (window.GADGET_EDITOR) window.GADGET_EDITOR.attach(window.GADGETS);
+  // the handle a page that embeds this one drives: `ready()` once every leaf is drawn,
+  // `focus(id)` as `#f=`, `seek(us)` as `#t=`
+  window.GADGET = {
+    ready: window.GADGETS.ready,
+    focus: (id) => focusOn(id),
+    seek: (us) => { seek(+us || 0); writeHash(); return S.t; },
+  };
 })();

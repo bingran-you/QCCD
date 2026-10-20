@@ -31,7 +31,8 @@ def render_page(path, *, lib, gir, checks, leaf_files: dict, studio_pages: dict 
                 inline_leaves: dict | None = None, signoff: dict | None = None,
                 categories: dict | None = None, category_order: list | None = None,
                 machine_rules: dict | None = None, compositional: dict | None = None,
-                traffic: dict | None = None, floorplan: str | None = None) -> Path:
+                traffic: dict | None = None, floorplan: str | None = None,
+                focus: str | None = None) -> Path:
     if categories is None:
         from .categories import CATEGORIES, ORDER
         categories, category_order = CATEGORIES, ORDER
@@ -53,6 +54,8 @@ def render_page(path, *, lib, gir, checks, leaf_files: dict, studio_pages: dict 
         "floorplan": floorplan,
         # where each place family belongs (rule F9): the editor writes regions with it
         "homeRegion": __import__("qccd.gadget.floorplan", fromlist=["HOME_REGION"]).HOME_REGION,
+        # what the page shows first, unless its address says otherwise (`#f=`)
+        "focus": focus,
         "categories": categories,
         "categoryOrder": category_order or list(categories),
         # the studio's own palette and shape ratios: a trapping site, a junction, a rail

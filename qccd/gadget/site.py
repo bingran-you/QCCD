@@ -12,6 +12,9 @@
 the search index) and `build_section(out, put)` with its own `put`, so each page here gets
 the site's bar, search and comment layer like any other.  `python -m qccd.gadget site`
 builds this section alone, for a deploy that must not rebuild the rest of the site.
+
+`embed_page(name, dst)` writes one page as a figure for the tutorial: no bar, no file beside
+it, nothing fetched.
 """
 
 from __future__ import annotations
@@ -26,7 +29,8 @@ from .categories import CATEGORIES, ORDER
 from .logicq import parse, parse_file
 from .programs import showcase
 
-__all__ = ["index_entries", "build_section", "SECTION", "standalone"]
+__all__ = ["index_entries", "build_section", "SECTION", "standalone", "embed_page",
+           "export_place_arch"]
 
 SECTION = "gadgets"
 ROOT = Path(__file__).resolve().parents[2]
@@ -628,3 +632,94 @@ def standalone(out: Path, index_json: str | None = None, *, cache_dir="out/gadge
         p.write_text(page, encoding="utf-8", newline="")
 
     return build_section(out, put, cache_dir=cache_dir, log=log)
+
+
+# -- figures ---------------------------------------------------------------------------------
+
+#: the program a bare place is shown in: the shortest example on the town, which holds every place
+PLACE_PROGRAM = "t_gate"
+_EMBED_LEAVES: dict = {}
+
+
+def _leaves(cache_dir, log):
+    from .library import LeafLibrary
+    key = str(Path(cache_dir).resolve())
+    if key not in _EMBED_LEAVES:
+        _EMBED_LEAVES[key] = LeafLibrary(cache_dir, log=log or (lambda *a, **k: None))
+    return _EMBED_LEAVES[key]
+
+
+def export_place_arch(m: str, dst: Path, *, cache_dir="out/gadgets/cache", log=None) -> Path:
+    """Write the device of place `m` -- the architecture document its ops are compiled for and
+    verified on -- to `dst`, as the studio loads any device.  Its `name` is the place's own
+    ("msf15", "ls_d3"): unique among the places, and none is the name of another device the
+    site ships."""
+    from .leaves.places import PLACES
+    if m not in PLACES:
+        raise KeyError(f"no place {m!r} with a device: {', '.join(sorted(PLACES))}")
+    leaves = _leaves(cache_dir, log)
+    leaves.place(m)
+    dst = Path(dst)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_text(json.dumps(leaves.data[m]["arch"], indent=1) + "\n", encoding="utf-8")
+    return dst
+
+
+def embed_page(name: str, dst: Path, *, focus: str | None = None,
+               cache_dir="out/gadgets/cache", log=None) -> Path:
+    """Write ONE self-contained page for `name` to `dst`: every script and all its data inline,
+    nothing fetched, no navigation of the page that holds it -- a figure the tutorial frames.
+
+        "algorithms/<stem>"   the design page running that example (examples/gadgets/algorithms)
+        "<place>"             a place by its kind ("msf15", "mem_d3"): the town, that place selected
+        "<place>.<op>"        one op of a place on the studio's stage ("msf15.produce")
+
+    The design pages carry `window.GADGET = {ready(), focus(id), seek(us)}`: `focus` takes a
+    place by its path or kind, or an instruction ("i5", or its line "L13"); the same two come
+    in the address as `#f=ID&t=US`.  `focus` here is what the page shows first.
+    """
+    import shutil
+    import tempfile
+
+    from .leaves.classical import CLASSICAL
+    from .leaves.places import PLACES
+    from .verified import build_algorithm
+
+    log = log or (lambda *a, **k: None)
+    dst = Path(dst)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    leaves = _leaves(cache_dir, log)
+
+    stem = name[len("algorithms/"):] if name.startswith("algorithms/") else None
+    if stem is None and (name in PLACES or name in CLASSICAL):
+        stem, focus = PLACE_PROGRAM, focus or name
+    if stem is not None:
+        src = ALGORITHMS / f"{stem}.alg"
+        if not src.exists():
+            raise KeyError(f"no example algorithm {stem!r}: "
+                           + ", ".join(sorted(f.stem for f in ALGORITHMS.glob("*.alg"))))
+        with tempfile.TemporaryDirectory(prefix="gadget-embed-") as tmp:
+            build_algorithm(src, out_dir=tmp, leaves=leaves, log=log, inline=True, focus=focus)
+            shutil.copyfile(Path(tmp) / "index.html", dst)
+        return dst
+
+    master, _, op = name.partition(".")
+    if master in PLACES and op:
+        from ..arch.device import Architecture
+        from ..cost.models import corrected_model
+        from ..ir.tsir import TSIR
+        from ..verify import verify
+        from ..viz import render_html
+        m = leaves.place(master)
+        data = leaves.data[master]
+        if op not in data["programs"]:
+            raise KeyError(f"{master} has no op {op!r}: " + ", ".join(sorted(data["programs"])))
+        arch = Architecture.from_json(data["arch"])
+        prog = TSIR.from_json(data["programs"][op])
+        model = corrected_model("qccdsim_jones")
+        res = verify(prog, arch, model, check_metrics=False).result
+        render_html(arch, prog, res, model, dst, kicker="logical gadget",
+                    headline=f"{master} · {op}", lede=m.ops[op].title if op in m.ops else op)
+        return dst
+    raise KeyError(f"no gadget page {name!r}: 'algorithms/<example>', a place "
+                   f"({', '.join(sorted({*PLACES, *CLASSICAL}))}), or '<place>.<op>'")
