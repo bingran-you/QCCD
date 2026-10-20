@@ -87,7 +87,7 @@ await send("Network.enable");
 const W = "document.getElementById('fig').contentWindow";
 for (const page of pages) {
   errors = []; requests = [];
-  const parent = `${origin}/__parent?src=${encodeURIComponent(page + (FOCUS.length ? "#f=" + encodeURIComponent(FOCUS[0]) + "&t=1000" : ""))}`;
+  const parent = `${origin}/__parent?src=${encodeURIComponent(page + (FOCUS.length ? "#f=" + encodeURIComponent(FOCUS[0]) + "&t=" + (process.env.AT || "1000") : ""))}`;
   await send("Page.navigate", { url: parent });
   for (let i = 0; i < 150; i++) {
     const ok = await evaluate(`(() => { try { const w = ${W}; return w && w.document.readyState === 'complete' && w.document.body && w.document.body.children.length > 0; } catch (e) { return false; } })()`).catch(() => false);

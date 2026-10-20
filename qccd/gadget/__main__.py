@@ -151,7 +151,7 @@ def _cmd_optimize(a) -> int:
           f"makespan {s0['makespan_us'] / 1e6:.2f} -> {s1['makespan_us'] / 1e6:.2f} s")
     out = _P(a.out or _P(base).with_name(_P(base).stem + f"_{a.objective}.floor"))
     # the note is part of the file, and the file is shown on the design page: site words only
-    note = (f"found by the floorplan optimiser from {_P(base).name}, for {alg.title}: "
+    note = (f"found by the floorplan optimiser from the floorplan {_P(base).stem}, for {alg.title}: "
             f"objective {a.objective},\n{a.budget} candidates (seed {a.seed}), each scheduled;\n"
             f"traffic {s0['traffic']:,} -> {s1['traffic']:,} ion-sites (before refresh rounds), makespan "
             f"{s0['makespan_us'] / 1e6:.2f} -> {s1['makespan_us'] / 1e6:.2f} s")

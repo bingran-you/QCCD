@@ -1,7 +1,7 @@
 # The standard gates: each written from verified places in the algorithm language, each
-# proved by the contract checker (qccd/gadget/logic/contract.py) to be the gate it says it
-# implements, in every branch of every measurement it makes, on the states the places are
-# verified to produce.  A program uses them with
+# proved by the contract checker to be the gate it says it implements, in every branch of
+# every measurement it makes, on the states the places are verified to produce.  A program
+# uses them with
 #
 #   include "standard"
 #

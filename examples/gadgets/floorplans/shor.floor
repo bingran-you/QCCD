@@ -1,4 +1,4 @@
-# A machine for Shor's algorithm (examples/gadgets/algorithms/shor15.alg): the order of 7
+# A machine for Shor's algorithm (the program shor15): the order of 7
 # modulo 15, fault-tolerant, every logical qubit a d = 3 surface-code block.
 #
 # What the program needs at once decided what is here:

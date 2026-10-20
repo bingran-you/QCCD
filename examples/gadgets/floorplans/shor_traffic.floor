@@ -1,4 +1,4 @@
-# found by the floorplan optimiser from shor.floor, for Shor's algorithm: objective traffic,
+# found by the floorplan optimiser from the floorplan shor, for Shor's algorithm: objective traffic,
 # 150 candidates (seed 7), each scheduled;
 # traffic 312,441 -> 189,743 ion-sites (before refresh rounds), makespan 10.67 -> 10.64 s
 
