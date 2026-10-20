@@ -1,0 +1,67 @@
+{
+  "title": "Verified QCCD Compilation",
+  "subtitle": "How the compiler is built, how its output is proved correct, and how to build your own -- in Lean, in this browser",
+  "volumes": [
+    {
+      "n": 1,
+      "title": "The machine as data",
+      "about": "Devices as graphs, programmes as data, replay as a function, and the rules as statements Lean can decide.",
+      "chapters": [
+        {"n": 1, "title": "Devices are graphs", "status": "planned"},
+        {"n": 2, "title": "Programmes and replay", "status": "planned"},
+        {"n": 3, "title": "Rules as propositions", "status": "planned"},
+        {"n": 4, "title": "Rule sets", "status": "planned"}
+      ]
+    },
+    {
+      "n": 2,
+      "title": "Certificates and the proved checker",
+      "about": "What a certificate records, what it means for one to hold, the decision procedure that settles it, and the proof that the procedure is right.",
+      "chapters": [
+        {"n": 1, "title": "Certificates: the Bell pair, proved", "status": "live", "source": "chapters/2.1-certificates.lean", "slug": "2.1-certificates"},
+        {"n": 2, "title": "The specification, condition by condition", "status": "planned"},
+        {"n": 3, "title": "Decision procedures", "status": "planned"},
+        {"n": 4, "title": "Soundness and completeness", "status": "planned"},
+        {"n": 5, "title": "The mutation lab", "status": "planned"},
+        {"n": 6, "title": "What you trust", "status": "planned"}
+      ]
+    },
+    {
+      "n": 3,
+      "title": "Semantics: which gate the pulses make",
+      "about": "Exact numbers, the native pulses as matrices, u3 from two pulses, CX from one entangling pulse, stabilizer tableaux, and measurement -- without Mathlib.",
+      "chapters": [
+        {"n": 1, "title": "Exact numbers", "status": "planned"},
+        {"n": 2, "title": "The native pulses", "status": "planned"},
+        {"n": 3, "title": "u3 from two pulses", "status": "planned"},
+        {"n": 4, "title": "CX from MS", "status": "planned"},
+        {"n": 5, "title": "Stabilizer tableaux", "status": "planned"},
+        {"n": 6, "title": "Measurement and reset", "status": "planned"},
+        {"n": 7, "title": "The semantic check", "status": "planned"}
+      ]
+    },
+    {
+      "n": 4,
+      "title": "Verify the website yourself",
+      "about": "Every compiled case this site publishes, checked by you: in this page for the small ones, with the downloadable checker for the large ones.",
+      "chapters": [
+        {"n": 1, "title": "The Compilation page", "status": "planned"},
+        {"n": 2, "title": "The boards", "status": "planned"},
+        {"n": 3, "title": "The official grader", "status": "planned"},
+        {"n": 4, "title": "Every verdict, reproduced", "status": "planned"}
+      ]
+    },
+    {
+      "n": 5,
+      "title": "Build your own verified compiler",
+      "about": "A compiler for a chain of traps written in Lean and proved correct by construction; then a compiler in any language, validated by the checker; then the Compiler board.",
+      "chapters": [
+        {"n": 1, "title": "A compiler in Lean", "status": "planned"},
+        {"n": 2, "title": "Correct by construction", "status": "planned"},
+        {"n": 3, "title": "Any language, checked", "status": "planned"},
+        {"n": 4, "title": "The certificate format", "status": "planned"},
+        {"n": 5, "title": "The Compiler board", "status": "planned"}
+      ]
+    }
+  ]
+}
