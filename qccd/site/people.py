@@ -73,9 +73,9 @@ PEOPLE: list[dict] = [
         "role": "Contributor",
         "affiliation": "University of Michigan",
         "group": "team",
-        "about": "Tests the studio and reports what gets in the way: the comment bar covering text, "
-                 "a hover card that repeated itself, an empty primitives list and a missing "
-                 "companion page; asked for the Compilation page to be rewritten plainly.",
+        "about": "Yuewen Hou is a third-year Ph.D. student at the University of Michigan. His research "
+                 "focuses on quantum error correction, classical simulation of quantum programs, "
+                 "and quantum algorithms.",
         "links": {},
     },
     {
