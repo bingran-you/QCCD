@@ -450,7 +450,7 @@ var QCCD_TUTORIAL = {
       teaches: ['el:control', 'rule:R11', 'rule:R4d', 'p:simd'],
       text: [
         'This is the A5 rule as a programme. This ring uses the `wise` wiring scheme: one channel drives every rail of the loop. So in one step the whole loop gets one signal, and every ion on it moves the same way.',
-        'The page checks this as [[R11|rule:R11]]: in one step, all ions on a loop move by the same amount. Python checks it again, channel by channel, as [[R4d|rule:R4d]]. Part R shows that verdict.',
+        'The page checks this as [[R11|rule:R11]]: in one step, all ions on a loop move by the same amount. The checker checks it again when the page is built, channel by channel, as [[R4d|rule:R4d]]. Part R shows that verdict.',
         'So two ions can never pass each other on a broadcast loop, and one move forward plus one move back take two steps.'
       ],
       setup: [['newFromGenerator', 'ring', { width: 3, height: 2, verticals: 0 }, { name: 'ring6' }], ['fit'],
@@ -687,16 +687,16 @@ var QCCD_TUTORIAL = {
       teaches: ['rule:R4d', 'rule:R11', 'el:control', 'm:DACs'],
       text: [
         '[[R4d|rule:R4d]] is R4 worked out from the wiring: a channel carries one signal, so all the sites on it do one thing per step. A site can sit out only if it has its own switch.',
-        'The browser cannot run this check: it needs the map from electrodes to channels. So the box below shows **the verdict from Python**, computed on this exact programme when the page was built.',
+        'The browser cannot run this check: it needs the map from electrodes to channels. So the box below shows **the checker\'s verdict**, computed on this exact programme when the page was built.',
         'The programme is the B7 pair moving head-on, on a ring with the `wise` wiring scheme. The page itself catches it as R11.'
       ],
       setup: [['loadCase', 'R5'], ['fit']],
       verdict: { 'case': 'R5', which: 'loaded' },
       stages: [
-        { exercise: 'Read the verdict from Python in the box below: "channel ... drives 8 sites with one waveform, but they are asked to do 2 different things ...; that needs 2 channels". Which fix does it point to?',
+        { exercise: 'Read the checker\'s verdict in the box below: "channel ... drives 8 sites with one waveform, but they are asked to do 2 different things ...; that needs 2 channels". Which fix does it point to?',
           check: ['answer', 'steps'] },
         { breaks: [['ruleFails', 'R11'], ['shipped', 'R5', 'loaded', 'R4d', 'failed']],
-          exercise: 'Apply it in **Write**: two instructions, one direction each, `d0` ending on `S1` and `d1` on `S2`. R11 then passes. The box below now shows the verdict from Python on the fixed programme, computed when the page was built.',
+          exercise: 'Apply it in **Write**: two instructions, one direction each, `d0` ending on `S1` and `d1` on `S2`. R11 then passes. The box below now shows the checker\'s verdict on the fixed programme, computed when the page was built.',
           check: ['all', ['rulesPass'], ['ionAt', 'd0', 'S1'], ['ionAt', 'd1', 'S2'], ['shipped', 'R5', 'fixed', 'R4d', 'passed']],
           verdict: { 'case': 'R5', which: 'fixed' } }
       ],
@@ -706,12 +706,12 @@ var QCCD_TUTORIAL = {
         { id: 'steps', text: 'Give each direction its own step, or its own channel. That is what "needs 2 channels" means.' }
       ],
       nudges: {
-        answer: ['Read the end of the sentence from Python again.', 'The problem is two different things on one signal. Renaming changes nothing physical.'],
+        answer: ['Read the end of the checker\'s sentence again.', 'The problem is two different things on one signal. Renaming changes nothing physical.'],
         rulesPass: ['A rule still fails: {have}', 'One direction per step. Split the two moves.'],
         ionAt: ['{have} is not where that ion should end.'],
         'default': ['Not there yet. Press Hint to be shown the next step.']
       },
-      praise: 'The R4d verdict from Python went from failed to passed on your programme, and the page agreed through R11. That is broadcasting as a rule: one signal, one motion, per channel, per step. Cost {cost}.',
+      praise: 'The checker\'s R4d verdict went from failed to passed on your programme, and the page agreed through R11. That is broadcasting as a rule: one signal, one motion, per channel, per step. Cost {cost}.',
       solution: { stages: [
         [['setAnswer', 'steps']],
         [['loadCase', 'R5', 'fixed'], ['fit']]] } },
@@ -764,7 +764,7 @@ var QCCD_TUTORIAL = {
         '[[R7|rule:R7]]: both ions of a two-qubit gate must be cool enough when the gate fires: under one quantum on this device.',
         '[[R7c|rule:R7c]]: with broadcast wiring, cooling is required. A programme with gates and no cooling at all is refused.',
         '[[R17|rule:R17]]: ions also warm with time, even at rest. The model adds that heat per millisecond.',
-        'Three heat badges never turn green here. [[R15|rule:R15]] is amber: the page adds heats together, which only gives an upper bound. [[R16|rule:R16]] is grey: Python checks it, not the browser. The gate error depends on the heat at gate time, and the box below shows the number. [[R7b|rule:R7b]] is grey everywhere: no device declares a duty-cycle budget, so there is nothing to check, and the page says so.'
+        'Three heat badges never turn green here. [[R15|rule:R15]] is amber: the page adds heats together, which only gives an upper bound. [[R16|rule:R16]] is grey: the checker checks it when the page is built, not the browser. The gate error depends on the heat at gate time, and the box below shows the number. [[R7b|rule:R7b]] is grey everywhere: no device declares a duty-cycle budget, so there is nothing to check, and the page says so.'
       ],
       setup: [['loadCase', 'R7'], ['fit']],
       verdict: { 'case': 'R7', which: 'loaded' },
@@ -773,22 +773,22 @@ var QCCD_TUTORIAL = {
           exercise: '`d0` crosses the junction at `S0` and reaches the gate at about 3.2 quanta, and **Report** shows **R7** in red. The `p.cool()` before the walk did not help. In **Write**, move the cooling to after the walk.',
           check: ['all', ['rulesPass'], ['gateBetween', 'd0', 'd1', 'CX']],
           verdict: { 'case': 'R7', which: 'loaded' } },
-        { exercise: 'The box below now shows the verdict from Python on the fixed programme. Compare its gate error (R16) with the one in step 1. Then: why are R15 amber and R7b grey in every Report?',
+        { exercise: 'The box below now shows the checker\'s verdict on the fixed programme. Compare its gate error (R16) with the one in step 1. Then: why are R15 amber and R7b grey in every Report?',
           check: ['answer', 'bound'],
           verdict: { 'case': 'R7', which: 'fixed' } }
       ],
       choices: [
         { id: 'stale', text: 'They have not been checked yet; reload the page.' },
         { id: 'bound', text: 'R15: heats are added, which gives only an upper bound, so the verdict is partial. R7b: no device declares a duty-cycle budget, so there is nothing to check, and the page says so.' },
-        { id: 'browser', text: 'The browser cannot check them, but Python did, and both passed.' }
+        { id: 'browser', text: 'The browser cannot check them, but the checker did, and both passed.' }
       ],
       nudges: {
         rulesPass: ['A rule still fails: {have}', 'Where is the cooling compared with the crossing? It must come after.'],
         gateBetween: ['No rule fails, but the CX is gone. Keep the gate; move the cooling.'],
-        answer: ['A partial verdict is a bound; a skipped one says what is missing. Which answer says both?', 'Neither badge is stale, and Python does not pass R7b either. Report lists R7b under Not checked here, with the reason.'],
+        answer: ['A partial verdict is a bound; a skipped one says what is missing. Which answer says both?', 'Neither badge is stale, and the checker does not pass R7b either. Report lists R7b under Not checked here, with the reason.'],
         'default': ['Not there yet. Press Hint to be shown the next step.']
       },
-      praise: 'Cooled after the crossing, gated under the limit: cost {cost}, {steps} steps. The gate error from Python fell with it. R7 makes cooling a scheduling problem, and R15, R16 and R7b show exactly how much the page knows.',
+      praise: 'Cooled after the crossing, gated under the limit: cost {cost}, {steps} steps. The gate error the checker measured fell with it. R7 makes cooling a scheduling problem, and R15, R16 and R7b show exactly how much the page knows.',
       solution: { stages: [
         [['loadCase', 'R7', 'fixed'], ['fit']],
         [['setAnswer', 'bound']]] } },
@@ -833,7 +833,7 @@ var QCCD_TUTORIAL = {
       story: 'A programme said it would cost two. The replay said three.',
       teaches: ['rule:R9', 'rule:R10', 'tab:R'],
       text: [
-        'A programme may make claims about itself: `p.claim(total_steps=4, total_cost=3)`. [[R9|rule:R9]] checks each claim against the replay. The browser does not run R9, so the [[Report|tab:R]] shows it grey, and the box below shows the verdict from Python.',
+        'A programme may make claims about itself: `p.claim(total_steps=4, total_cost=3)`. [[R9|rule:R9]] checks each claim against the replay. The browser does not run R9, so the [[Report|tab:R]] shows it grey, and the box below shows the checker\'s verdict.',
         '[[R10|rule:R10]] says a compiled programme does what its circuit says. It needs the circuit, and no lesson so far had one.',
         'What a badge colour means. **Green:** the check ran and passed. **Red:** it ran and failed. **Amber:** it ran, but can only give a bound. **Grey:** it did not run here, and the page says why. Nothing on this page is green for a check that did not run.'
       ],
@@ -843,7 +843,7 @@ var QCCD_TUTORIAL = {
         { exercise: 'Open **Report**. R9 is grey. What does grey mean on this page?',
           check: ['answer', 'notrun'] },
         { breaks: [['shipped', 'R9', 'loaded', 'R9', 'failed']],
-          exercise: 'In step 1 the box showed the claim (cost 2, 3 steps) and what the replay found. In **Write**, correct the `p.claim` line to the true numbers: **COST** and **STEPS** in the top bar show them. The box below now shows the verdict from Python on a corrected programme.',
+          exercise: 'In step 1 the box showed the claim (cost 2, 3 steps) and what the replay found. In **Write**, correct the `p.claim` line to the true numbers: **COST** and **STEPS** in the top bar show them. The box below now shows the checker\'s verdict on a corrected programme.',
           check: ['all', ['rulesPass'], ['claimIs', 'total_steps', 4], ['claimIs', 'total_cost', 3], ['shipped', 'R9', 'fixed', 'R9', 'passed']],
           verdict: { 'case': 'R9', which: 'fixed' } },
         { exercise: 'R10 has been grey on every page of this course so far. Why?',
@@ -862,7 +862,7 @@ var QCCD_TUTORIAL = {
         claimIs: ['The claim for that number is {have}. The top bar shows what the replay found.'],
         'default': ['Not there yet. Press Hint to be shown the next step.']
       },
-      praise: 'A true claim, and the R9 verdict from Python turned from failed to passed. That is the whole contract: every number on this page is measured, bounded, or marked as not measured. Never guessed. Cost {cost}, {steps} steps, and the programme now says the same.',
+      praise: 'A true claim, and the checker\'s R9 verdict turned from failed to passed. That is the whole contract: every number on this page is measured, bounded, or marked as not measured. Never guessed. Cost {cost}, {steps} steps, and the programme now says the same.',
       solution: { stages: [
         [['setAnswer', 'notrun']],
         [['loadCase', 'R9', 'fixed'], ['fit']],
@@ -1109,7 +1109,7 @@ var QCCD_TUTORIAL = {
       teaches: ['tab:W', 'tab:R'],
       text: [
         '**Save your work:** press **Ctrl+S** to save it as `<name>.studio.json`. To copy the device or the programme, open **Device**, press **Source**, choose `as .arch.json` or `as .tsir.json` under the text, and press **Copy**.',
-        '**Check it in Python:** `python -m qccd open <name>.studio.json` runs the full checker on what you built, including the rules the [[Report|tab:R]] lists as not checked here.',
+        '**Check everything:** `python -m qccd open <name>.studio.json` runs the full checker on what you built, including the rules the [[Report|tab:R]] lists as not checked here.',
         '**Open a device:** `python -m qccd studio --seed <name>.arch.json --program rotate -o x.html` opens a device with a built-in programme.',
         '**Open a compiled programme:** `python -m qccd studio --tsir <compiled>.tsir.json --qasm <circuit>.qasm -o x.html` opens it with its circuit beside it. Lesson D1 uses such a page.',
         '**Build this course:** `python -m qccd tutorial -o tutorial` builds this page and its companion page.',
@@ -1127,7 +1127,7 @@ var QCCD_TUTORIAL = {
         answer: ['Read the commands again: which one names a circuit?'],
         'default': ['Not there yet. Press Hint to be shown the next step.']
       },
-      praise: 'That is the whole loop: design here, check in Python, compile a circuit, and read the result back on a page like this one. You started with one picture of a chip. Now you can build, program, break, fix and judge one.',
+      praise: 'That is the whole loop: design here, check everything on your own machine, compile a circuit, and read the result back on a page like this one. You started with one picture of a chip. Now you can build, program, break, fix and judge one.',
       solution: { stages: [[['setAnswer', 'studio']]] } }
   ]
 };
