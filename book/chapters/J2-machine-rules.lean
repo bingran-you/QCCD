@@ -8,10 +8,10 @@ propositions). Everything here is lists, numbers and `decide`, and one real proo
 
 A fault-tolerant machine runs many things at once. While a bridge measures `Z̄Z̄` between two
 blocks, a factory distils the next magic state, a memory refreshes a resting block, and bundles
-of ions travel on roads between them. The scheduler (`qccd/gadget/city.py`) lets anything run
-as soon as its blocks are ready and the places, roads and junctions it needs are free. What makes
-that safe is a handful of rules, written as assertions in the rule language
-(`qccd/ruleset/library/machine.rules`) and checked on every schedule:
+of ions travel on roads between them. The scheduler lets anything run as soon as its blocks
+are ready and the places, roads and junctions it needs are free. What makes that safe is a
+handful of rules, written as assertions in the rule language (the schedule rule set,
+`machine.rules` on the Rules page) and checked on every schedule:
 
 ```
 rule G5 "A place runs one op at a time"
@@ -52,8 +52,9 @@ def exclusive (acts : List Act) : Bool :=
   acts.all fun a => acts.all fun b => a == b || !overlap a b || a.res != b.res
 
 /-!
-Here is a slice of the schedule `shor15.alg` runs on `shor.floor`, as the build of 2026-10-20
-wrote it (`gir.json`; times in microseconds, to the microsecond; instruction numbers are
+Here is a slice of the schedule Shor's algorithm runs on its floorplan `shor`, as the build of
+2026-10-20 wrote it (the schedule the design page replays; times in microseconds, to the
+microsecond; instruction numbers are
 positions in the program after its gates expand and its refresh rounds are added). The factory
 produces the magic state for one T gate (instruction 21) while a bridge runs another
 instruction's lattice surgery (19) and a memory refreshes a resting block (84); then the magic
@@ -89,7 +90,7 @@ theorem factory_runs_beside_surgery : overlap ⟨"produce", 21, "factory1", 9152
 /-!
 A schedule that sent two bundles down one road at once would break G13 -- they could not
 even pass each other on a conveyor. The real one never does; this one is made up, on a real
-road of `shor.floor`.
+road of the floorplan `shor`.
 -/
 
 def collision : List Act :=
@@ -210,7 +211,7 @@ theorem exclusive_overlaps_commute (acts : List Act) (hx : exclusive acts = true
 The rules on the site are this lesson's propositions over the real schedule: `exclusive` is G5
 for places and junctions and G13 for roads, `fits` is G3 and G4, and every one is evaluated on
 every schedule the design page shows (its Checks panel lists all of them, each opening to its
-own assertion). Shor's run on `shor.floor` has 4,495 events and 3,734 carries; G5 and G13 hold
+own assertion). Shor's run on the floorplan `shor` has 4,495 events and 3,734 carries; G5 and G13 hold
 on all of them. Exercise 7 is the reason that is enough: whatever runs at the same time holds
 different things, so it could have run in either order.
 -/

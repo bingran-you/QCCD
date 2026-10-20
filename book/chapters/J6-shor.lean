@@ -12,7 +12,7 @@ If `r` is even, `gcd(a^(r/2) - 1, N)` and `gcd(a^(r/2) + 1, N)` are factors. A q
 finds `r` by **phase estimation**: the operator `U` that multiplies a register by `a` modulo `N`
 has eigenphases `s/r`, and measuring a phase gives `r`.
 
-The site's program is `examples/gadgets/algorithms/shor15.alg`. It uses **iterative phase
+The site's program is `shor15`, on the Logical Algorithm page. It uses **iterative phase
 estimation** (Kitaev; the form Monz et al. ran on trapped ions in 2016): one control block per
 bit of the phase, prepared in `|+̄⟩`, used to control `U^(2^k)`, rotated back by what the earlier
 bits fix, and read in X. Three bits suffice here, because the order of 7 is 4.
@@ -89,7 +89,7 @@ theorem even_s_fails_safely : ∀ m3 : Bool, works (rOf (sOf false m3)) = false 
   decide
 
 /-!
-The site's logical check (`qccd/gadget/logic/contract.py`, `program_outcomes`) runs the program
+The site's logical check (the contract checker's `program_outcomes`) runs the program
 with every call as its contract and returns the probabilities exactly: `m1 = 0` always, and the
 four values of `(m2, m3)` each with probability 1/4. So half the runs give `r = 4` directly.
 
@@ -163,7 +163,7 @@ theorem iteration_two : (1 ^^^ 0b0101) = 7 ^ 2 * 1 % 15 ∧ (2 ^^^ 0b0101) ≠ 7
 
 The rest is what Part J built, used on this program:
 
-* **The machine.** `shor.floor` places six memories (blocks rest for seconds between
+* **The machine.** The floorplan `shor` places six memories (blocks rest for seconds between
   iterations, and a memory corrects what it holds), three lattice-surgery bridges (every T gate
   and every π/4 gadget is a surgery: 44 of them), one transversal-CNOT workshop, two readouts, a
   preparation place, two factories each beside a pharmacy, two depots, and the decoder and the
@@ -172,8 +172,8 @@ The rest is what Part J built, used on this program:
   Toffolis of seven T each, and the conditional T† of the last iteration), 29 π/4 gadgets, 22
   transversal CNOTs, 18 readouts, and 43 guarded instructions. The refresh pass adds 30
   syndrome rounds so no block waits past its coherence budget (G8).
-* **The schedule.** In parallel, on `shor.floor`: 4,495 events and 3,734 carries in 10.77 s, the
-  factories producing while the bridges work; G1-G14 hold. On `shor_traffic.floor`, which the
+* **The schedule.** In parallel, on `shor`: 4,495 events and 3,734 carries in 10.77 s, the
+  factories producing while the bridges work; G1-G14 hold. On `shor_traffic`, which the
   optimiser found, the same program moves 39% fewer ion-sites (lesson J3).
 * **The sign-off**, in parts (lesson J5): every op a verified place op; the S̄ and √X̄ gadgets are
   their rotations in every branch; `sdg`, `h`, `t`, `tdg`, `ccx`, `cswap` are their contracts;

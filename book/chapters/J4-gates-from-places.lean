@@ -26,7 +26,8 @@ gate t q implements T:
 Every place in it is verified on its own, as hardware and as logic. What no place can tell you
 is whether this *program* is a T gate. That depends on the state the factory makes, and on the
 corrections, in every one of the four branches `(a, b)`. The site checks it with its
-**contract checker** (`qccd/gadget/logic/contract.py`); this lesson does it in Lean, exactly.
+**contract checker**, an exact simulation of the gate in every branch; this lesson does it
+in Lean, exactly.
 
 It is not an academic point. The T gadget as it first shipped had no `x m` line: it assumed
 the magic block holds `T|+⟩`. The factory is verified to make `T†|+⟩`. With the real state that
@@ -163,7 +164,7 @@ def gadget (m : V) (s : Zw) (a b : Bool) : Op :=
 
 /-!
 The factory's output, as `msf15.produce` is verified to make it (a state-vector check of the
-15-to-1 protocol, `qccd/gadget/leaves/places.py`): `T†|+⟩`, which up to `1/√2` is `(1, ω⁷)`.
+15-to-1 protocol in the place library): `T†|+⟩`, which up to `1/√2` is `(1, ω⁷)`.
 `X̄` on the magic block swaps its two amplitudes -- in the program it is the line `x m`, which
 costs nothing.
 -/

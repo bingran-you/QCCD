@@ -10,7 +10,7 @@ a fault-tolerant program in parts.*
 Shor's algorithm for 15, compiled for the site's machine, is 157 instructions after its gates
 expand -- 15 magic states, 29 π/4 gadgets, 44 lattice surgeries -- and dozens of measured bits
 decide what runs. No simulation of the whole thing branch by branch would ever finish. The
-site signs it off in parts instead (`qccd/gadget/logic/compose.py`):
+site signs it off in parts instead -- the compositional sign-off:
 
 1. every op the schedule runs is a verified place op (G9);
 2. every gate the program calls is its contract, in every branch (lesson J4 did `t` and `s`);

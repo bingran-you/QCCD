@@ -20,7 +20,7 @@ with a `role`: a block's `data`, a `magic` state, `fresh` ions from a depot) or 
 Each is entered (`in`), left (`out`), or both (`inout`, the four arms of a junction).
 
 This lesson writes doors as Lean data -- the real ones, as the place library declares them
-(`qccd/gadget/leaves/places.py`) -- and the first floorplan rule as a Lean function.
+-- and the first floorplan rule as a Lean function.
 -/
 
 /-!
@@ -63,8 +63,8 @@ def archiveCtl : Door := ⟨"arch1.ctl", .bits, .outward, "any", 0, none, some "
 /-!
 ## 2. F1: a road joins two doors that agree
 
-The floorplan rule F1, as the site states it in the rule language
-(`qccd/ruleset/library/floorplan.rules`):
+The floorplan rule F1, as the site states it in the rule language (the floorplan rule set,
+`floorplan.rules` on the Rules page):
 
 ```
 rule F1 "A road or a wire joins two doors that agree" core
