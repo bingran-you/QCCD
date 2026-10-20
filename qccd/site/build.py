@@ -580,8 +580,9 @@ def tasks() -> list[dict]:
         seed = ROOT / t["seed"]
         rows = (json.loads((seed / "manifest.json").read_text(encoding="utf-8"))
                 if (seed / "manifest.json").exists() else [])
-        # a design that fails any rule is disqualified: not ranked, not published, not
-        # searchable -- the board carries only candidates that obey every rule
+        # a design that fails any rule is disqualified: not ranked and not searchable; its
+        # task page lists it apart, with the rules it breaks (the user's decision of
+        # 2026-10-20 -- before, it was not published at all)
         t["disqualified"] = [r for r in rows if r.get("rules_failed")]
         t["rows"] = [r for r in rows if not r.get("rules_failed")]
         t["seed_dir"] = seed
@@ -836,7 +837,7 @@ def board_index(ts: list[dict]) -> str:
             f'<div class="stat lean"><span>R10 passed</span><b>{n_lean}</b><small>of {len(ok)} that run it</small></div>'
             f'<div class="stat"><span>designs</span><b>{len(rows)}</b><small>{len(ok)} run the round</small></div>'
             f'<div class="stat{" warn" if (refused or n_bad) else ""}"><span>refused &middot; disqualified</span>'
-            f'<b>{len(refused)} &middot; {n_bad}</b><small>{"by the compiler &middot; by the rules, not listed" if (refused or n_bad) else "none"}</small></div>')
+            f'<b>{len(refused)} &middot; {n_bad}</b><small>{"by the compiler &middot; by the rules, not ranked" if (refused or n_bad) else "none"}</small></div>')
         # the QEC clock cycle of this board: the round it ranks, plus the classical loop
         # around it (qccd/site/qec_cycle.py, from qccd.analysis.feedback)
         cycles.append({"id": t["id"], "title": t["title"],
@@ -861,7 +862,8 @@ def board_index(ts: list[dict]) -> str:
             "replayed and judged by every rule of the <a href=\"../rules/#set-standard\">standard rule set</a> "
             "and, where it passed, checked for R10 by the proved checker on its certificate and by the tableau "
             "of its pulses. "
-            "A design that fails any rule is disqualified and not listed. Each row shows the three fastest verified designs of its task; open a task for the full ranking of "
+            "A design that fails any rule is disqualified: it is not ranked, and its task's page lists it apart "
+            "with the rules it breaks. Each row shows the three fastest verified designs of its task; open a task for the full ranking of "
             "every listed design, where you can rank by anything and click a dot to step the programme in the studio. "
             "A round is only half of a QEC cycle, so every board also carries "
             "<a href=\"#cycle\">the classical loop</a> around it, and the <a href=\"#memory\">memory boards</a> "
@@ -2125,7 +2127,8 @@ def build(out: Path) -> int:
             kept = [r for r in raw if not isinstance(r, dict) or r.get("key") is None or r["key"] in out_keys]
             (dst / "rows.json").write_text(json.dumps(public_paths(kept), indent=1, default=str) + "\n",
                                            encoding="utf-8", newline="\n")
-        for r in t["rows"]:
+        # the disqualified designs' pages too: the task page links each from its list
+        for r in t["rows"] + t["disqualified"]:
             if r.get("status") != "ok" or not r.get("page"):
                 continue
             # an entry page IS a circuit: it gets the classical layer and the cycle panel
