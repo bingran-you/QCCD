@@ -14,11 +14,8 @@
 #   supply   two depots, one for the compute rows and one beside the factories
 #   control  the decoder and the classical memory, wired to every door that carries bits
 #
-# Laid out in three rows between four streets, like the town; generated with
-# qccd.gadget.town.town(rows=...) and qccd.gadget.floorplan.write, then edited as text.
-#
-#   python -m qccd.gadget floorplan examples/gadgets/floorplans/shor.floor
-#   python -m qccd.gadget algorithm examples/gadgets/algorithms/shor15.alg     # it names this floorplan
+# Laid out in three rows between four streets, like the town; Shor's algorithm names this
+# floorplan (floorplan "shor"), and the floorplan rules F1-F9 hold on it.
 
 floorplan shor_d3 "A machine for Shor's algorithm (surface code, d = 3)"
 code surface_d3

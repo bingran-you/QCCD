@@ -1,10 +1,8 @@
-# The town of GADGETS.md §9: every verified place, in two rows between three streets, and
-# the control floor below them.  Each place stands at its footprint's top-left corner (model
-# units); each door takes a vertical road to a junction on the street above or below its
-# row, and end junctions join the streets.  This is the floorplan every Logical Algorithm
-# example ran on before floorplans could be written by hand -- town.py builds exactly this.
-#
-#   python -m qccd.gadget floorplan examples/gadgets/floorplans/town.floor     # the F-rules
+# The town: every verified place, in two rows between three streets, and the control floor
+# below them.  Each place stands at its footprint's top-left corner (model units); each door
+# takes a vertical road to a junction on the street above or below its row, and end junctions
+# join the streets.  Every Logical Algorithm example runs on it unless it names a floorplan of
+# its own.
 
 floorplan town_d3 "A town of verified places (surface code, d = 3)"
 code surface_d3

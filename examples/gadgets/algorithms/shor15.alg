@@ -7,8 +7,8 @@
 # s exactly: m1 = 0 always, and m3 m2 is s, uniformly 0, 1, 2 or 3.  An odd s gives the
 # order r = 4, and gcd(7^2 - 1, 15) = 3, gcd(7^2 + 1, 15) = 5.
 #
-# Every logical qubit is a d = 3 surface-code block; every gate is a verified place or a
-# gate of qccd/gadget/gates/standard.alg, proved to be its contract in every branch.  The
+# Every logical qubit is a d = 3 surface-code block; every gate is a verified place or one
+# of the standard gates (include "standard"), proved to be its contract in every branch.  The
 # controlled multiplications are compiled for the values the register can hold when they
 # act (1 before iteration 2; 1 or 4 before iteration 3), as every experimental Shor has
 # been; the two controlled swaps of iteration 3 are two Toffolis, fourteen T gates from the

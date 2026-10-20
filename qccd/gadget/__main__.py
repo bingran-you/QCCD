@@ -150,8 +150,9 @@ def _cmd_optimize(a) -> int:
           f"{s1['traffic']:,} ion-sites ({100 * (s1['traffic'] - s0['traffic']) / s0['traffic']:+.1f}%), "
           f"makespan {s0['makespan_us'] / 1e6:.2f} -> {s1['makespan_us'] / 1e6:.2f} s")
     out = _P(a.out or _P(base).with_name(_P(base).stem + f"_{a.objective}.floor"))
-    note = (f"found by `python -m qccd.gadget optimize {a.program}` from {_P(base).name}: "
-            f"objective {a.objective}, {a.budget} candidates (seed {a.seed}), each scheduled;\n"
+    # the note is part of the file, and the file is shown on the design page: site words only
+    note = (f"found by the floorplan optimiser from {_P(base).name}, for {alg.title}: "
+            f"objective {a.objective},\n{a.budget} candidates (seed {a.seed}), each scheduled;\n"
             f"traffic {s0['traffic']:,} -> {s1['traffic']:,} ion-sites (before refresh rounds), makespan "
             f"{s0['makespan_us'] / 1e6:.2f} -> {s1['makespan_us'] / 1e6:.2f} s")
     from .town import town as _town

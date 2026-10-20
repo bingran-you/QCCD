@@ -14,8 +14,8 @@
 # with this correction table needs T|+>: X-bar on the magic block turns one into the other
 # (X T-dagger|+> is T|+> up to a phase), and costs nothing -- it is a line in the archive.
 # Without it every branch was T-dagger or S T, never T: the flat sign-off cannot see that,
-# because it treats the injected state as a free input; the contract checker
-# (qccd/gadget/logic/contract.py) does, and the standard gates' `t` is this program.
+# because it treats the injected state as a free input; checking the gate's contract does,
+# and the standard gates' `t` is this program.
 title A logical T by teleportation, with the S correction only when needed
 prep   q0 X
 inject t
