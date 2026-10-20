@@ -5,15 +5,15 @@ showed `cyclone_base` at 3.89 ms as its best when the run started. Nine agents r
 nine different devices. [`01-a06-c6cb1514`](designs/01-a06-c6cb1514.arch.json) is five traps on a
 closed cycle. Every node has degree 2, so there is no junction anywhere. Its plain segments sit on no
 named loop, and it uses direct wiring, 120 DACs. In cycle order the capacities are 6, 4, 3, 4 and 8.
-Two traps gate only and have no readout. With no conveyor declared, the router runs free: ions on one
-cycle may move in different directions.
+One trap, the 4 between the 6 and the 3, gates only and has no readout. With no conveyor declared,
+the router runs free: ions on one cycle may move in different directions.
 
 | | cool | gates | measure | shuttle | total |
 |---|---:|---:|---:|---:|---:|
-| µs | 300 | 485 | 720 (6 instructions) | 80 (16 moves) | **1585** |
+| µs | 300 | 485 | 720 (6 instructions) | 80 (16 transport instructions) | **1585** |
 
-The longest chain is 8 ions, so the win does not come from long chains. How it got there (grades at
-search time):
+Its longest chain is 8 ions. a06 reads this as the win not coming from long chains; a02 thinks big
+chains help keep routes short. How it got there (grades at search time):
 
 | step | ms |
 |---|---:|
@@ -31,14 +31,17 @@ instruction** on any device. Layers 0, 3 and 5 hold four gate operations each, a
 its trap (R12), so at least 4 traps must be able to gate. A 3-trap triangle needs only 14 or 15
 transports, but its gates split into extra rounds (685 µs).
 
-One agent ran ten processes of an evolutionary search over n-trap cycles for about two hours, each
-at about 30 devices a second. Every process plateaued at 16 transports with 5 traps, or 18 with 4. With
-`--init-placement` (analysis only) the same devices need 13 or 14, so what is left is in the placer,
+One agent, a06, ran ten processes of an evolutionary search over n-trap cycles for about two hours,
+each at about 30 devices a second, scored by a local copy of the search compiler. Every process
+plateaued at 16 transports with 5 traps, or 18 with 4. With `--init-placement` (local probes, never
+graded) the same devices need 13 or 14, so a06 concludes that most of what is left is in the placer,
 not the device.
 
-**Why grids lose.** In `grid(a,b)` with a, b ≥ 3, the lattice nodes between traps have degree 3 or 4:
-they are junctions (R18). On `grid 4x4`, 46 transport instructions cost 4,735 µs and force 10 cools
-(3,000 µs). Even the two junctions of `grid 2x3` cost about 2 ms more than a ring.
+**Why grids lose.** In `grid(a,b)` with a, b ≥ 2, every lattice node that is not a corner has degree
+3 or 4, so it is a junction (R18). Only `grid 2x2`, whose four nodes are all corners, has none. On
+`grid 4x4`, 46 transport instructions cost 4,735 µs and force 10 cools (3,000 µs). Even `grid 2x3`,
+with two junctions, takes 5.79 ms. That is about 4 ms more than the 6-trap ring #31 (1.69 ms) with
+almost the same number of transports (38 against 37), and about 2 ms more than `cyclone_base`.
 
 **The picks.** Seven designs were chosen as `bingran-agent-1` to `-7` for the official board (not
 submitted). The `file` column marks them. They cover one each of: a 5-trap cycle, a 4-trap cycle, a
@@ -47,8 +50,10 @@ grid.
 
 **Board-wide caveat.** The router moves ions with the seed's `shuttle` class, which entails no split or
 merge. An ion that joins or leaves a multi-ion chain pays neither. The designs here rely on this
-convention, and so do the live ones. If split and merge were charged honestly, the 1.595 ms
-4-cycle would take 7.18 ms (10 cools), and `cyclone_base` 23.5 ms.
+convention, and so do the live ones. a02 estimated, under the search compiler, that with split and
+merge charged, its own 1.595 ms 4-cycle (`1792303625-a02-e049dedc`, in `results.csv`) would take
+7.18 ms (10 cools, plus R14 `gate_swap` violations) and `cyclone_base` 23.5 ms. Neither number was
+graded.
 
 **Not counted.** Several agents noted levers they did not use:
 
@@ -61,13 +66,22 @@ at the same position.
 
 ## The designs
 
-Every graded design ranked, beside the live designs (grey), as on the board's page:
+Every graded design that passed the audit, ranked beside the live designs (dark diamonds, hollow
+when not buildable), as on the board's page:
 
 ![surface17: every design ranked](chart.png)
 
+Two more devices, a06's direct-wired `grid(2,3)` and `grid(3,3)` at 168 and 288 DACs, failed the
+128-DAC budget at search time. They are not in the chart, the table or `results.csv`.
+
 `planar` checks the positions as written: no rail passes over another node and no two rails cross.
-Design #4 draws its 5-cycle with two crossing rails. It is directly wired, so R22 does not apply and
-positions do not label its hops.
+Design #4 draws its 5-cycle with one rail crossing two others. It is directly wired, so R22 does not
+apply and positions do not label its hops.
+
+The `note` column of `results.csv` and the `description` in each design file are the agents' own
+words. The files and tools they name, such as `a10/NOTES.md` or `tools/ufast.py`, were the agents'
+working files and are not in this PR. Where a note and a column disagree, the column is the graded
+value: the note on #22 says 96 DACs, and the device grades at 128.
 
 <!-- designs -->
 Ranked under production's toolchain; *at search* is the grade under `c7c535380bfb`. All 66 distinct devices are in [`results.csv`](results.csv).
@@ -102,10 +116,10 @@ The board's page as fetched at 2026-10-19 23:32 UTC; its numbers were regenerate
 | `stationary_chain` (answer) | 2.045 | 2.045 | yes | yes | arch/stationary_chain.arch.json |
 | `cyclone_base` | 3.89 | 3.89 | yes | yes | arch/cyclone_base.arch.json |
 | `h2_racetrack` | 4.925 | 4.925 | yes | yes | arch/h2_racetrack.arch.json |
-| `grid5x5` | 9.77 | 9.77 | yes | yes | Machine.grid(5, 5) (guess) |
-| `grid9x9` | 9.83 | 9.83 | yes | no | arch/grid9x9.arch.json |
+| `grid5x5` | 9.77 | 9.77 | yes | no (1,600 DACs on the page; the rebuild passes) | Machine.grid(5, 5) (guess) |
+| `grid9x9` | 9.83 | 9.83 | yes | no (5,760 DACs) | arch/grid9x9.arch.json |
 | `deck_unit_cell` | 9.83 | 9.83 | yes | yes | arch/deck_unit_cell.arch.json |
-| `cylinder6x4` | 10.18 | 10.18 | yes | no | generators.cylinder(6, 4) with grid9x9 zones and control |
+| `cylinder6x4` | 10.18 | 10.18 | yes | no (1,680 DACs) | generators.cylinder(6, 4) with grid9x9 zones and control |
 | `ladder_2x72` | 10.95 | 10.95 | yes | yes | arch/ladder_2x72.arch.json |
 | `ring24_8` | 12.635 | 26.94 | yes | yes | Machine.ring(12, 2, 8) (guess) |
 | `ring144_24v` | 18.54 | 37.69 | yes | yes | arch/ring144_24v.arch.json |
