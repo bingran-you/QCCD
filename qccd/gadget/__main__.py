@@ -152,8 +152,10 @@ def _cmd_optimize(a) -> int:
     out = _P(a.out or _P(base).with_name(_P(base).stem + f"_{a.objective}.floor"))
     note = (f"found by `python -m qccd.gadget optimize {a.program}` from {_P(base).name}: "
             f"objective {a.objective}, {a.budget} candidates (seed {a.seed}), each scheduled;\n"
-            f"traffic {s0['traffic']:,} -> {s1['traffic']:,} ion-sites, makespan "
+            f"traffic {s0['traffic']:,} -> {s1['traffic']:,} ion-sites (before refresh rounds), makespan "
             f"{s0['makespan_us'] / 1e6:.2f} -> {s1['makespan_us'] / 1e6:.2f} s")
+    from .town import town as _town
+    res["lib"] = _town(leaves, name=f"{fp.name}_{a.objective}", rows=res["rows"])
     out.write_text(floorplan_text(res, title=f"{fp.title} (less {a.objective})", comment=note),
                    encoding="utf-8", newline="\n")
     print(f"  wrote {out}")

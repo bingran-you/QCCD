@@ -1,7 +1,7 @@
 # found by `python -m qccd.gadget optimize examples/gadgets/algorithms/shor15.alg` from shor.floor: objective traffic, 150 candidates (seed 7), each scheduled;
-# traffic 312,441 -> 189,743 ion-sites, makespan 10.67 -> 10.64 s
+# traffic 312,441 -> 189,743 ion-sites (before refresh rounds), makespan 10.67 -> 10.64 s
 
-floorplan c100 "A machine for Shor's algorithm (surface code, d = 3) (less traffic)"
+floorplan shor_d3_traffic "A machine for Shor's algorithm (surface code, d = 3) (less traffic)"
 code surface_d3
 
 region supply
