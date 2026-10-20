@@ -10,7 +10,10 @@
 (function () {
   'use strict';
   if (typeof window === 'undefined' || window.QCCDBOOK) return;
-  var KEY = 'qccd.book.progress', OWNER = 'qccd.course.account';
+  // The book's store keeps its OWN owner.  It never writes the course's 'qccd.course.account':
+  // the course's sync trusts that key to decide whether this browser's course stars are the
+  // signed-in reader's, so writing it here let a second reader inherit the first's course stars.
+  var KEY = 'qccd.book.progress';
   var ID = /^book:[A-Za-z0-9._-]{1,43}$/;
   var live = /^https?:$/.test(location.protocol) && !!window.fetch;
   try { if (window.top !== window.self) live = false; } catch (e) { live = false; }
@@ -62,7 +65,6 @@
       for (k in p.done) if (has(p.done, k) && ID.test(k) && !server[k]) up.push(k);
       for (k in server) p.done[k] = 1;
       save(p);
-      try { localStorage.setItem(OWNER, String(d.user.id)); } catch (e) { /* private window */ }
       return upload(up).then(function () { S.status = 'synced'; });
     }).catch(function (e) { S.status = (e && e.status) ? 'error' : 'offline'; })
       .then(function () { busy = false; emit(); if (again) { again = false; sync(); } });
