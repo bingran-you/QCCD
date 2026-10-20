@@ -19,8 +19,10 @@ from qccd.gadget.logic.flat import sign_off
 from qccd.gadget.place_checks import check_places
 from qccd.gadget.town import town
 
-EXAMPLES = sorted((Path(__file__).resolve().parents[1] / "examples" / "gadgets" / "algorithms")
-                  .glob("*.alg"))
+#: the examples that run on the town (one that names its own floorplan has its own tests)
+EXAMPLES = sorted(f for f in (Path(__file__).resolve().parents[1] / "examples" / "gadgets"
+                              / "algorithms").glob("*.alg")
+                  if "\nfloorplan " not in "\n" + f.read_text(encoding="utf-8"))
 
 
 @pytest.fixture(scope="module")

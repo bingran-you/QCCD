@@ -97,6 +97,12 @@
       }
       case "vault":
         return `M${f(x)} ${f(y)}H${f(x + w)}V${f(y + h)}H${f(x)}Z`;
+      case "ward": {
+        // a block with a raised centre: the memory, where a resting block is cared for
+        const q = Math.min(h * 0.22, w * 0.12);
+        return `M${f(x)} ${f(y + q)}H${f(x + w * 0.36)}V${f(y)}H${f(x + w * 0.64)}V${f(y + q)}` +
+               `H${f(x + w)}V${f(y + h)}H${f(x)}Z`;
+      }
       case "chip": {
         // a package with pins down both sides: the decoder
         const n = Math.max(2, Math.min(6, Math.floor(h / Math.max(1e-6, m * 0.3))));
@@ -131,6 +137,10 @@
     if (shape === "vault") {          // the second line a vault has: its inner wall
       const i = Math.min(w, h) * 0.09;
       return `M${f(x + i)} ${f(y + i)}H${f(x + w - i)}V${f(y + h - i)}H${f(x + i)}Z`;
+    }
+    if (shape === "ward") {           // a cross in the raised centre
+      const cx = x + w / 2, cy = y + Math.min(h * 0.22, w * 0.12) + h * 0.2, a = Math.min(w, h) * 0.1;
+      return `M${f(cx - a)} ${f(cy)}H${f(cx + a)}M${f(cx)} ${f(cy - a)}V${f(cy + a)}`;
     }
     if (shape === "drum") {           // the rows of cells inside
       let d = "";

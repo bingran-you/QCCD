@@ -43,7 +43,7 @@ __all__ = ["Place", "Road", "Door", "WireE", "Block", "Instruction", "Window", "
 #: places that hold no ions: their ops are modeled, not replayed (GADGETS.md §10)
 CLASSICAL_FAMILIES = ("decoder", "archive")
 #: ops that extract syndromes; between them a block only waits or moves (G8)
-SE_OPS = ("prep.", "se.", "zz", "xx", "inject")
+SE_OPS = ("prep.", "se.", "zz", "xx", "inject", "store", "refresh")
 #: one junction master: a place whose family is "road"
 JUNCTION_FAMILY = "road"
 

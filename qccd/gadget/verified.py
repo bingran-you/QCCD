@@ -39,17 +39,24 @@ def _load(alg) -> Algorithm:
 
 def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: bool = False,
                     leaves: LeafLibrary | None = None, studio_dir=None, log=print,
-                    floorplan=None, parallel: bool = True) -> dict:
+                    floorplan=None, parallel: bool = True, refresh: bool = True) -> dict:
     """Schedule, check and sign off one algorithm on a floorplan (the town unless `floorplan`
     names a `.floor` file), and write its page.  With `studio_dir`, the studio page of every
     op the schedule uses is rendered there (shared by several builds) and linked from the
-    tool's inspector.  `parallel=False` schedules one instruction at a time."""
+    tool's inspector.  `parallel=False` schedules one instruction at a time; `refresh`
+    adds syndrome rounds wherever a block would otherwise wait past its coherence budget
+    (`qccd.gadget.refresh`).  A program the flat sign-off cannot follow -- too many branches,
+    or frames that are products of bits -- is signed off compositionally
+    (`qccd.gadget.logic.compose`); every build writes both reports."""
     log = log or (lambda *a, **k: None)
     t_start = time.time()
     alg = _load(alg)
     leaves = leaves or LeafLibrary(cache_dir, rebuild=rebuild, log=log)
     t0 = time.time()
     regions = None
+    if floorplan is None and alg.floorplan:
+        from .floorplan import FLOORPLANS_DIR
+        floorplan = FLOORPLANS_DIR / f"{alg.floorplan}.floor"
     if floorplan is None:
         lib = town(leaves)
     else:
@@ -58,7 +65,11 @@ def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: boo
         regions = fp.regions
     t_lib = time.time() - t0
     t0 = time.time()
-    gir = schedule(alg, lib, leaves, log=log, parallel=parallel)
+    if refresh:
+        from .refresh import schedule_with_refresh
+        alg, gir = schedule_with_refresh(alg, lib, leaves, log=log, parallel=parallel)
+    else:
+        gir = schedule(alg, lib, leaves, log=log, parallel=parallel)
     t_sched = time.time() - t0
     t0 = time.time()
     checks = check_places(gir, lib, leaves)
@@ -72,6 +83,8 @@ def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: boo
         "passed": False, "why": ["instructions were refused"], "relations": [], "flows": [],
         "circuit": {"qubits": 0, "ops": {}, "records": 0}}
     t_sign = time.time() - t0
+    from .logic.compose import compositional_sign_off
+    compositional = compositional_sign_off(alg, gir, rules, flat=signoff)
     stats = {
         "ions": gir["n_ions"], "blocks": len(gir["blocks"]),
         "instructions": len(alg.instructions), "refused": len(gir["refused"]),
@@ -86,6 +99,9 @@ def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: boo
         "traffic": traffic(gir, lib),
         "rules": {"passed": len(rules["passed"]), "failed": rules["failed"],
                   "total": len(rules["rules"])},
+        "refreshes": int(gir.get("refreshes") or 0),
+        "signed_off": ("flat" if signoff.get("passed") else
+                       "compositional" if compositional["passed"] else None),
     }
     gir["stats"] = stats
     out = Path(out_dir)
@@ -95,6 +111,9 @@ def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: boo
     (out / "checks.json").write_text(json.dumps(checks, indent=1), encoding="utf-8")
     (out / "rules.json").write_text(json.dumps(rules, indent=1, ensure_ascii=False),
                                     encoding="utf-8")
+    (out / "compositional.json").write_text(json.dumps(compositional, indent=1,
+                                                       ensure_ascii=False, default=str),
+                                            encoding="utf-8")
     (out / "signoff.json").write_text(json.dumps(signoff, indent=1, ensure_ascii=False),
                                       encoding="utf-8")
     (out / f"{alg.name}.alg").write_text(alg.source, encoding="utf-8")
@@ -119,6 +138,9 @@ def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: boo
     log(f"  {alg.name}: {stats['ions']} ions, {stats['events']} events, makespan "
         f"{stats['makespan_ms']} ms; G passed {len(checks['passed'])}/"
         f"{len(PLACE_RULES)}; sign-off "
-        f"{'passed' if signoff.get('passed') else 'FAILED'}")
+        + ("passed (flat)" if signoff.get("passed") else
+           "passed (compositional; the flat check does not apply)"
+           if compositional["passed"] and signoff.get("passed") is None else "FAILED"))
     return {"out": str(out), "stats": stats, "checks": checks, "signoff": signoff, "rules": rules,
+            "compositional": compositional,
             "algorithm": alg, "gir": gir, "library": lib}

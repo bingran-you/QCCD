@@ -153,15 +153,37 @@ gate t q:                 # T on q, by teleportation
 ```
 
 A definition's body is ordinary instructions over its parameters and local blocks; its
-outcomes are local. A call `t q3` expands to the body with fresh names. Guards nest: a
-guarded call guards every instruction of the body that can be guarded, and a condition is
-then a conjunction of parities (`if m & a: s q`). A definition is verified once, by the flat
-sign-off of its body against its contract (`contract T q`); a call is then a single
-logical gate. Composite gates shipped: `t`, `tdg`, `sx` (√X̄ by X̄X̄ surgery against |Ȳ⟩),
-`h` (S̄·√X̄·S̄), `ccx` (Toffoli, 7 T), `cswap`.
+outcomes are local. A call `t q3` expands to the body with fresh names (`t3_m`, `t3_a`).
+Guards nest: a guarded call guards every instruction of the body that can be guarded, and a
+condition is then a conjunction of parities (`if m & a: s q`); what cannot be guarded
+(`prep`, `inject`, `se`, `store`, `decode`) runs either way, which only creates, rests,
+checks or decodes. `include "standard"` brings the standard gates
+(`qccd/gadget/gates/standard.alg`): `sdg`, `sxdg`, `h` (S̄·√X̄·S̄), `t`, `tdg`, `cz`, `ccx`
+(Toffoli, seven T), `cswap`. The π/4 rotations `s` and `sx` are instructions, not gates:
+each consumes a |Ȳ⟩ block and conjugates the block's Pauli frame (X̄ → Ȳ for S̄, Z̄ → Ȳ for
+√X̄), which only the scheduler can do.
 
-The logical check of a program then simulates its logical circuit (one qubit per block,
-every gate call its contract) exactly, branch by branch over the program's own outcomes.
+**Contracts** (`qccd/gadget/logic/contract.py`). Every primitive has a logical meaning the
+place library verifies on hardware -- `inject` is the factory's own output, T†|+⟩; `s` and
+`sx` are S and √X (each checked here as its composite: |Ȳ⟩, surgery, readout, and the
+correction the scheduler writes); `zz`/`xx`/`read` are measurements. A gate's contract is
+checked exactly: its parameters Bell-paired with references, every branch of every
+measurement it makes, every guard evaluated on that branch; each reachable branch must leave
+(U ⊗ 1)|Φ⟩ up to a phase, and nothing else alive. A call inside a body counts as its own
+proved contract, so a Toffoli of seven T gates is one branch, not 4⁷.
+
+**What the contracts found.** The T gadget as first shipped (`t_gate.alg`: Z̄Z̄ against the
+magic block, X̄ readout, S̄ if the surgery outcome is 1) assumed the magic block holds T|+⟩.
+The factory is verified to make T†|+⟩. With the real state the program is T† in two
+branches and S̄T in the other two: never T. The flat sign-off could not see it -- it treats
+an injected state as a free input and checks the Clifford skeleton -- and the test of the
+correction table started from T|+⟩. The fix is free: X̄ on the magic block, a line in the
+archive, turns T†|+⟩ into T|+⟩ (`t_gate.alg` now does it, and so does `t`); `tdg` uses the
+state as it is with an S̄† correction. Both are proved in all four branches, and a test keeps
+the old program failing.
+
+The logical check of a whole program simulates it with every call as its contract, exactly,
+branch by branch over its own top-level outcomes (`program_outcomes`).
 
 ---
 
@@ -179,7 +201,22 @@ each as early as its dependencies and its resources allow:
 * a magic state is produced while the computation runs: `inject` has no dependency on any
   block, so the factory starts as soon as it is free and the state rests in a zone until
   it is consumed;
-* the classical half is unchanged: a decode works alongside the ions.
+* the classical half is unchanged: a decode works alongside the ions, and a `decode` is one
+  call, made once every window it names exists;
+* a place is chosen by when the op could start there -- the place free, the blocks arrived
+  -- not by distance alone, so a second bridge or factory takes work while the first is busy;
+* a block resting in a memory leaves it just in time: no earlier than the place it goes to
+  can take it, less the trip, because a block waiting on a road is corrected by nobody.
+
+**Memory that corrects** (`mem_d3`, family `memory`). A zone holds a block and touches
+nothing, so a block may rest there only for its coherence budget (G8). A memory is the
+clinic's device with the block kept on its ring: `store` (in, one syndrome round),
+`refresh` (one round at rest), `release` (out), each verified like every place (flows 18/18,
+distance ≥ 3 for the rounds). **Refresh** (`qccd/gadget/refresh.py`) schedules, finds every
+stretch a block would spend without syndrome extraction past 80% of its budget, inserts
+`se BLOCK 1` rounds (each with the earliest time it may run, issued just before the block's
+next use), and schedules again; a round on a block resting in a memory runs in place, inside
+the block's own lease, and its syndrome is decoded at once. A round changes no logical state.
 
 The **traffic** of an execution -- ion-sites shuttled, junction passes, time bundles wait on
 roads -- is reported with every schedule, and is what a floorplan is designed to reduce.
@@ -195,6 +232,36 @@ classically controlled S̄† and T̄† corrections, and every Toffoli as seven
 factories. Its expected output: the first bit is 0 and the last two are uniform, so the
 phase is s/4 and the order is 4, and gcd(7² ± 1, 15) = 3, 5.
 
+It runs on `examples/gadgets/floorplans/shor.floor`: six memories, three bridges (every T gate
+and every π/4 gadget is a surgery: 44 of them), one workshop, two readouts, one preparation
+place, two factories beside two pharmacies, two depots, the control floor; three rows between
+four streets. The town could not run it: three passive zones neither hold five resting blocks
+nor keep them alive for seconds.
+
+| | |
+|---|---|
+| instructions | 157 written (after `standard` expands) + 30 refresh rounds |
+| magic states / π/4 gadgets / surgeries | 15 / 29 / 44 |
+| events, carries | 4,495, 3,734 |
+| makespan | 10.77 s |
+| traffic | 325,626 ion-sites; 3,328 junction passes; longest wait on a road 0.23 s |
+| machine rules | F1–F9 and G1–G14 hold; nothing refused |
+| flat sign-off | does not apply: 11 outcomes a guard reads are corrected by frames that are products of bits |
+| compositional sign-off | passed: places (G9), gadgets (S̄, √X̄), gates (sdg, h, t, tdg, ccx, cswap), composition (23 rules), semantics m1 = 0, (m2, m3) uniform |
+
+**The compositional sign-off** (`qccd/gadget/logic/compose.py`) is the claim for programs
+too large to flatten, in five parts, each a check that ran: every op is a verified place op
+(G9); the π/4 gadgets are their rotations in every branch; every gate called is its contract
+in every branch; the floorplan and the schedule obey every machine rule; and the program,
+calls as contracts, has exactly the outcome distribution reported. What it does not
+establish: that the classical memory evaluates frames that are products of bits correctly at
+run time (it is a classical program the logical check models as the Paulis it applies), and
+logical error rates (distance is counted, noise is not sampled).
+
+```bash
+python -m qccd.gadget algorithm examples/gadgets/algorithms/shor15.alg   # its floorplan is named in it
+```
+
 ---
 
 ## 9 · Phases
@@ -204,7 +271,7 @@ phase is s/4 and the order is 4, and gcd(7² ± 1, 15) = 3, 5.
 | A1 | machine vocabulary; G1–G11 as rules, equal to `place_checks.py` on every example and mutation | ✅ `qccd/ruleset/machine.py`, `library/machine.rules`; 0.05 s per example |
 | A2 | floorplan language, `town.floor`, F1–F9 | ✅ `qccd/gadget/floorplan.py`; the town round-trips exactly; seven broken floorplans each fail their rule |
 | A3 | parallel scheduler, G12–G14, traffic | ✅ `city.py` `parallel=True`; every example passes F1–F9 and G1–G14 and signs off; `magic_teleport` 791 → 490 ms |
-| A4 | gate definitions, nested guards, `sx`/`h`/`t`/`tdg`/`ccx`/`cswap`, contracts | |
-| A5 | `shor15.alg` on a Shor floorplan, compositional sign-off, logical check | |
+| A4 | gate definitions, nested guards, `sx`/`h`/`t`/`tdg`/`ccx`/`cswap`, contracts | ✅ `algorithm.py`, `gates/standard.alg`, `logic/contract.py`; every gate proved; the shipped T gadget was wrong, fixed |
+| A5 | `shor15.alg` on a Shor floorplan, compositional sign-off, logical check | ✅ `shor.floor`, `mem_d3`, `refresh.py`, `logic/compose.py`; 23 rules hold, compositional sign-off passed |
 | A6 | the design page: floorplans, traffic, parallel lanes | |
 | A7 | the tutorial's gadget parts | |

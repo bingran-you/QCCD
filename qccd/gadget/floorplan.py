@@ -19,9 +19,9 @@ comment (docs/ARCHITECTURE.md §2):
     wires auto bus 62                    # every classical port to the control places
 
 * A **place** is any verified place master (`prep_d3`, `se_d3`, `tcx_d3`, `ls_d3`,
-  `read_d3`, `zone_d3`, `msf15`, `inj_d3`, `depot9`, `dec_d3`, `arch1`) or its family word
-  (`prep`, `se`, `operation`, `surgery`, `readout`, `zone`, `factory`, `injection`,
-  `depot`, `decoder`, `archive`).
+  `read_d3`, `zone_d3`, `mem_d3`, `msf15`, `inj_d3`, `depot9`, `dec_d3`, `arch1`) or its
+  family word (`prep`, `se`, `operation`, `surgery`, `readout`, `zone`, `memory`,
+  `factory`, `injection`, `depot`, `decoder`, `archive`).
 * A **region** names what the places after it are for: `memory`, `compute`, `factory`,
   `supply`, `control`; junctions are in `traffic`.  Which families may stand in which
   region is a rule (F9), not a convention.
@@ -52,7 +52,8 @@ FLOORPLANS_DIR = Path(__file__).resolve().parents[2] / "examples" / "gadgets" / 
 
 #: the region kinds, and what each is for
 REGIONS = {
-    "memory": "logical zones: where blocks rest between operations",
+    "memory": "logical zones and memories: where blocks rest between operations (a memory "
+              "corrects what it holds)",
     "compute": "the places that act on blocks: preparation, syndrome extraction, transversal "
                "gates, lattice surgery, readout",
     "factory": "magic-state factories and injection",
@@ -63,14 +64,14 @@ REGIONS = {
 
 #: the region each place family belongs in (rule F9)
 HOME_REGION = {
-    "zone": "memory", "prep": "compute", "se": "compute", "operation": "compute",
+    "zone": "memory", "memory": "memory", "prep": "compute", "se": "compute", "operation": "compute",
     "surgery": "compute", "readout": "compute", "factory": "factory", "injection": "factory",
     "depot": "supply", "decoder": "control", "archive": "control", "road": "traffic",
 }
 
 #: a family word, or a master name, -> the master
 MASTER_OF = {
-    "prep": "prep_d3", "se": "se_d3", "zone": "zone_d3", "operation": "tcx_d3",
+    "prep": "prep_d3", "se": "se_d3", "zone": "zone_d3", "memory": "mem_d3", "operation": "tcx_d3",
     "surgery": "ls_d3", "readout": "read_d3", "factory": "msf15", "injection": "inj_d3",
     "depot": "depot9", "decoder": "dec_d3", "archive": "arch1", "junction": "junc9",
 }

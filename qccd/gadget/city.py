@@ -158,7 +158,12 @@ class City:
         self.frames: list[dict] = []
         self.blocks: dict[str, Bundle] = {}
         self.block_info: dict[str, dict] = {}
-        self.zone_holder = {p: None for p, li in self.leaf.items() if li.master.family == "zone"}
+        #: the places a block can rest in -- logical zones, and memories, which also correct
+        #: what they hold -- and which block rests in each
+        self.zone_holder = {p: None for p, li in self.leaf.items()
+                            if li.master.family in ("zone", "memory")}
+        #: memory -> when the last op on the block resting there ended
+        self.mem_last: dict[str, float] = {}
         self.stock = {p: 0 for p, li in self.leaf.items() if li.master.family == "depot"}
         self.t_now = 0.0
         #: the streets carry one bundle at a time: the next trip starts when the last
@@ -188,8 +193,10 @@ class City:
         self.resolved: dict[int, tuple] = {}
         #: block -> the guards of the conditional frame writes it has taken
         self.pf_guarded: dict[str, list] = {}
-        #: the outcomes some guard reads: those may not themselves depend on a branch
+        #: the outcomes some guard reads, and every one of them read through a frame that
+        #: depends on a branch (see `certain`)
         self.guard_reads = set(alg.guard_cvars)
+        self.branch_frames: list[dict] = []
         self._graph()
         self._control()
 
@@ -255,7 +262,13 @@ class City:
         d = self._dijkstra(src).get(dst)
         return d[0] if d else float("inf")
 
-    def _choose(self, category: str, ins: Instr, near=None, port="in", free=None):
+    def _choose(self, category: str, ins: Instr, near=None, port="in", free=None,
+                ready: float = 0.0, also=()):
+        """Which place of `category` an instruction uses.  Sequential: the nearest to `near`.
+        Parallel: the one where the op could start soonest -- when the place is free, or when
+        the blocks could be there, whichever is later -- counting the travel of the blocks
+        coming from `near` (and from each `(source, door)` in `also`), so a second bridge or
+        factory takes work while the first is busy."""
         cands = [p for p in self.leaf if self.family(p) == category]
         if ins.at:
             cands = [p for p in cands if p == ins.at or p.split(".")[-1] == ins.at]
@@ -264,9 +277,19 @@ class City:
         if not cands:
             raise CityError(f"the design has no {'free ' if free else ''}{category} place"
                             + (f" named {ins.at}" if ins.at else ""))
-        if near is None or len(cands) == 1:
-            return sorted(cands)[0]
-        return min(sorted(cands), key=lambda p: self._distance(near, (p, port)))
+        if len(cands) == 1:
+            return cands[0]
+        if not self.parallel:
+            if near is None:
+                return sorted(cands)[0]
+            return min(sorted(cands), key=lambda p: self._distance(near, (p, port)))
+
+        def score(p):
+            travel = [self._distance(near, (p, port))] if near is not None else []
+            travel += [self._distance(src, (p, door)) for src, door in also]
+            arrive = ready + max(travel or [0.0])
+            return (max(self.cal[p].end, arrive) + sum(travel), p)
+        return min(cands, key=score)
 
     # -- the classical half ---------------------------------------------------------------
 
@@ -472,7 +495,7 @@ class City:
     def cond_json(self, ins) -> dict | None:
         if ins.cond is None:
             return None
-        return {"const": ins.cond[0], "cvars": list(ins.cond[1]), "text": ins.guard}
+        return ins.cond.json()
 
     def guard_at(self, ins, grp, path) -> float:
         """When the op at `path` may start: its guard resolved in the archive and delivered.
@@ -484,14 +507,16 @@ class City:
             return 0.0
         if not self.archive:
             raise CityError("this design has no classical memory, so no guard can be resolved")
-        const, names = ins.cond
+        names = ins.cond.names
         missing = [n for n in names if n not in self.cvar_time]
         if missing:
             raise CityError(f"the guard reads {missing[0]}, which nothing has measured yet")
         if ins.index not in self.resolved:
             t_ready = max([self.decoded_by(n, "the guard") for n in names] or [0.0])
             _, t_end, row = self.classical(self.archive, "resolve", t_ready, ins.index, grp)
-            expr = ZERO if not const else ONE
+            # the outcomes the condition reads, as the archive holds them (a conjunction's
+            # value is not a parity: this names the outcomes, the sign-off evaluates it)
+            expr = ZERO if not (len(ins.cond.parities) == 1 and ins.cond.parities[0][0]) else ONE
             for n in names:
                 expr = xor(expr, self.cvar_value[n])
             self.frame_row(t_end, None, "guard", f"guard ({ins.guard}) = {expr_text(expr)}",
@@ -546,6 +571,8 @@ class City:
         ax, az = self.frame(block)
         if conj == "S":
             az = xor(az, ax)
+        elif conj == "SX":
+            ax = xor(ax, az)
         for part, other in (copy or {}).items():           # a CNOT copies the other's frame
             oax, oaz = self.frame(other)
             if part == "ax":
@@ -565,17 +592,19 @@ class City:
         return t_end
 
     def certain(self, block, what: str) -> None:
-        """Refuse to use a frame that is only known once a branch is taken.
+        """Note a frame that is only known once a branch is taken.
 
         A guarded frame update makes the block's frame depend on a bit measured while the
-        machine runs; anything that has to *read* the frame -- correcting an outcome,
-        propagating it through a CNOT -- would then be branch-dependent too, which this
-        scheduler does not express.  Say so rather than quietly pick one branch."""
+        machine runs; an outcome read through it -- one a guard then reads -- is corrected
+        by the archive at run time, by a frame that is a product of measured bits, not a
+        parity.  The archive computes it (it is a classical memory and processor); this
+        scheduler's own expressions are the frame's unconditional part.  Every such use is
+        listed in the GIR's `branch_frames`, and the flat sign-off, which folds frames as
+        parities, says it cannot follow them rather than check something else
+        (docs/ARCHITECTURE.md §6: such programs are checked compositionally)."""
         if self.pf_guarded.get(block):
-            raise CityError(
-                f"{what} on {block} needs its Pauli frame, but a conditional correction "
-                f"({self.pf_guarded[block][-1].get('text')}) left that frame depending on a "
-                f"measurement; put the conditional operation after this one")
+            self.branch_frames.append({"block": block, "what": what,
+                                       "after": self.pf_guarded[block][-1].get("text")})
 
     # -- rows -----------------------------------------------------------------------------
 
@@ -781,9 +810,17 @@ class City:
                 # until it checks out, and free after
                 self.cal[Z].iv.remove(lease)
                 bundle.lease = None
-            O = self.leaf[Z].master.ops["check_out"]
+            out_op = "release" if self.family(Z) == "memory" else "check_out"
+            O = self.leaf[Z].master.ops[out_op]
             names = O.transfer("out", "out").ions
-            s, outs, _ = self.op(Z, "check_out", {}, t_min, ins, grp,
+            if self.parallel and self.family(dst[0]) not in ("zone", "memory"):
+                # just in time: a block resting where it is corrected leaves no earlier than
+                # the place it goes to can take it, less the trip -- waiting on a road, it
+                # would be corrected by nobody
+                trip_us = self._distance((Z, "out"), dst)
+                busy = self.cal[dst[0]].end if dst[0] not in self.junction_paths else 0.0
+                t_min = max(t_min, busy - trip_us - O.duration_us)
+            s, outs, _ = self.op(Z, out_op, {}, max(t_min, self.mem_last.pop(Z, 0.0)), ins, grp,
                                  resting=dict(zip(names, bundle.gids)))
             if lease is not None:
                 self.cal[Z].reserve(lease[0], s)
@@ -796,11 +833,20 @@ class City:
         return bundle.gids, arr, trip
 
     def park(self, bundle: Bundle, t_min, ins, grp):
+        """Rest a block until its next use: in a free memory if the design has one (it will
+        be corrected while it rests), else in a free logical zone."""
         near = (bundle.leaf, bundle.port)
-        Z = self._choose("zone", _ANY, near=near,
+        mems = [p for p, h in self.zone_holder.items()
+                if h is None and self.family(p) == "memory"]
+        kind = "memory" if mems else "zone"
+        Z = self._choose(kind, _ANY, near=near, ready=t_min,
                          free=lambda p: self.zone_holder[p] is None)
+        in_op = "store" if kind == "memory" else "check_in"
         gids, arr, trip = self.bring(bundle, (Z, "in"), t_min, ins, grp)
-        s, _, row = self.op(Z, "check_in", {"in": (gids, arr, trip)}, t_min, ins, grp)
+        s, _, row = self.op(Z, in_op, {"in": (gids, arr, trip)}, t_min, ins, grp)
+        if kind == "memory":
+            self.mem_last[Z] = row[2]
+            self.report(Z, in_op, row, ins, grp, blocks=[bundle.name])
         bundle.leaf, bundle.port, bundle.deps = Z, "in", []
         bundle.resting = True
         self.zone_holder[Z] = bundle.name
@@ -829,7 +875,7 @@ class City:
         return D, gids, deps
 
     #: the instructions a guard can gate: a place that can be told (`ctl`), or the archive
-    GUARDABLE = ("cx", "zz", "xx", "read", "s", "x", "y", "z")
+    GUARDABLE = ("cx", "zz", "xx", "read", "s", "sx", "x", "y", "z")
 
     def instruction(self, ins: Instr):
         grp = f"i{ins.index}"
@@ -837,6 +883,8 @@ class City:
         # acts on are free; everything else is a resource, and its calendar says when.
         t0 = self.t_now if not self.parallel else max(
             [self.block_free.get(b, 0.0) for b in ins.blocks if ins.kind != "decode"] or [0.0])
+        if ins.not_before is not None:
+            t0 = max(t0, ins.not_before)
         before = len(self.events)
         before_c, before_m, before_f = len(self.carries), len(self.messages), len(self.frames)
         kind = ins.kind
@@ -846,7 +894,7 @@ class City:
                             f"or in the archive")
         produced: dict[str, Bundle] = {}
         if kind == "prep":
-            P = self._choose("prep", ins)
+            P = self._choose("prep", ins, ready=t0)
             D, gids, deps = self._load(9, (P, "in"), t0, ins.index, grp)
             arr, trip = self.trip(gids, (D, "out"), deps, (P, "in"), t0, ins.index, grp)
             s, outs, row = self.op(P, ins.op, {"in": (gids, arr, trip)}, t0, ins.index, grp)
@@ -856,8 +904,8 @@ class City:
             self.pf[ins.blocks[0]] = (ZERO, ZERO)
             self.report(P, ins.op, row, ins.index, grp, blocks=[ins.blocks[0]])
         elif kind == "inject":
-            F = self._choose("factory", ins)
-            I = self._choose("injection", ins)
+            F = self._choose("factory", ins, ready=t0)
+            I = self._choose("injection", ins, ready=t0, near=(F, "out"), port="magic")
             D1, g1, d1 = self._load(1, (F, "in"), t0, ins.index, grp)
             arr, trip = self.trip(g1, (D1, "out"), d1, (F, "in"), t0, ins.index, grp)
             s, outs, _ = self.op(F, "produce", {"in": (g1, arr, trip)}, t0, ins.index, grp)
@@ -883,14 +931,27 @@ class City:
                 self.t_now = max(self.t_now, end)
                 self.block_free[q] = max(self.block_free.get(q, 0.0), end)
                 return
-            C = self._choose("se", ins, near=(b.leaf, b.port))
+            if b.resting and self.family(b.leaf) == "memory":
+                self.refresh_in_place(ins, grp, t0, q, b)
+                return
+            if (not any(self.family(p) == "se" for p in self.leaf)
+                    and any(h is None and self.family(p) == "memory"
+                            for p, h in self.zone_holder.items())):
+                # no clinic, but a free memory: storing a block there is a syndrome round,
+                # and it rests there, corrected, until its next use
+                end = self.park(b, t0, ins.index, grp)
+                self.block_free[q] = max(self.block_free.get(q, 0.0), end)
+                return
+            C = self._choose("se", ins, near=(b.leaf, b.port), ready=t0)
             gids, arr, trip = self.bring(b, (C, "in"), t0, ins.index, grp)
             s, outs, row = self.op(C, ins.op, {"in": (gids, arr, trip)}, t0, ins.index, grp)
             produced[q] = Bundle(q, outs["out"][0], C, "out", outs["out"][1])
             self.report(C, ins.op, row, ins.index, grp, blocks=[q])
         elif kind == "cx":
             c, t = ins.blocks
-            W = self._choose("operation", ins)
+            W = self._choose("operation", ins, ready=t0,
+                             also=[((self.blocks[b].leaf, self.blocks[b].port), d)
+                                   for b, d in zip(ins.blocks, ("a_in", "b_in"))])
             gd = self.guard_at(ins, grp, W)
             gc, ac, tc = self.bring(self.blocks[c], (W, "a_in"), t0, ins.index, grp)
             gt, at_, tt = self.bring(self.blocks[t], (W, "b_in"), t0, ins.index, grp)
@@ -914,7 +975,9 @@ class City:
                                  why="CNOT propagation: Z̄_t → Z̄_c Z̄_t")
         elif kind in ("zz", "xx"):
             a, b_ = ins.blocks
-            B = self._choose("surgery", ins)
+            B = self._choose("surgery", ins, ready=t0,
+                             also=[((self.blocks[b].leaf, self.blocks[b].port), d)
+                                   for b, d in zip(ins.blocks, ("in_a", "in_b"))])
             gd = self.guard_at(ins, grp, B)
             ga, aa, ta = self.bring(self.blocks[a], (B, "in_a"), t0, ins.index, grp)
             gb, ab, tb = self.bring(self.blocks[b_], (B, "in_b"), t0, ins.index, grp)
@@ -931,7 +994,8 @@ class City:
                         outcome=(f"{m}̄_A{m}̄_B measured", flip, ins.cvar))
         elif kind == "read":
             q = ins.blocks[0]
-            R = self._choose("readout", ins, near=(self.blocks[q].leaf, self.blocks[q].port))
+            R = self._choose("readout", ins, near=(self.blocks[q].leaf, self.blocks[q].port),
+                             ready=t0)
             gd = self.guard_at(ins, grp, R)
             gids, arr, trip = self.bring(self.blocks[q], (R, "in"), t0, ins.index, grp)
             s, outs, row = self.op(R, ins.op, {"in": (gids, arr, trip)}, max(t0, gd),
@@ -947,66 +1011,8 @@ class City:
             self.op(D, "dump.9", {"in": (used, arr, trip)}, t0, ins.index, grp)
             del self.blocks[q]
             self.block_info[q]["read"] = row[1]
-        elif kind == "s":
-            # The logical S̄ gadget: a |Ȳ⟩ block is prepared at the pharmacy, measured
-            # against the data block by Z̄Z̄ lattice surgery, and read out in X.  The result
-            # is S̄ on the data block when the two outcomes agree and S̄† when they do not,
-            # so the correction is Z̄ with condition m_zz ⊕ m_x -- a Pauli, which the archive
-            # keeps as a frame and no ion ever feels (Litinski 2019, "Game of Surface Codes").
-            q = ins.blocks[0]
-            I = self._choose("injection", ins)
-            gd = self.guard_at(ins, grp, I)
-            t0 = max(t0, gd)
-            D1, g1, d1 = self._load(1, (I, "magic"), t0, ins.index, grp)
-            marr, mtrip = self.trip(g1, (D1, "out"), d1, (I, "magic"), t0, ins.index, grp)
-            D2, g8, d8 = self._load(8, (I, "in"), t0, ins.index, grp)
-            farr, ftrip = self.trip(g8, (D2, "out"), d8, (I, "in"), t0, ins.index, grp)
-            s, outs, row = self.op(I, "inject.Y", {"magic": (g1, marr, mtrip),
-                                                   "in": (g8, farr, ftrip)},
-                                   t0, ins.index, grp, guard=self.guard_row(ins, gd))
-            y = f"{q}.Y{ins.index}"
-            self.merged_into[y] = q
-            ybundle = Bundle(y, outs["out"][0], I, "out", outs["out"][1])
-            self.block_info[y] = {"ions": outs["out"][0], "born": row[1], "born_at": I,
-                                  "code": "surface_d3", "n": 9, "k": 1,
-                                  "resource": "|Ȳ⟩ for the S̄ gadget", "consumed_by": q}
-            self.pf[y] = (ZERO, ZERO)
-            self.report(I, "inject.Y", row, ins.index, grp, blocks=[y])
-            B = self._choose("surgery", _ANY, near=(ybundle.leaf, ybundle.port))
-            gdB = self.guard_at(ins, grp, B)
-            ga, aa, ta = self.bring(self.blocks[q], (B, "in_a"), t0, ins.index, grp)
-            gb, ab, tb = self.bring(ybundle, (B, "in_b"), t0, ins.index, grp)
-            s, outs, row = self.op(B, "zz", {"in_a": (ga, aa, ta), "in_b": (gb, ab, tb)},
-                                   max(t0, gdB), ins.index, grp,
-                                   guard=self.guard_row(ins, gdB))
-            terms = [(q, 0, 1), (y, 0, 1)]
-            flip = self.flip_for(terms)
-            m_zz = self.report(B, "zz", row, ins.index, grp, blocks=[q, y], correct=terms,
-                               outcome=("Z̄_AZ̄_B measured", flip, None))
-            produced[q] = Bundle(q, outs["out_a"][0], B, "out_a", outs["out_a"][1])
-            ybundle = Bundle(y, outs["out_b"][0], B, "out_b", outs["out_b"][1])
-            R = self._choose("readout", _ANY, near=(B, "out_b"))
-            gdR = self.guard_at(ins, grp, R)
-            gids, arr, trip = self.bring(ybundle, (R, "in"), t0, ins.index, grp)
-            s, outs, row = self.op(R, "read.X", {"in": (gids, arr, trip)}, max(t0, gdR),
-                                   ins.index, grp, guard=self.guard_row(ins, gdR))
-            m_x = self.report(R, "read.X", row, ins.index, grp, blocks=[y],
-                              correct=[(y, 1, 0)],
-                              outcome=("X̄ measured", self.flip_for([(y, 1, 0)]), None))
-            self.block_info[y]["read"] = row[1]
-            self.pf.pop(y, None)
-            used, deps = outs["out"]
-            Dp = self._choose("depot", _ANY, near=(R, "out"), port="in")
-            uarr, utrip = self.trip(used, (R, "out"), deps, (Dp, "in"), t0, ins.index, grp)
-            self.op(Dp, "dump.9", {"in": (used, uarr, utrip)}, t0, ins.index, grp)
-            cond = xor(m_zz or ZERO, m_x or ZERO)
-            end = max([e[2] for e in self.events[before:]] or [t0])
-            # S̄ conjugates the frame (X̄ → Ȳ, so az takes ax) and the correction adds Z̄
-            self.write_frame(q, end, ins=ins.index, grp=grp, guard=self.cond_json(ins),
-                             conj="S", daz=cond,
-                             text=f"S̄ on {q}: Z̄ if the two outcomes disagree",
-                             why="the gadget applies S̄ up to Z̄^(m_zz ⊕ m_x); the frame "
-                                 "also conjugates through S̄ (X̄ → Ȳ)")
+        elif kind in ("s", "sx"):
+            self.pi4(ins, grp, t0, before, produced)
         elif kind == "decode":
             # no ion moves: the syndromes cross their wires and the decoder works
             self.decode(ins, grp, t0)
@@ -1020,7 +1026,7 @@ class City:
                 # a *conditional* Pauli: no ion is involved, so there is nothing to gate at
                 # a place -- the archive folds the Pauli into the frame in the branches
                 # where the condition holds, once the outcomes it reads are recorded
-                t0 = max(t0, max([self.decoded_by(n, "the guard") for n in ins.cond[1]]
+                t0 = max(t0, max([self.decoded_by(n, "the guard") for n in ins.cond.names]
                                  or [0.0]))
             self.write_frame(q, t0, ins=ins.index, grp=grp, dax=dax, daz=daz,
                              guard=self.cond_json(ins),
@@ -1058,6 +1064,121 @@ class City:
             done = max(mine + [t0])
             for q in list(ins.blocks) + list(produced):
                 self.block_free[q] = max(self.block_free.get(q, 0.0), done)
+
+    def refresh_in_place(self, ins: Instr, grp: str, t0: float, q: str, b: Bundle) -> None:
+        """One syndrome round on a block resting in a memory: no trip, no other place.  The
+        memory is the block's alone while it rests (its lease), so the round runs whenever
+        the program asks for it; its syndrome goes to the decoder at once, the way a memory
+        keeps decoding what it measures."""
+        M = b.leaf
+        O = self.leaf[M].master.ops["refresh"]
+        s = max(t0, self.mem_last.get(M, 0.0))
+        names = self.leaf[M].master.ops["release"].transfer("out", "out").ions
+        visitors = [[n, g] for n, g in self.leaf[M].ids.items()] + \
+                   [[n, g] for n, g in zip(names, b.gids)]
+        row = self.event(M, "refresh", s, s + O.duration_us, ins.index, grp, bind=visitors)
+        self.mem_last[M] = row[2]
+        self.report(M, "refresh", row, ins.index, grp, blocks=[q])
+        w = self.windows[-1] if self.windows and self.windows[-1]["event"] == row[0] else None
+        if w is not None:
+            self._decode_window(w, ins.index, grp, t0)
+        self.block_free[q] = max(self.block_free.get(q, 0.0), row[2])
+
+    def _decode_window(self, w: dict, ins: int, grp: str, t0: float) -> None:
+        """Send one window to the decoder now, and write its correction into the archive."""
+        t_send = max(t0, w["measured_us"])
+        t1, _ = self.message((w["place"], "syn"), t_send, bits=w["bits"], signal="syndrome",
+                             ins=ins, grp=grp, event=w["event"],
+                             label=f"{w['bits']} check outcomes from {w['op']}")
+        _, t_dec, dec = self.classical(self.decoder, "decode", t1, ins, grp)
+        t2, _ = self.message((self.decoder, "frame"), t_dec, bits=2, signal="frame",
+                             ins=ins, grp=grp, label="Pauli-frame update", event=dec[0])
+        _, t_up, up = self.classical(self.archive, "update", t2, ins, grp)
+        for blk in w["blocks"]:
+            self.frame_row(t_up, blk, "window", f"window correction for {blk}", ins=ins,
+                           event=up[0],
+                           why=f"the decoder's update for the round {w['op']} measured; the "
+                               f"gadget's own report declares it as a frame, and the sign-off "
+                               f"allows exactly that")
+        w.update(decoded_by=ins, sent_us=round(t_send, 3), decode_event=dec[0],
+                 decoded_us=round(t_dec, 3), written_us=round(t_up, 3))
+
+    def pi4(self, ins: Instr, grp: str, t0: float, before: int, produced: dict) -> None:
+        """A π/4 rotation by consuming a |Ȳ⟩ block (Litinski 2019, "Game of Surface Codes"):
+        `s` measures Z̄Z̄ against it and reads it in X; `sx` measures X̄X̄ and reads it in Z.
+
+        S̄ gadget: S̄ when the two outcomes agree, S̄† = Z̄S̄ when they do not, so the
+        correction is Z̄^(m_zz ⊕ m_x); the frame conjugates through S̄ (X̄ → Ȳ: az ^= ax).
+        √X̄ gadget: √X̄ when the outcomes DISAGREE, √X̄† = X̄√X̄ when they agree, so the
+        correction is X̄^(1 ⊕ m_xx ⊕ m_z); the frame conjugates through √X̄ (Z̄ → Ȳ: ax ^= az).
+        Both tables are the contract checker's (`qccd.gadget.logic.contract`), on the |Ȳ⟩ the
+        pharmacy is verified to prepare.  Corrections are Paulis: the archive keeps them as
+        frames and no ion ever feels them."""
+        kind = ins.kind
+        meas, read_basis = ("zz", "X") if kind == "s" else ("xx", "Z")
+        P = "Z" if kind == "s" else "X"
+        q = ins.blocks[0]
+        I = self._choose("injection", ins, ready=t0)
+        gd = self.guard_at(ins, grp, I)
+        t0 = max(t0, gd)
+        D1, g1, d1 = self._load(1, (I, "magic"), t0, ins.index, grp)
+        marr, mtrip = self.trip(g1, (D1, "out"), d1, (I, "magic"), t0, ins.index, grp)
+        D2, g8, d8 = self._load(8, (I, "in"), t0, ins.index, grp)
+        farr, ftrip = self.trip(g8, (D2, "out"), d8, (I, "in"), t0, ins.index, grp)
+        s, outs, row = self.op(I, "inject.Y", {"magic": (g1, marr, mtrip),
+                                               "in": (g8, farr, ftrip)},
+                               t0, ins.index, grp, guard=self.guard_row(ins, gd))
+        y = f"{q}.Y{ins.index}"
+        self.merged_into[y] = q
+        ybundle = Bundle(y, outs["out"][0], I, "out", outs["out"][1])
+        self.block_info[y] = {"ions": outs["out"][0], "born": row[1], "born_at": I,
+                              "code": "surface_d3", "n": 9, "k": 1,
+                              "resource": f"|Ȳ⟩ for the {'S̄' if kind == 's' else '√X̄'} gadget",
+                              "consumed_by": q}
+        self.pf[y] = (ZERO, ZERO)
+        self.report(I, "inject.Y", row, ins.index, grp, blocks=[y])
+        B = self._choose("surgery", _ANY, near=(ybundle.leaf, ybundle.port), port="in_b",
+                         ready=row[2], also=[((self.blocks[q].leaf, self.blocks[q].port), "in_a")])
+        gdB = self.guard_at(ins, grp, B)
+        ga, aa, ta = self.bring(self.blocks[q], (B, "in_a"), t0, ins.index, grp)
+        gb, ab, tb = self.bring(ybundle, (B, "in_b"), t0, ins.index, grp)
+        s, outs, row = self.op(B, meas, {"in_a": (ga, aa, ta), "in_b": (gb, ab, tb)},
+                               max(t0, gdB), ins.index, grp, guard=self.guard_row(ins, gdB))
+        qx, qz = (0, 1) if P == "Z" else (1, 0)
+        terms = [(q, qx, qz), (y, qx, qz)]
+        flip = self.flip_for(terms)
+        m_pp = self.report(B, meas, row, ins.index, grp, blocks=[q, y], correct=terms,
+                           outcome=(f"{P}̄_A{P}̄_B measured", flip, None))
+        produced[q] = Bundle(q, outs["out_a"][0], B, "out_a", outs["out_a"][1])
+        ybundle = Bundle(y, outs["out_b"][0], B, "out_b", outs["out_b"][1])
+        R = self._choose("readout", _ANY, near=(B, "out_b"), ready=row[2])
+        gdR = self.guard_at(ins, grp, R)
+        gids, arr, trip = self.bring(ybundle, (R, "in"), t0, ins.index, grp)
+        s, outs, row = self.op(R, f"read.{read_basis}", {"in": (gids, arr, trip)},
+                               max(t0, gdR), ins.index, grp, guard=self.guard_row(ins, gdR))
+        rt = [(y, 1, 0)] if read_basis == "X" else [(y, 0, 1)]
+        m_r = self.report(R, f"read.{read_basis}", row, ins.index, grp, blocks=[y], correct=rt,
+                          outcome=(f"{read_basis}̄ measured", self.flip_for(rt), None))
+        self.block_info[y]["read"] = row[1]
+        self.pf.pop(y, None)
+        used, deps = outs["out"]
+        Dp = self._choose("depot", _ANY, near=(R, "out"), port="in")
+        uarr, utrip = self.trip(used, (R, "out"), deps, (Dp, "in"), t0, ins.index, grp)
+        self.op(Dp, "dump.9", {"in": (used, uarr, utrip)}, t0, ins.index, grp)
+        cond = xor(m_pp or ZERO, m_r or ZERO)
+        end = max([e[2] for e in self.events[before:]] or [t0])
+        if kind == "s":
+            self.write_frame(q, end, ins=ins.index, grp=grp, guard=self.cond_json(ins),
+                             conj="S", daz=cond,
+                             text=f"S̄ on {q}: Z̄ if the two outcomes disagree",
+                             why="the gadget applies S̄ up to Z̄^(m_zz ⊕ m_x); the frame "
+                                 "also conjugates through S̄ (X̄ → Ȳ)")
+        else:
+            self.write_frame(q, end, ins=ins.index, grp=grp, guard=self.cond_json(ins),
+                             conj="SX", dax=xor(cond, ONE),
+                             text=f"√X̄ on {q}: X̄ if the two outcomes agree",
+                             why="the gadget applies √X̄ up to X̄^(1 ⊕ m_xx ⊕ m_z); the frame "
+                                 "also conjugates through √X̄ (Z̄ → Ȳ)")
 
     # -- output -----------------------------------------------------------------------------
 
@@ -1140,6 +1261,7 @@ class City:
             "control": {"decoder": self.decoder, "archive": self.archive,
                         "latency_us": dict(LATENCY)},
             "refused": self.refused,
+            "branch_frames": self.branch_frames,
             "outcomes": outcomes,
             "stock": dict(self.stock),
             "channels": self.leaves.channel_references(),

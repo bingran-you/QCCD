@@ -288,6 +288,7 @@ landing page and the SVG renderer.
 | Logical Preparation | school | house | `prep_d3` | `prep.Z`, `prep.X` |
 | Syndrome Extraction | clinic | octagon | `se_d3` | `se.1`, `se.3` |
 | Logical Zone | hotel | vault | `zone_d3` | `check_in`, `check_out` |
+| Logical Memory | ward | vault | `mem_d3` | `store`, `refresh`, `release`: a block corrected while it rests (ARCHITECTURE.md §7) |
 | Logical Operation | workshop | hexagon | `tcx_d3` | `cx` |
 | Lattice Surgery | bridge | arched bridge | `ls_d3` | `zz`, `xx` |
 | Logical Readout | post office | stadium | `read_d3` | `read.Z`, `read.X` |
@@ -411,7 +412,9 @@ decoders).
 | `s_gate` | 1 | 88 | 524.6 ms | 74 ions, 185 records | m = 1 (two S̄ gadgets make a Z̄) | injection: 1 by design |
 | `cond_cx` | 3 | 88 | 140.5 ms | 2 branches | `m=0`: u = 0 · `m=1`: u ⊕ v = 0 | ≥ 3 per branch |
 | `teleport_fix` | 3 | 88 | 542.7 ms | 2 branches | r = 0 in **both** branches | ≥ 3 per branch |
-| `t_gate` | 2 | 88 | 703.5 ms | 4 branches | X̄[t] → X̄[q0] / Ȳ[q0]; Z̄[t] → Z̄[q0], exactly | injection: 1 by design |
+| `t_gate` | 2 | 88 | 706.8 ms | 4 branches | X̄[t] → X̄[q0] / Ȳ[q0]; Z̄[t] → Z̄[q0], exactly | injection: 1 by design |
+
+(Makespans are the sequential policy's; ARCHITECTURE.md §7 has the parallel one. `t_gate` now applies X̄ to the magic block first: the factory makes T†|+⟩, and without it the program was never T -- the contract checker found it, ARCHITECTURE.md §6.)
 
 All pass G1–G11; scheduling, checks and sign-off take under 0.3 s each warm (a guarded
 program takes one sign-off pass per branch). The checks fail

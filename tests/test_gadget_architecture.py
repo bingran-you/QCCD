@@ -31,12 +31,14 @@ from qccd.ruleset.machine import machine_execution
 ROOT = Path(__file__).resolve().parents[1]
 ALGS = ROOT / "examples" / "gadgets" / "algorithms"
 TOWN = ROOT / "examples" / "gadgets" / "floorplans" / "town.floor"
-EXAMPLES = sorted(ALGS.glob("*.alg"))
+#: the examples that run on the town (Shor names its own floorplan: test_gadget_shor.py)
+EXAMPLES = sorted(f for f in ALGS.glob("*.alg")
+                  if "\nfloorplan " not in "\n" + f.read_text(encoding="utf-8"))
 
 #: GADGETS.md §9.3's makespans, from the sequential policy that measured them
 SEQUENTIAL_MS = {"bell_cnot": 173.9, "bell_surgery": 294.2, "ghz3": 190.0, "teleport": 566.8,
                  "magic_state": 290.1, "magic_teleport": 791.1, "frames": 110.3,
-                 "s_gate": 524.6, "cond_cx": 140.5, "teleport_fix": 542.7, "t_gate": 703.5}
+                 "s_gate": 524.6, "cond_cx": 140.5, "teleport_fix": 542.7, "t_gate": 706.8}
 
 
 @pytest.fixture(scope="module")

@@ -77,9 +77,29 @@ def _cmd_algorithm(a) -> int:
     for f in so.get("flows", []):
         print(f"  {'ok ' if f['ok'] else 'BAD'} {f['flow']}")
     d = so.get("distance", {})
-    print(f"  distance: {d.get('skipped') or ('>= 3' if d.get('passed') else d)}")
+    if so.get("skipped"):
+        print(f"  flat sign-off: not run -- {so['skipped']}")
+    else:
+        print(f"  distance: {d.get('skipped') or ('>= 3' if d.get('passed') else d)}")
+    cs = res["compositional"]
+    print(f"  compositional sign-off: {'passed' if cs['passed'] else 'NOT passed'}")
+    for part, row in cs["parts"].items():
+        extra = ""
+        if part == "gates":
+            extra = ", ".join(f"{g['gate']}={g['contract']} ({len(g.get('branches', []))} branch"
+                              f"{'es' if len(g.get('branches', [])) != 1 else ''})"
+                              for g in row["rows"])
+        elif part == "semantics":
+            extra = "; ".join(f"{' '.join(f'{k}={v}' for k, v in r['outcomes'].items())}: {r['p']:g}"
+                              for r in row["distribution"][:8])
+        elif part == "composition":
+            extra = f"{len(row['held'])} machine rules hold" + (f", FAIL {row['failed']}" if row["failed"] else "")
+        print(f"    {'ok ' if row['passed'] else 'BAD'} {part}{': ' + extra if extra else ''}")
+    if st.get("refreshes"):
+        print(f"  {st['refreshes']} syndrome round(s) added so no block waits past its budget")
     print(f"  wrote {Path(out) / 'index.html'}")
-    return 0 if so.get("passed") and not res["checks"]["failed"] and not rl["failed"] else 1
+    signed = so.get("passed") or res["compositional"]["passed"]
+    return 0 if signed and not res["checks"]["failed"] and not rl["failed"] else 1
 
 
 def _cmd_floorplan(a) -> int:
