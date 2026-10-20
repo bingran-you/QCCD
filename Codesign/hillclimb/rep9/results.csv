@@ -1,0 +1,4 @@
+rank,T_jones_ms,T_jones_ms_at_search,eligible,audit_ok,dacs,traps,junctions,planar,agent,board_id,file,pick,note
+1,1.305,1.305,True,True,34,20,0,True,a01,1792369913-a01-fffd85a7,designs/01-a01-fffd85a7.arch.json,,"a01: racetrack ring(10,2,0), gate trap cap2 every 2nd site (no spam), cap-1 spam sites between: readouts deferred to one measure instruction"
+2,1.305,1.305,True,True,34,18,0,True,a02,1792370091-a02-e1d135de,designs/02-a02-e1d135de.arch.json,,"a02: race-track pass, ring(9,2,0) loop of 18 sites alternating gate-only (Go, cap2, no readout) and readout-only (Mo, cap1) zones; racetrack.ml defers readouts to one batched measure"
+3,15.18,2.06,True,True,34,18,8,False,a02,1792369849-a02-883f375b,designs/03-a02-883f375b.arch.json,,"a02: rotate regime, ring(5,2,10) with docks only at rails 1..8 so ancilla i docks beside data i+1; batches at offset 0 and +1 (one 100us rotation). Matches the 2.06 estimate"
