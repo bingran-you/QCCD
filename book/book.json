@@ -9,7 +9,7 @@
         {
           "id": "E1",
           "title": "Devices are graphs",
-          "status": "draft",
+          "status": "live",
           "slug": "E1-devices",
           "source": "chapters/E1-devices.lean",
           "ids": "book:E1"
@@ -17,7 +17,7 @@
         {
           "id": "E2",
           "title": "Programmes and replay",
-          "status": "draft",
+          "status": "live",
           "slug": "E2-replay",
           "source": "chapters/E2-replay.lean",
           "ids": "book:E2"
@@ -25,7 +25,7 @@
         {
           "id": "E3",
           "title": "Rules as propositions",
-          "status": "draft",
+          "status": "live",
           "slug": "E3-rules",
           "source": "chapters/E3-rules.lean",
           "ids": "book:E3"
@@ -33,7 +33,7 @@
         {
           "id": "E4",
           "title": "Rule sets",
-          "status": "draft",
+          "status": "live",
           "slug": "E4-rule-sets",
           "source": "chapters/E4-rule-sets.lean",
           "ids": "book:E4"
@@ -57,7 +57,7 @@
         {
           "id": "F2",
           "title": "The specification, condition by condition",
-          "status": "draft",
+          "status": "live",
           "slug": "F2-specification",
           "source": "chapters/F2-specification.lean",
           "ids": "book:F2"
@@ -65,7 +65,7 @@
         {
           "id": "F3",
           "title": "Decision procedures",
-          "status": "draft",
+          "status": "live",
           "slug": "F3-decision",
           "source": "chapters/F3-decision.lean",
           "ids": "book:F3"
@@ -73,7 +73,7 @@
         {
           "id": "F4",
           "title": "Soundness and completeness",
-          "status": "draft",
+          "status": "live",
           "slug": "F4-soundness",
           "source": "chapters/F4-soundness.lean",
           "ids": "book:F4"
@@ -81,7 +81,7 @@
         {
           "id": "F5",
           "title": "The mutation lab",
-          "status": "draft",
+          "status": "live",
           "slug": "F5-mutations",
           "source": "chapters/F5-mutations.lean",
           "ids": "book:F5"
@@ -89,7 +89,7 @@
         {
           "id": "F6",
           "title": "What you trust",
-          "status": "draft",
+          "status": "live",
           "slug": "F6-trust",
           "source": "chapters/F6-trust.lean",
           "ids": "book:F6"
@@ -167,7 +167,7 @@
         {
           "id": "H1",
           "title": "The Compilation page",
-          "status": "draft",
+          "status": "live",
           "slug": "H1-compilation-page",
           "source": "chapters/H1-compilation-page.lean",
           "ids": "book:H1"
@@ -175,7 +175,7 @@
         {
           "id": "H2",
           "title": "The boards",
-          "status": "draft",
+          "status": "live",
           "slug": "H2-boards",
           "source": "chapters/H2-boards.lean",
           "ids": "book:H2"
@@ -183,7 +183,7 @@
         {
           "id": "H3",
           "title": "The official grader",
-          "status": "draft",
+          "status": "live",
           "slug": "H3-official-grader",
           "source": "chapters/H3-official-grader.lean",
           "ids": "book:H3"
@@ -191,7 +191,7 @@
         {
           "id": "H4",
           "title": "Every verdict, reproduced",
-          "status": "draft",
+          "status": "live",
           "slug": "H4-reproduced",
           "source": "chapters/H4-reproduced.lean",
           "ids": "book:H4"

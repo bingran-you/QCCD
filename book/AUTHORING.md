@@ -94,7 +94,17 @@ checker's Lean 4.29. A lesson must pass both. Practical rules:
 
 * prefer tactics that are stable across versions (`decide +kernel`, `simp`, `omega`, `induction`,
   `cases`, `rfl`) over naming core library lemmas, whose names drift;
-* plain `decide` gets stuck on `String` comparisons: use `decide +kernel`;
+* plain `decide` gets stuck on the checker's replay (its well-founded `merge`): use
+  `decide +kernel`;
+* in the browser the checker's syntax is not exposed to the kernel: `Input.ofJson` and the
+  derived equality on `Op`, `Move`, `Rot`, `GateW` do not unfold there. Prove membership in a
+  certificate's lists with `simp [name]` (as F1 does), not `decide +kernel`, and run
+  `Input.ofJson` with `#eval` only;
+* the figure helper is compiled after the lesson under `open Lean QCCDC.Cert`: a lesson must not
+  define top-level `look`, `posAt`, `ionOf`, `check` or `Input` of its own (`check_lesson.py`
+  runs the helper too, and catches it);
+* an exercise may use an earlier exercise; while that one is open the page shows this one as
+  "open · uses <name>";
 * the browser's interpreter has about 550 frames of stack: no deep non-tail recursion in an
   `#eval`; keep `#eval` output short;
 * the whole lesson should check in a few seconds in the browser: keep kernel computations small

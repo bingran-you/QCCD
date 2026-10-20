@@ -302,15 +302,19 @@ def _s(x) -> str:
 
 def lean_input(ident: str, d: dict) -> str:
     """A qcheck input document as the Lean value `Input.ofJson` would read from it: the same
-    fields in the same order, so a theorem about it is a theorem about the published file."""
-    qmap = sorted(((int(k), v) for k, v in d.get("map", {}).items()), key=lambda kv: kv[0])
+    fields in the same order, so a theorem about it is a theorem about the published file.
+    `Input.ofJson` reads a JSON object's members in its keys' text order (`"10"` before `"2"`),
+    so the map, the starting places and the loops are listed that way here too."""
+    qmap = [(int(k), v) for k, v in sorted(d.get("map", {}).items()) if k.isdigit()]
+    init = sorted(d.get("init", {}).items())
+    loops = sorted((d.get("loops") or {}).items())
     strs = lambda xs: "[" + ", ".join(_s(x) for x in xs) + "]"
     nats = lambda xs: "[" + ", ".join(str(int(x)) for x in xs) + "]"
     return "\n".join([
         f"def {ident} : Input :=",
         f"  {{ circuit := {_s(d.get('circuit', '?'))}, arch := {_s(d.get('arch', '?'))}, nQubits := {int(d.get('n_qubits', 0))},",
         "    qmap := [" + ", ".join(f"({q}, {_s(i)})" for q, i in qmap) + "],",
-        "    init := [" + ", ".join(f"({_s(k)}, {_s(v)})" for k, v in d.get("init", {}).items()) + "],",
+        "    init := [" + ", ".join(f"({_s(k)}, {_s(v)})" for k, v in init) + "],",
         "    ops := [" + ", ".join(f"⟨{o['i']}, {_s(o['name'])}, {nats(o['qubits'])}⟩" for o in d.get("circuit_ops", [])) + "],",
         "    moves := [" + ", ".join(f"⟨{m['t']}, {_s(m['ion'])}, {_s(m['from'])}, {_s(m['to'])}⟩" for m in d.get("moves", [])) + "],",
         "    rots := [" + ", ".join(f"⟨{r['t']}, {_s(r['loop'])}, {int(r['delta'])}⟩" for r in d.get("rotations", [])) + "],",
@@ -318,7 +322,7 @@ def lean_input(ident: str, d: dict) -> str:
         f"    unrealised := {nats(d.get('unrealised', []))},",
         f"    gateSites := {strs(d.get('gate_sites', []))},",
         "    hops := [" + ", ".join(f"({_s(h['from'])}, {_s(h['to'])})" for h in d.get("hops", [])) + "],",
-        "    loops := [" + ", ".join(f"({_s(k)}, {strs(v)})" for k, v in (d.get("loops") or {}).items()) + "] }",
+        "    loops := [" + ", ".join(f"({_s(k)}, {strs(v)})" for k, v in loops) + "] }",
     ])
 
 
@@ -376,7 +380,20 @@ CERTS_PANEL = ('<div class="certs" id="certs"><div class="act"><button type="but
 
 # ----------------------------------------------------------------------------- pages
 
-def chapter_body(ch: Chapter, part: dict, lesson: dict) -> str:
+def lesson_nav(part: dict, prev: dict | None, nxt: dict | None) -> str:
+    """The foot of a lesson: the lesson before and the lesson after, in the tutorial's order,
+    and the way back to the tutorial's contents."""
+    def link(c: dict | None, cls: str, arrow: str) -> str:
+        if not c:
+            return f'<span class="{cls}"></span>'
+        text = f'{c["id"]} &middot; {html.escape(dash(c["title"]))}'
+        return f'<a class="{cls}" href="{c["slug"]}.html">{arrow if cls == "prev" else ""}{text}{arrow if cls == "next" else ""}</a>'
+    return ('<nav class="lessonnav">' + link(prev, "prev", "&lsaquo; ")
+            + f'<a class="toc" href="../learn/#part-{part["part"]}">Tutorial contents</a>'
+            + link(nxt, "next", " &rsaquo;") + "</nav>")
+
+
+def chapter_body(ch: Chapter, part: dict, lesson: dict, prev: dict | None = None, nxt: dict | None = None) -> str:
     cells, k = [], 0
     for b in ch.blocks:
         if b.kind == "prose":
@@ -420,6 +437,7 @@ def chapter_body(ch: Chapter, part: dict, lesson: dict) -> str:
     bar = ('<div id="leanbar" role="status"><span class="dot"></span><span class="what">Lean is loading'
            '</span><span class="prog"></span><span class="score"></span></div>')
     return (head + bar + '<article id="chapter">' + "\n".join(cells) + "</article>"
+            + lesson_nav(part, prev, nxt)
             + '<aside id="goals" hidden><div class="gh">Goals at the cursor</div><pre></pre></aside>'
             + ENGINE_NOTE
             + f'<script type="application/json" id="bookdata">{script_json(data)}</script>')
@@ -561,29 +579,31 @@ def build(out: Path, packs: Path | None = None, studio: bool = True, drafts: boo
     first = next((pt["part"] for pt in parts if any(l.get("status") == "live" for l in pt["lessons"])), "A")
     (dst / "index.html").write_text(redirect_html(f"../learn/#part-{first}"), encoding="utf-8")
     written.append(dst / "index.html")
-    for part in parts:
-        for c in part["lessons"]:
-            if c.get("status") != "live" and not (drafts and c.get("status") == "draft"):
-                continue
-            if only and c["id"] not in only:
-                continue
-            if c.get("status") == "draft" and not (BOOK / c["source"]).exists():
-                continue                      # a draft nobody has written yet
-            ch = parse_chapter(BOOK / c["source"], c["slug"], c.get("store"), c.get("ids"))
-            if solutions:
-                (dst / "_solutions").mkdir(exist_ok=True)
-                sol = {b.exercise["name"]: b.text for b in ch.blocks if b.exercise}
-                (dst / "_solutions" / f'{c["slug"]}.json').write_text(json.dumps(sol, ensure_ascii=False), encoding="utf-8")
-            body = chapter_body(ch, part, c)
-            page = PAGE.format(title=f'{c["id"]} {html.escape(ch.title)} - QCCD studio', style=STYLE,
-                               extra_css=css, body=body)
-            # the Lean runtime first (it defines window.Book), the figures, then the page
-            page = page.replace("</body>", '<script src="engine/book-runtime.js" defer></script>'
-                                           '<script src="book-progress.js" defer></script>'
-                                           '<script src="book-figure.js" defer></script>'
-                                           '<script src="book-page.js" defer></script></body>')
-            (dst / f'{c["slug"]}.html').write_text(page.replace("__FOOTER__", ""), encoding="utf-8")
-            written.append(dst / f'{c["slug"]}.html')
+
+    def shown(c: dict) -> bool:               # a lesson this build writes a page for
+        return ((c.get("status") == "live" or (drafts and c.get("status") == "draft"))
+                and (BOOK / c.get("source", "-")).exists())
+    # the lessons in the tutorial's order, for each page's previous / next links
+    order = [(part, c) for part in parts for c in part["lessons"] if shown(c)]
+    for k, (part, c) in enumerate(order):
+        if only and c["id"] not in only:
+            continue
+        ch = parse_chapter(BOOK / c["source"], c["slug"], c.get("store"), c.get("ids"))
+        if solutions:
+            (dst / "_solutions").mkdir(exist_ok=True)
+            sol = {b.exercise["name"]: b.text for b in ch.blocks if b.exercise}
+            (dst / "_solutions" / f'{c["slug"]}.json').write_text(json.dumps(sol, ensure_ascii=False), encoding="utf-8")
+        body = chapter_body(ch, part, c, order[k - 1][1] if k else None,
+                            order[k + 1][1] if k + 1 < len(order) else None)
+        page = PAGE.format(title=f'{c["id"]} {html.escape(ch.title)} - QCCD studio', style=STYLE,
+                           extra_css=css, body=body)
+        # the Lean runtime first (it defines window.Book), the figures, then the page
+        page = page.replace("</body>", '<script src="engine/book-runtime.js" defer></script>'
+                                       '<script src="book-progress.js" defer></script>'
+                                       '<script src="book-figure.js" defer></script>'
+                                       '<script src="book-page.js" defer></script></body>')
+        (dst / f'{c["slug"]}.html').write_text(page.replace("__FOOTER__", ""), encoding="utf-8")
+        written.append(dst / f'{c["slug"]}.html')
     for name in ("book-page.js", "book-figure.js", "book-progress.js"):
         (dst / name).write_bytes((ASSETS / name).read_bytes())
         written.append(dst / name)

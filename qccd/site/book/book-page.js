@@ -331,6 +331,28 @@
     // what this reader has solved before, on this browser or (signed in) on any: book-progress.js
     var before = window.QCCDBOOK ? QCCDBOOK.state().done : ((load(PROG_KEY) || {}).done || {});
     var solved = 0;
+    // an exercise whose proof uses another exercise that is still open carries that one's sorry:
+    // it is open too (on what it uses), not a proof Lean could not read
+    var openName = {};
+    function exCell(n) { return document.querySelector('.cell[data-ex="' + n + '"]'); }
+    function usesOpen(text) {
+      var t = text.replace(/--[^\n]*/g, '').replace(/\/-[\s\S]*?-\//g, '');
+      return Object.keys(openName).filter(function (n) {
+        return new RegExp("(^|[^A-Za-z0-9_.'])" + n.replace(/\./g, '[.]') + "($|[^A-Za-z0-9_'])").test(t);
+      });
+    }
+    data.exercises.forEach(function (e) {
+      var c = exCell(e.name);
+      if ((axiomsOf[e.name] || []).indexOf('sorryAx') >= 0 && c && hasSorry(c._ta.value)) openName[e.name] = true;
+    });
+    for (var grew = true; grew;) {
+      grew = false;
+      data.exercises.forEach(function (e) {
+        var c = exCell(e.name);
+        if (openName[e.name] || !c || (axiomsOf[e.name] || []).indexOf('sorryAx') < 0) return;
+        if (usesOpen(c._ta.value).length) { openName[e.name] = true; grew = true; }
+      });
+    }
     data.exercises.forEach(function (e) {
       var cell = document.querySelector('.cell[data-ex="' + e.name + '"]');
       var st, label;
@@ -341,6 +363,9 @@
         label = /unknown (identifier|constant)/.test(graderErr[e.name].join(' ')) ? 'missing' : 'statement changed';
       }
       else if (!ax) { st = 'open'; label = 'open'; }
+      else if (ax.indexOf('sorryAx') >= 0 && cell && !hasSorry(cell._ta.value) && usesOpen(cell._ta.value).length) {
+        st = 'open'; label = 'open · uses ' + usesOpen(cell._ta.value)[0];
+      }
       else if (ax.indexOf('sorryAx') >= 0 && cell && !hasSorry(cell._ta.value)) {
         // Lean put a sorry where the reader wrote none: part of the proof could not be read
         st = 'error'; label = 'error';

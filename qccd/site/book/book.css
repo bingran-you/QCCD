@@ -123,4 +123,13 @@ ul.chapters .cn{font:13px var(--mono);color:var(--ink3);min-width:2.4em}
 .cprog{font:12px var(--sans);color:var(--ink2)}
 @media (max-width:640px){.certs .row{grid-template-columns:1fr auto}.certs .row .what,.certs .row a{display:none}
   #goals{left:12px;right:12px;width:auto}}
+/* the foot of a lesson: the one before, the contents, the one after */
+.lessonnav{display:flex;gap:12px;align-items:baseline;justify-content:space-between;flex-wrap:wrap;
+  margin:30px 0 0;padding-top:12px;border-top:1px solid var(--line);font:14px var(--sans)}
+.lessonnav a{color:var(--accent);text-decoration:none}
+.lessonnav a:hover{text-decoration:underline}
+.lessonnav .prev,.lessonnav .next{flex:1 1 0;min-width:0}
+.lessonnav .next{text-align:right}
+.lessonnav .toc{flex:none;color:var(--ink2);font-size:13px}
+@media (max-width:640px){.lessonnav .prev,.lessonnav .next{flex-basis:100%;text-align:left}}
 .enginenote{font:12.5px/1.5 var(--sans);color:var(--ink3);margin:34px 0 0;border-top:1px solid var(--line);padding-top:10px}

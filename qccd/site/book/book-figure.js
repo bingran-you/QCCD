@@ -37,15 +37,21 @@
 
   // Lean's replay of a certificate -> a studio programme, and which frame each event became.
   // A move the checker found to be a hop walks the device's rails; one it did not is written as
-  // the certificate claims it, and the studio says whether the machine can do that.
+  // the certificate claims it, and the studio says whether the machine can do that.  Within a
+  // cycle the order is the checker's: a witness at cycle t sees where the ions are at the START
+  // of t (posAt), so it comes first; then the moves of t, then the loop turns of t (`merge`
+  // puts a move before a turn of the same cycle).
   function programme(fig, dev) {
     var lines = ['p.init(' + JSON.stringify(Object.fromEntries(fig.init)) + ')'], at = { init: 0 }, events = [];
-    fig.moves.forEach(function (m, i) { events.push({ t: m[0], k: 'm' + i, kind: 0, m: m }); });
-    fig.gates.forEach(function (g, i) { events.push({ t: g[1], k: 'g' + i, kind: 1, g: g }); });
+    fig.gates.forEach(function (g, i) { events.push({ t: g[1], k: 'g' + i, kind: 0, g: g }); });
+    fig.moves.forEach(function (m, i) { events.push({ t: m[0], k: 'm' + i, kind: 1, m: m }); });
+    (fig.rots || []).forEach(function (r, i) { events.push({ t: r[0], k: 'r' + i, kind: 2, r: r }); });
     events.sort(function (a, b) { return a.t - b.t || a.kind - b.kind; });
     var frameT = [0];
     events.forEach(function (e) {
-      if (e.m) {
+      if (e.r) {
+        lines.push('p.rotate(' + e.r[2] + ', loop=' + JSON.stringify(e.r[1]) + ')');
+      } else if (e.m) {
         var path = e.m[4] ? route(dev, e.m[2], e.m[3]) : [e.m[2], e.m[3]];
         lines.push('p.shuttle(' + JSON.stringify(e.m[1]) + ', ' + JSON.stringify(path) + ')');
       } else {
@@ -115,6 +121,7 @@
       var rp = null;
       try { rp = E.applyProgramSource(this.fig.src); } catch (e) { rp = { ok: false, problems: [{ message: e.message }] }; }
       var pp = (rp && (rp.problems || []).concat(rp.errors || [])) || [];
+      this.refused = pp.length > 0;
       if (pp.length) this.say('bad', 'The studio refuses this programme: ' + pp.map(function (x) { return String(x.message || x).replace(/^"|"$/g, ''); }).join('; ') + '.');
       try { if (E.fit) E.fit(); } catch (e) { /* keep the studio's own view */ }
       try { E.seekTo(+(this.root.getAttribute('data-at') || 0)); } catch (e) { /* no such step */ }
@@ -124,6 +131,7 @@
       var r = null;
       try { r = E.applyProgramSource(prog.src); } catch (e) { r = { ok: false, problems: [{ message: e.message }] }; }
       var probs = (r && (r.problems || []).concat(r.errors || [])) || [];
+      this.refused = probs.length > 0;
       if (probs.length) {
         this.say('bad', 'The studio refuses this programme: ' + probs.map(function (p) { return String(p.message || p).replace(/^"|"$/g, ''); }).join('; ') + '.');
       }
@@ -137,10 +145,10 @@
   };
   // the studio's OWN rule check on the same moves, as a second opinion beside the proof
   Figure.prototype.studioRules = function () {
-    var E = this.ed(); if (!E || !E.ruleCoverage) return;
+    var E = this.ed(); if (!E || !E.ruleCoverage || this.refused) return;   // a refused programme was never replayed
     var failed = [];
     try { failed = E.ruleCoverage().filter(function (c) { return c.state === 'failed'; }); } catch (e) { return; }
-    if (!failed.length) { this.say('ok', 'The studio replays these moves and every rule it checks passes.'); return; }
+    if (!failed.length) { this.say('ok', 'The studio replays this programme, and every rule it checks passes.'); return; }
     this.say('bad', 'The studio, replaying the same moves, flags ' + failed.map(function (c) {
       return c.rule + (c.statement ? ' (' + c.statement + ')' : ''); }).join('; ') + '.');
   };
@@ -165,7 +173,7 @@
       var together = g[4].every(function (s) { return s === g[2]; });
       rows.push({ t: g[1], key: 'g' + i, op: g[0], text: 'cycle ' + g[1] + ': ' + label(g[7]) + ' (op ' + g[0] + ') in ' + g[2] + ' on ' + g[3].join(', '),
         chips: [[together, together ? 'ions together in ' + g[2] : g[3].map(function (ion, j) { return ion + ' is in ' + g[4][j]; }).join(', ')],
-                [g[5], g[5] ? 'the trap can gate' : g[2] + ' cannot gate'], [g[6], g[6] ? "the op's own ions" : "not the op's ions"]] });
+                [g[5], g[5] ? 'the trap can gate' : g[2] + ' cannot gate'], [g[6], g[6] ? "the op's own ions" : g[7] === '?' ? 'no such op' : "not the op's ions"]] });
     });
     (f.rots || []).forEach(function (r) {
       rows.push({ t: r[0], text: 'cycle ' + r[0] + ': loop ' + r[1] + ' turns ' + (r[2] > 0 ? '+' : '') + r[2] + ' (every ion on it moves ' + Math.abs(r[2]) + ' slot' + (Math.abs(r[2]) === 1 ? '' : 's') + ')', chips: [] });

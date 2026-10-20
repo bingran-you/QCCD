@@ -102,7 +102,22 @@ def main(argv: list[str]) -> int:
             fail(f"FIGURES: {{{{... {n}}}}} names no `def {n}` in the lesson")
     print(f"ok   FIGURES ({len(names)})")
 
-    msgs = lean(src + book.grader(ch))
+    # what the page appends after the grader: the figure helper and one #eval per figure, so a
+    # lesson whose own names clash with the helper's (`look`, `posAt`, ...) fails here, not only
+    # in the browser
+    figs = list(dict.fromkeys(re.findall(r"\{\{(figure|studio)\s+([A-Za-z_][A-Za-z0-9_'.]*)", src)))
+    tail = ""
+    if figs:
+        tail = "\n" + (book.ASSETS / "engine" / "figure.lean").read_text(encoding="utf-8")
+        for kind, n in figs:
+            tail += (f'#eval IO.println (Lean.Json.mkObj [("arch", Lean.toJson {n}.arch), ("src", Lean.toJson {n}.src), '
+                     f'("studio", Lean.toJson true)]).compress\n' if kind == "studio"
+                     else f"#eval IO.println (QCCDBook.figure {n}).compress\n")
+
+    msgs = lean(src + book.grader(ch) + tail)
+    drawn = [m for m in msgs if m["sev"] == "info" and m["text"].lstrip().startswith("{")]
+    if len(drawn) < len(figs):
+        fail(f"FIGURES: {len(figs)} figures but Lean printed {len(drawn)} of them")
     errs = [m for m in msgs if m["sev"] == "error"]
     if errs:
         fail("SOLVED: " + "; ".join(f'{m["line"]}: {m["text"][:300]}' for m in errs[:5]))
@@ -115,10 +130,10 @@ def main(argv: list[str]) -> int:
         extra = [a for a in ax if a not in book.ALLOWED_AXIOMS]
         if extra:
             fail(f"SOLVED: {e['name']} rests on {extra}")
-    print("ok   SOLVED (every exercise proved, allowed axioms only)")
+    print(f"ok   SOLVED (every exercise proved, allowed axioms only; {len(drawn)} figures printed)")
 
     reader = "\n\n".join(book.reader_code(b) for b in ch.blocks if b.kind == "code") + "\n"
-    msgs = lean(reader + book.grader(ch))
+    msgs = lean(reader + book.grader(ch) + tail)
     errs = [m for m in msgs if m["sev"] == "error"]
     if errs:
         fail("READER: " + "; ".join(f'{m["line"]}: {m["text"][:300]}' for m in errs[:5]))

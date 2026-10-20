@@ -131,11 +131,11 @@ def test_the_page_carries_the_lean_byte_for_byte(tmp_path):
 
 
 def test_the_figures_draw_what_lean_replays(lean, tmp_path):
-    """Every figure in the pilot chapter is Lean's replay of a named certificate
+    """Every figure in lesson F1 is Lean's replay of a named certificate
     (engine/figure.lean).  Run natively, the figures must say what the chapter's prose says
     about them: the Bell pair holds; the late move's CNOT finds q0 in C1; the teleport's move is
     no hop; the foreign witness is co-located but not the op's own ions."""
-    vol, c = LIVE[0]
+    vol, c = next((v, c) for v, c in LIVE if c["id"] == "F1")
     ch = book.parse_chapter(book.BOOK / c["source"], c["slug"], c.get("store"))
     src = (book.BOOK / c["source"]).read_text(encoding="utf-8").replace("\r\n", "\n")
     names = re.findall(r"\{\{figure\s+([A-Za-z_][A-Za-z0-9_']*)", src)
@@ -202,16 +202,35 @@ def test_a_lesson_page_reads_as_the_tutorial_not_a_book(tmp_path):
         assert not bad, bad
         assert f"Part {part}" in text and c["id"] in text and "Tutorial" in text
     index = (tmp_path / "book" / "index.html").read_text(encoding="utf-8")
-    assert "../learn/#part-F" in index and "refresh" in index
+    assert "../learn/#part-E" in index and "refresh" in index      # the first part with a live lesson
 
 
 def test_every_exercise_has_a_progress_id_the_server_accepts():
     """qccd-86's progress API widens to `^(?:[A-Z][0-9]{1,2}|[a-z]+:[A-Za-z0-9._-]{1,48})$`."""
     rx = re.compile(r"^(?:[A-Z][0-9]{1,2}|[a-z]+:[A-Za-z0-9._-]{1,48})$")
     for _, c in LIVE:
-        ch = book.parse_chapter(book.BOOK / c["source"], c["slug"], c.get("store"))
+        ch = book.parse_chapter(book.BOOK / c["source"], c["slug"], c.get("store"), c.get("ids"))
         for e in ch.exercises:
             assert rx.match(e["id"]), e["id"]
+
+
+def test_a_published_input_is_the_value_the_checker_reads_past_ten_qubits(lean, tmp_path):
+    """`lean_input` writes the value `Input.ofJson` reads from the same file.  Lean reads a JSON
+    object's members in its keys' text order (`"10"` before `"2"`), which a numeric sort of the
+    qubit map gets wrong from eleven qubits on: compare the two in Lean, by their printed form."""
+    d = {"circuit": "c", "arch": "chain4", "n_qubits": 12,
+         "map": {str(q): f"q{q}" for q in range(12)},
+         "init": {f"q{q}": "C0" if q % 2 else "C1" for q in range(12)},
+         "circuit_ops": [{"i": 0, "name": "h", "qubits": [10]}],
+         "moves": [], "rotations": [], "gates": [{"dag": 0, "t": 0, "site": "C1", "ions": ["q10"]}],
+         "unrealised": [], "gate_sites": ["C0", "C1"], "hops": [{"from": "C0", "to": "C1"}],
+         "loops": {"L1": ["C0", "C1"], "L0": ["C1", "C0"]}}
+    text = ("import QCCDC.Cert.Sound\nopen Lean QCCDC.Cert\n\n" + book.lean_input("given", d) + "\n\n"
+            f"def parsed : Input := Input.ofJson ((Json.parse {json.dumps(json.dumps(d))}).toOption.get!)\n"
+            "#eval toString (repr given) == toString (repr parsed)\n")
+    msgs = run_lean(text, tmp_path)
+    assert not [m for m in msgs if m["sev"] == "error"], msgs
+    assert [m["text"].strip() for m in msgs if m["sev"] == "info"] == ["true"], msgs
 
 
 def test_a_tampered_statement_is_caught_by_the_grader(lean, tmp_path):
