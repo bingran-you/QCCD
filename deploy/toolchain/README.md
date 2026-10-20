@@ -115,4 +115,5 @@ site deploy runs `rsync --delete` into `/var/www/qccd.academy`. nginx serves the
 included in qccd.academy's HTTPS server block after `qccd-official.conf`.
 
 First release: version `73864a5c493d`, from commit `3df0d19`, published 2026-09-23. The first
-Windows and Linux checker: `b92bb9c600b2`, from `a1bc1df` (the strict reader), 2026-10-20.
+Windows and Linux checker: `b92bb9c600b2`, from `a1bc1df` (the strict reader), 2026-10-20,
+replaced the same day by `e8acd6640fd3` from `1f80ea8` (a malformed entry says why).
