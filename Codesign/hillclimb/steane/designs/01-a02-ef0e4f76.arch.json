@@ -31,7 +31,7 @@
    "scheme": "direct"
   }
  },
- "description": "a02: 5-cycle all-G caps 4,8,13,5,4, seg caps 1-3, direct, no loop; device placer reaches the init-placement oracle (1.44)",
+ "description": "a02: 5-cycle, all zones G, caps 4,8,13,5,4, segment caps 2,1,3,2,2, direct, no loop",
  "geometry": {
   "generator": "explicit",
   "nodes": [

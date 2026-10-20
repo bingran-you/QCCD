@@ -8,32 +8,41 @@ capacities are 4, 8, 13, 5, 4, and the segment capacities 1 to 3.
 
 | | cool | gates | measure | shuttle | total |
 |---|---:|---:|---:|---:|---:|
-| µs | 300 | 470 | 600 | 70 (14 moves) | **1440** |
+| µs | 300 | 470 | 600 | 70 (14 move instructions) | **1440** |
 
-It does not win through long chains. The placer starts with 4, 4 and 5 ions in three traps, and no
-trap fills up.
+It does not win through long chains. The placer starts by filling the three smallest traps (4, 4 and
+5 ions) and leaves the traps of capacity 13 and 8 empty as meeting rooms.
 
-**The floor.** The general router fixes 1.370 ms on any device: the state-prep cool, 470 µs of gates
-(layer 2 holds 5 CX, so 5 gate traps) and 600 µs of readout in 5 measure layers. No single assignment
-of ions to traps serves all the circuit's ASAP layers. With 5 or 6 traps they split at best into 7
-windows that each have one. That forces at least 6 move instructions, so **`T_jones ≥ 1.400 ms` for
-any device**. With 4 traps no assignment serves layer 2 at all. Six or more direct traps exceed
-128 DACs.
+**The floor.** The general router spends at least 1.370 ms on any device: the state-prep cool, at
+least 470 µs of gates (layer 2 holds 5 CX, so 5 gate traps; with 4 or fewer the gates cost at least
+515 µs, so the total is at least 1.415 ms) and 600 µs of readout in 5 measure layers. With 5 or
+more traps, no single assignment of ions to traps serves all the circuit's ASAP layers, and they
+split at best into 7 windows that each have one. That forces at least 6 move instructions, so
+**`T_jones ≥ 1.400 ms` for any device**.
 
-**Why the climb stops at 1.44 ms.** With `--init-placement` (analysis only, never graded), the same
-5-cycle reaches 1.425 ms in 11 moves. The device cannot reach it, because the placer minimises
-weighted interaction distance and then swap-climbs it. The good placements score high on that
-objective and are not swap-local minima. On a 5-cycle every pair of traps is 1 or 2 apart, so a
-device cannot reshape the objective. About 30 independent device climbs found nothing lower. Neither
-did two capacity sweeps (1,024 and 7,776 devices) or a joint placement-and-capacity search. Broadcast
-cycles of 5 to 15 traps reach 1.57 ms at best. The best broadcast device on the board, a 5-trap
-"lens", reaches 1.455 ms with 101 DACs.
+**Why the climb stops at 1.44 ms.** With `--init-placement` (analysis only, never graded), the winner
+itself reaches 1.430 ms in 12 move instructions. The same cycle with capacities 5, 4, 5, 5, 4 (same
+order) reaches 1.425 ms in 11, though its own placer gives 1.485 ms. The device cannot reach these
+placements, because the placer minimises weighted interaction distance and then swap-climbs it. The
+good placements score high on that objective and are not swap-local minima. On a 5-cycle every pair
+of traps is 1 or 2 apart, so a device cannot reshape the objective. About 30 independent device
+climbs found nothing lower. Neither did two capacity sweeps (1,024 and 7,776 devices) or a joint
+placement-and-capacity search.
+
+Broadcast wiring needs a different layout. Broadcast cycles of 5 to 15 traps with uniform capacities
+reach 1.57 ms at best, and a03's broadcast circles of 6 to 10 traps 1.505 ms. a03's "lens" cycles
+reach 1.455 ms with 101 DACs, with 5 traps and also with 7. A lens relies on R22 labelling a hop off
+a named loop only by the sign of (dx, dy): every hop is +x+y or -x-y, though the 5-trap lens's rails
+run at 18 to 79 degrees. R22 does not apply to the direct-wired winner.
+
+The times and move counts in these two paragraphs that are not in the tables come from local probes
+during the search, under `c7c535380bfb`, and were not re-graded.
 
 No exploits were found on this board.
 
 ## The designs
 
-Every graded design ranked, beside the live designs (grey), as on the board's page:
+Every graded design ranked, beside the live designs (dark diamonds), as on the board's page:
 
 ![steane: every design ranked](chart.png)
 
@@ -54,6 +63,9 @@ Ranked under production's toolchain; *at search* is the grade under `c7c535380bf
 | 10 | 1.465 | 1.465 | 120 | 5 | 0 | yes | a02 | [`10-a02-31097917.arch.json`](designs/10-a02-31097917.arch.json) |
 <!-- /designs -->
 
+The notes in [`results.csv`](results.csv) are the agents' own, written at grading time. Row 1's note
+that the device placer reaches the init-placement oracle predates the 1.430 ms placement above.
+
 ## The live designs, graded the same way
 
 <!-- live -->
@@ -65,10 +77,10 @@ The board's page as fetched at 2026-10-19 23:33 UTC; its numbers were regenerate
 | `cyclone_base` | 2.255 | 2.255 | yes | yes | arch/cyclone_base.arch.json |
 | `h2_racetrack` | 4.42 | 4.42 | yes | yes | arch/h2_racetrack.arch.json |
 | `cyclone_dual_loop` | 5.38 | 5.38 | yes | yes | arch/cyclone_dual_loop.arch.json |
-| `cylinder6x4` | 9.35 | 9.35 | yes | no | generators.cylinder(6, 4) with grid9x9 zones and control |
-| `grid5x5` | 10.49 | 10.49 | yes | yes | Machine.grid(5, 5) (guess) |
+| `cylinder6x4` | 9.35 | 9.35 | yes | no (1,680 DACs) | generators.cylinder(6, 4) with grid9x9 zones and control |
+| `grid5x5` | 10.49 | 10.49 | yes | no (1,600 DACs on the page; the rebuild passes) | Machine.grid(5, 5) (guess) |
 | `ring24_8` | 10.75 | 20.13 | yes | yes | Machine.ring(12, 2, 8) (guess) |
-| `grid9x9` | 10.945 | 10.945 | yes | no | arch/grid9x9.arch.json |
+| `grid9x9` | 10.945 | 10.945 | yes | no (5,760 DACs) | arch/grid9x9.arch.json |
 | `deck_unit_cell` | 10.945 | 10.945 | yes | yes | arch/deck_unit_cell.arch.json |
 | `ladder_2x72` | 12.83 | 12.83 | yes | yes | arch/ladder_2x72.arch.json |
 | `ring144_24v` | 17.695 | 44.78 | yes | yes | arch/ring144_24v.arch.json |
