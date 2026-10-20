@@ -17,6 +17,11 @@ site signs it off in parts instead -- the compositional sign-off:
 3. the floorplan and the schedule obey every machine rule (lesson J2);
 4. the program, **every call counted as its contract**, computes what it should.
 
+The design page of Shor's algorithm shows these parts, each ticked, in its Verification panel
+(top right):
+
+{{gadget algorithms/shor15}}
+
 Step 4 simulates a few logical qubits instead of hundreds of ions. This lesson proves the
 theorem that makes it sound: if every gate's body computes its contract, then running a program
 whose calls are expanded into bodies is the same as running it with each call replaced by its

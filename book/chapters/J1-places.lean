@@ -14,6 +14,17 @@ keep a block in memory -- and from **roads** that carry bundles of ions between 
 compiled and checked once (as hardware, by the device rules of Part E; as logic, by the flows
 and fault distance its specification states), and then used as a black box with **doors**.
 
+Here is one, the magic-state factory, standing in the town every example runs on. It is
+selected: the panel on the right lists its doors -- `in` takes fresh ions, `out` gives the magic
+state -- and the timeline below shows when each place is busy.
+
+{{gadget msf15}}
+
+And here is what the box hides: the factory's one op, `produce`, on its own device, every step
+of it checked by the device rules.
+
+{{gadget msf15.produce}}
+
 Every door says what crosses it. A door of a place carries **ions** (a bundle of `width` ions
 with a `role`: a block's `data`, a `magic` state, `fresh` ions from a depot) or **bits** (a
 `signal`: a `syndrome` for the decoder, an `outcome`, a `decision` that switches an op on).

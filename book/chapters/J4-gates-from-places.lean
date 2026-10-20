@@ -23,6 +23,12 @@ gate t q implements T:
   if b: z q         # the Z̄ correction, a line in the classical memory
 ```
 
+The example program `t_gate` runs these lines on the town. Here it is at the lattice surgery,
+`zz q m -> a` -- the factory has made the state, the pharmacy has injected it, and a bridge
+measures the two blocks together:
+
+{{gadget algorithms/t_gate focus=i3}}
+
 Every place in it is verified on its own, as hardware and as logic. What no place can tell you
 is whether this *program* is a T gate. That depends on the state the factory makes, and on the
 corrections, in every one of the four branches `(a, b)`. The site checks it with its

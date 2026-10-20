@@ -330,6 +330,11 @@ theorem longer_road (rs : List Road) (id : Nat) :
 /-!
 ## What the site does with this
 
+Shor's algorithm on the floorplan `shor`, on the design page: its **Floorplan** button shows the
+text the machine was built from, and its **Traffic** panel the number this lesson is about.
+
+{{gadget algorithms/shor15}}
+
 The floorplan rules F1-F9 are evaluated on every floorplan the design page loads, by the rule
 language of Part E, with words for footprints, crossings and reachability: there `reachable`
 is decided by a search over the roads, and the routes and closed regions of this lesson are

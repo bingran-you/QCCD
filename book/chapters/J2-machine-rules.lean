@@ -59,6 +59,11 @@ positions in the program after its gates expand and its refresh rounds are added
 produces the magic state for one T gate (instruction 21) while a bridge runs another
 instruction's lattice surgery (19) and a memory refreshes a resting block (84); then the magic
 ion leaves the factory down the road in front of its door, and the pharmacy injects it.
+
+The same moment on the design page, 1.05 s into the run: `factory1`, `bridge2` and `mem5` are
+all at work. Press play to watch the magic state leave the factory.
+
+{{gadget algorithms/shor15 focus=factory1 at=1050000}}
 -/
 
 def slice : List Act :=

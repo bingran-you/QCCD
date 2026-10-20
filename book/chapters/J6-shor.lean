@@ -161,7 +161,10 @@ theorem iteration_two : (1 ^^^ 0b0101) = 7 ^ 2 * 1 % 15 ∧ (2 ^^^ 0b0101) ≠ 7
 /-!
 ## 4. The machine, the schedule, the sign-off
 
-The rest is what Part J built, used on this program:
+The rest is what Part J built, used on this program. Here it is, all of it, on the design page
+-- the floorplan, the 4,495 events, the rules and the sign-off:
+
+{{gadget algorithms/shor15}}
 
 * **The machine.** The floorplan `shor` places six memories (blocks rest for seconds between
   iterations, and a memory corrects what it holds), three lattice-surgery bridges (every T gate
