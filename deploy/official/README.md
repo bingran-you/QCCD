@@ -101,7 +101,27 @@ the `include snippets/qccd-official.conf;` line and `nginx -t && systemctl reloa
 The site file as it was before the include was added is
 `/root/qccd.academy.nginx.bak-20260923-000848`.
 
-**Deployed** 2026-10-19 20:30 UTC, from commit `972d8bf` (pushed): compiler `dbd13d8952f3`,
+**Deployed** 2026-10-20 07:00 UTC (00:00 PDT), from commit `e9bbf0b` (pushed): compiler
+`f88754a2fa71` (built from `651f39c`), which takes a rule set (`qccdc --rules`) and without one
+writes what `dbd13d8952f3` wrote: all 216 compiles of suite@1's public pairs (`compile` and
+`rotate`) are byte-identical between the two, so suite@1 was not re-pinned. The grader now
+fails a submission's semantics stage when `check_cert.py`'s per-qubit order check is not
+`ok` (before, only O1, unrealised ops and O2 could fail it), and `check_cert.py` ties the
+programme's transport to the certificate's, ion by ion and in order. qcheck `1c067263bdc9`
+is unchanged.
+
+The image was derived from `qccd-official:972d8bf`: the Dockerfile's OCaml stage verbatim,
+then `rm` and `COPY` of `qccd/`, `arch/`, `Compiler/bridge` and `qccdc_cli`; qcheck is
+972d8bf's (sha256 `4c78a9d5…`). Its `qccdc_cli` is the published Linux `f88754a2fa71` byte
+for byte (sha256 `3a11247f…`); the suite files are identical to 972d8bf's; the 29 layers are
+identical on both machines. The previous deployment is in `.env.bak-972d8bf`,
+`VERSION.bak-972d8bf` and `docker-compose.prod.yml.bak-972d8bf`. Private smoke tests by the
+operator uploader `deploy-smoke-e9bbf0b` (quota 2, token deleted): GHZ `os_0bd9e3e6c91a0cbf`
+ok in 15 s, and the Compiler board `os_f1165eea3f41707f` eligible in 463 s, 108 valid /
+0 wrong / 8 refused of 116, speedup 1.0, ler_ratio 1.000, no public pair different from the
+baseline. The local rehearsal gave the same (`os_b22b2bf98b42f6f3`, 671 s).
+
+**Before that** 2026-10-19 20:30 UTC, from commit `972d8bf` (pushed): compiler `dbd13d8952f3`,
 which never changes the order of a qubit's gates, commuting or not (the user's decision of
 2026-10-19), and whose conveyor sweeps greedily; `check_cert.py`'s R10 checks each qubit's
 order from the program; and qcheck `1c067263bdc9`, whose order clause lost its commutation
