@@ -31,7 +31,7 @@ h4.exercise .stars{color:#c48a12;letter-spacing:1px}
 
 /* a Lean cell: a textarea over its own highlighted copy, so the reader edits real text */
 .cell{position:relative;margin:8px 0 14px}
-.cell[data-hidden]{display:none}
+.cell[data-hidden],.cell[data-setup]{display:none}
 .cell .ed{position:relative;border:1px solid var(--line);border-left:3px solid #c9c6bd;border-radius:8px;background:#fcfcfa}
 .cell[data-ex] .ed{border-left-color:#c48a12}
 .cell.solved .ed{border-left-color:#2f8f5b}

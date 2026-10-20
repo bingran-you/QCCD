@@ -6,10 +6,38 @@
       "title": "The machine as data",
       "about": "Devices as graphs, programmes as data, replay as a function, and the rules as statements Lean can decide.",
       "lessons": [
-        {"id": "E1", "title": "Devices are graphs", "status": "planned"},
-        {"id": "E2", "title": "Programmes and replay", "status": "planned"},
-        {"id": "E3", "title": "Rules as propositions", "status": "planned"},
-        {"id": "E4", "title": "Rule sets", "status": "planned"}
+        {
+          "id": "E1",
+          "title": "Devices are graphs",
+          "status": "draft",
+          "slug": "E1-devices",
+          "source": "chapters/E1-devices.lean",
+          "ids": "book:E1"
+        },
+        {
+          "id": "E2",
+          "title": "Programmes and replay",
+          "status": "draft",
+          "slug": "E2-replay",
+          "source": "chapters/E2-replay.lean",
+          "ids": "book:E2"
+        },
+        {
+          "id": "E3",
+          "title": "Rules as propositions",
+          "status": "draft",
+          "slug": "E3-rules",
+          "source": "chapters/E3-rules.lean",
+          "ids": "book:E3"
+        },
+        {
+          "id": "E4",
+          "title": "Rule sets",
+          "status": "draft",
+          "slug": "E4-rule-sets",
+          "source": "chapters/E4-rule-sets.lean",
+          "ids": "book:E4"
+        }
       ]
     },
     {
@@ -17,14 +45,55 @@
       "title": "Certificates and the proved checker",
       "about": "What a certificate records, what it means for one to hold, the decision procedure that settles it, and the proof that the procedure is right.",
       "lessons": [
-        {"id": "F1", "title": "Certificates: the Bell pair, proved", "status": "live",
-         "source": "chapters/2.1-certificates.lean", "slug": "2.1-certificates", "store": "2.1",
-         "story": "Take one real certificate from the Compilation page, watch it play, prove it holds, and prove three lies about it refused."},
-        {"id": "F2", "title": "The specification, condition by condition", "status": "planned"},
-        {"id": "F3", "title": "Decision procedures", "status": "planned"},
-        {"id": "F4", "title": "Soundness and completeness", "status": "planned"},
-        {"id": "F5", "title": "The mutation lab", "status": "planned"},
-        {"id": "F6", "title": "What you trust", "status": "planned"}
+        {
+          "id": "F1",
+          "title": "Certificates: the Bell pair, proved",
+          "status": "live",
+          "source": "chapters/2.1-certificates.lean",
+          "slug": "2.1-certificates",
+          "store": "2.1",
+          "story": "Take one real certificate from the Compilation page, watch it play, prove it holds, and prove three lies about it refused."
+        },
+        {
+          "id": "F2",
+          "title": "The specification, condition by condition",
+          "status": "draft",
+          "slug": "F2-specification",
+          "source": "chapters/F2-specification.lean",
+          "ids": "book:F2"
+        },
+        {
+          "id": "F3",
+          "title": "Decision procedures",
+          "status": "draft",
+          "slug": "F3-decision",
+          "source": "chapters/F3-decision.lean",
+          "ids": "book:F3"
+        },
+        {
+          "id": "F4",
+          "title": "Soundness and completeness",
+          "status": "draft",
+          "slug": "F4-soundness",
+          "source": "chapters/F4-soundness.lean",
+          "ids": "book:F4"
+        },
+        {
+          "id": "F5",
+          "title": "The mutation lab",
+          "status": "draft",
+          "slug": "F5-mutations",
+          "source": "chapters/F5-mutations.lean",
+          "ids": "book:F5"
+        },
+        {
+          "id": "F6",
+          "title": "What you trust",
+          "status": "draft",
+          "slug": "F6-trust",
+          "source": "chapters/F6-trust.lean",
+          "ids": "book:F6"
+        }
       ]
     },
     {
@@ -32,13 +101,62 @@
       "title": "Semantics: which gate the pulses make",
       "about": "Exact numbers, the native pulses as matrices, u3 from two pulses, CX from one entangling pulse, stabilizer tableaux, and measurement -- without Mathlib.",
       "lessons": [
-        {"id": "G1", "title": "Exact numbers", "status": "planned"},
-        {"id": "G2", "title": "The native pulses", "status": "planned"},
-        {"id": "G3", "title": "u3 from two pulses", "status": "planned"},
-        {"id": "G4", "title": "CX from MS", "status": "planned"},
-        {"id": "G5", "title": "Stabilizer tableaux", "status": "planned"},
-        {"id": "G6", "title": "Measurement and reset", "status": "planned"},
-        {"id": "G7", "title": "The semantic check", "status": "planned"}
+        {
+          "id": "G1",
+          "title": "Exact numbers",
+          "status": "draft",
+          "slug": "G1-exact-numbers",
+          "source": "chapters/G1-exact-numbers.lean",
+          "ids": "book:G1"
+        },
+        {
+          "id": "G2",
+          "title": "The native pulses",
+          "status": "draft",
+          "slug": "G2-pulses",
+          "source": "chapters/G2-pulses.lean",
+          "ids": "book:G2"
+        },
+        {
+          "id": "G3",
+          "title": "u3 from two pulses",
+          "status": "draft",
+          "slug": "G3-u3",
+          "source": "chapters/G3-u3.lean",
+          "ids": "book:G3"
+        },
+        {
+          "id": "G4",
+          "title": "CX from MS",
+          "status": "draft",
+          "slug": "G4-cx-from-ms",
+          "source": "chapters/G4-cx-from-ms.lean",
+          "ids": "book:G4"
+        },
+        {
+          "id": "G5",
+          "title": "Stabilizer tableaux",
+          "status": "draft",
+          "slug": "G5-tableaux",
+          "source": "chapters/G5-tableaux.lean",
+          "ids": "book:G5"
+        },
+        {
+          "id": "G6",
+          "title": "Measurement and reset",
+          "status": "draft",
+          "slug": "G6-measurement",
+          "source": "chapters/G6-measurement.lean",
+          "ids": "book:G6"
+        },
+        {
+          "id": "G7",
+          "title": "The semantic check",
+          "status": "draft",
+          "slug": "G7-semantic-check",
+          "source": "chapters/G7-semantic-check.lean",
+          "ids": "book:G7"
+        }
       ]
     },
     {
@@ -46,10 +164,38 @@
       "title": "Verify the website yourself",
       "about": "Every compiled case this site publishes, checked by you: in the page for the small ones, with the downloadable checker for the large ones.",
       "lessons": [
-        {"id": "H1", "title": "The Compilation page", "status": "planned"},
-        {"id": "H2", "title": "The boards", "status": "planned"},
-        {"id": "H3", "title": "The official grader", "status": "planned"},
-        {"id": "H4", "title": "Every verdict, reproduced", "status": "planned"}
+        {
+          "id": "H1",
+          "title": "The Compilation page",
+          "status": "draft",
+          "slug": "H1-compilation-page",
+          "source": "chapters/H1-compilation-page.lean",
+          "ids": "book:H1"
+        },
+        {
+          "id": "H2",
+          "title": "The boards",
+          "status": "draft",
+          "slug": "H2-boards",
+          "source": "chapters/H2-boards.lean",
+          "ids": "book:H2"
+        },
+        {
+          "id": "H3",
+          "title": "The official grader",
+          "status": "draft",
+          "slug": "H3-official-grader",
+          "source": "chapters/H3-official-grader.lean",
+          "ids": "book:H3"
+        },
+        {
+          "id": "H4",
+          "title": "Every verdict, reproduced",
+          "status": "draft",
+          "slug": "H4-reproduced",
+          "source": "chapters/H4-reproduced.lean",
+          "ids": "book:H4"
+        }
       ]
     },
     {
@@ -57,11 +203,46 @@
       "title": "Build your own verified compiler",
       "about": "A compiler for a chain of traps written in Lean and proved correct by construction; then a compiler in any language, validated by the checker; then the Compiler board.",
       "lessons": [
-        {"id": "I1", "title": "A compiler in Lean", "status": "planned"},
-        {"id": "I2", "title": "Correct by construction", "status": "planned"},
-        {"id": "I3", "title": "Any language, checked", "status": "planned"},
-        {"id": "I4", "title": "The certificate format", "status": "planned"},
-        {"id": "I5", "title": "The Compiler board", "status": "planned"}
+        {
+          "id": "I1",
+          "title": "A compiler in Lean",
+          "status": "draft",
+          "slug": "I1-compiler-in-lean",
+          "source": "chapters/I1-compiler-in-lean.lean",
+          "ids": "book:I1"
+        },
+        {
+          "id": "I2",
+          "title": "Correct by construction",
+          "status": "draft",
+          "slug": "I2-correct-by-construction",
+          "source": "chapters/I2-correct-by-construction.lean",
+          "ids": "book:I2"
+        },
+        {
+          "id": "I3",
+          "title": "Any language, checked",
+          "status": "draft",
+          "slug": "I3-any-language",
+          "source": "chapters/I3-any-language.lean",
+          "ids": "book:I3"
+        },
+        {
+          "id": "I4",
+          "title": "The certificate format",
+          "status": "draft",
+          "slug": "I4-certificate-format",
+          "source": "chapters/I4-certificate-format.lean",
+          "ids": "book:I4"
+        },
+        {
+          "id": "I5",
+          "title": "The Compiler board",
+          "status": "draft",
+          "slug": "I5-compiler-board",
+          "source": "chapters/I5-compiler-board.lean",
+          "ids": "book:I5"
+        }
       ]
     }
   ]

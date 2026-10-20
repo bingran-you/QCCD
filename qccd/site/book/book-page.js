@@ -123,14 +123,24 @@
     graderAt = line;
     var doc = parts.join('\n\n') + '\n' + data.grader;
     // the figures: Lean's replay of each named certificate, one #eval per name, after the grader
+    // a {{studio NAME}} figure: NAME is the lesson's own value with fields `arch` (the device) and
+    // `src` (a studio programme), which Lean prints for the studio to play
     figLines = {};
     var names = [];
-    figs.forEach(function (f) { var n = f.getAttribute('data-name'); if (names.indexOf(n) < 0) names.push(n); });
+    figs.forEach(function (f) {
+      var key = f.getAttribute('data-kind') === 'studio' ? 'studio:' + f.getAttribute('data-name') : f.getAttribute('data-name');
+      if (names.indexOf(key) < 0) names.push(key);
+    });
     if (names.length) {
       doc += '\n' + data.figureHelper;
-      names.forEach(function (n) {
-        figLines[doc.split('\n').length] = n;
-        doc += '#eval IO.println (QCCDBook.figure ' + n + ').compress\n';
+      names.forEach(function (key) {
+        figLines[doc.split('\n').length] = key;
+        if (key.slice(0, 7) === 'studio:') {
+          var n = key.slice(7);
+          doc += '#eval IO.println (Lean.Json.mkObj [("arch", Lean.toJson ' + n + '.arch), ("src", Lean.toJson ' + n + '.src), ("studio", Lean.toJson true)]).compress\n';
+        } else {
+          doc += '#eval IO.println (QCCDBook.figure ' + key + ').compress\n';
+        }
       });
     }
     return doc;
@@ -147,18 +157,19 @@
       }
     });
     figs.forEach(function (f) {
-      var n = f.getAttribute('data-name'), fig = got[n];
+      var n = f.getAttribute('data-name'), studio = f.getAttribute('data-kind') === 'studio';
+      var fig = got[studio ? 'studio:' + n : n];
       if (!fig) {
-        if (!figObjs.get(f)) f.innerHTML = '<div class="figwait">Lean has no certificate named <code>' + esc(n)
+        if (!figObjs.get(f)) f.innerHTML = '<div class="figwait">Lean has no value named <code>' + esc(n)
           + '</code> right now: an error above stops it, or its definition was changed.</div>';
         else f.classList.add('stale');
         return;
       }
       f.classList.remove('stale');
       var dev = data.devices[fig.arch];
-      if (!dev) { f.innerHTML = '<div class="figwait">No drawing of the device <code>' + esc(fig.arch) + '</code>.</div>'; return; }
+      if (!dev) { f.innerHTML = '<div class="figwait">No studio page for the device <code>' + esc(fig.arch) + '</code>.</div>'; return; }
       var o = figObjs.get(f);
-      if (!o) { o = BookFigure.live(f, fig.arch); figObjs.set(f, o); }
+      if (!o) { o = studio ? BookFigure.programme(f, fig.arch) : BookFigure.live(f, fig.arch); figObjs.set(f, o); }
       o.update(fig, dev);
     });
   }

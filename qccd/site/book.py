@@ -56,7 +56,8 @@ class Block:
     kind: str                 # "prose" | "code"
     text: str                 # prose: the markdown; code: the Lean, solved
     exercise: dict | None = None   # on a code block that is an exercise's
-    hidden: bool = False      # the import line: run, not shown
+    hidden: bool = False      # the import line: run natively, replaced by the browser's prelude
+    setup: bool = False       # a `-- setup` block: definitions the lesson builds on, run, not shown
 
 
 @dataclass
@@ -139,8 +140,9 @@ def exercise_parts(code: str, name: str) -> dict:
             "after": after, "expected": " ".join(expected.split()), "binders": binders, "type": typ}
 
 
-def parse_chapter(path: Path, slug: str, store: str | None = None) -> Chapter:
-    """`store` names the progress ids (`book:V<store>.ex<n>`); it defaults to the slug's number."""
+def parse_chapter(path: Path, slug: str, store: str | None = None, ids: str | None = None) -> Chapter:
+    """Progress ids are `<ids>.ex<n>` when the lesson names its prefix (`book:E1`), else
+    `book:V<store>.ex<n>` (F1's, kept as first published)."""
     blocks = split_blocks(path.read_text(encoding="utf-8"))
     title = ""
     ch = Chapter(slug=slug, title="")
@@ -158,12 +160,14 @@ def parse_chapter(path: Path, slug: str, store: str | None = None) -> Chapter:
             parts = exercise_parts(b.text, pending["name"])
             ex = dict(pending, **{k: parts[k] for k in ("statement", "expected", "before", "after")},
                       solution=parts["proof"])
-            ex["id"] = f"book:V{store or slug.split('-')[0]}.ex{ex['n']}"
+            ex["id"] = (f"{ids}.ex{ex['n']}" if ids else f"book:V{store or slug.split('-')[0]}.ex{ex['n']}")
             b.exercise = ex
             ch.exercises.append(ex)
             pending = None
         if b.kind == "code" and b.text.lstrip().startswith("import ") and not ch.blocks:
             b.hidden = True
+        elif b.kind == "code" and b.text.lstrip().startswith("-- setup"):
+            b.setup = True
         ch.blocks.append(b)
     if pending is not None:
         raise ValueError(f"exercise `{pending['name']}` has no code block after its heading")
@@ -353,12 +357,14 @@ def devices() -> dict:
     return out
 
 
-FIGURE_RE = re.compile(r"^\{\{figure\s+([A-Za-z_][A-Za-z0-9_']*)((?:\s+[a-z]+=[^\s}]+)*)\s*\}\}$")
+FIGURE_RE = re.compile(r"^\{\{(figure|studio)\s+([A-Za-z_][A-Za-z0-9_'.]*)((?:\s+[a-z]+=[^\s}]+)*)\s*\}\}$")
 
 
-def figure_html(name: str, params: str) -> str:
+def figure_html(name: str, params: str, kind: str = "figure") -> str:
     kv = dict(p.split("=", 1) for p in params.split())
     attrs = "".join(f' data-{k}="{html.escape(v)}"' for k, v in kv.items() if k in ("at", "show"))
+    if kind == "studio":
+        attrs += ' data-kind="studio"'
     return (f'<figure class="leanfig" data-name="{html.escape(name)}"{attrs}>'
             '<div class="figwait">This figure is drawn from Lean\'s own replay of '
             f'<code>{html.escape(name)}</code>; it appears when Lean has checked the lesson.</div></figure>')
@@ -378,7 +384,7 @@ def chapter_body(ch: Chapter, part: dict, lesson: dict) -> str:
             for line in b.text.replace("{{certificates}}", "\n\n@@CERTS@@\n\n").splitlines():
                 m = FIGURE_RE.match(line.strip())
                 if m:
-                    figs.append(figure_html(m.group(1), m.group(2)))
+                    figs.append(figure_html(m.group(2), m.group(3), m.group(1)))
                     lines += ["", f"@@FIG{len(figs) - 1}@@", ""]
                 else:
                     lines.append(line)
@@ -391,6 +397,8 @@ def chapter_body(ch: Chapter, part: dict, lesson: dict) -> str:
         attrs = f' data-cell="{k}"'
         if b.hidden:
             attrs += ' data-hidden="1"'
+        if b.setup:
+            attrs += ' data-setup="1"'
         if b.exercise:
             attrs += f' data-ex="{html.escape(b.exercise["name"])}"'
         cells.append(f'<div class="cell"{attrs}><textarea rows="1" spellcheck="false" autocapitalize="off" autocomplete="off"'
@@ -454,7 +462,7 @@ def tutorial_parts() -> list[dict]:
             if les.get("status") != "live":
                 coming.append(les["title"])
                 continue
-            ch = parse_chapter(BOOK / les["source"], les["slug"], les.get("store"))
+            ch = parse_chapter(BOOK / les["source"], les["slug"], les.get("store"), les.get("ids"))
             lessons.append({"id": les["id"], "title": les["title"], "story": les.get("story") or lesson_story(ch),
                             "href": f'../book/{les["slug"]}.html',
                             "exercises": [e["id"] for e in ch.exercises],
@@ -476,12 +484,6 @@ def lesson_story(ch: Chapter) -> str:
                 continue
             m = re.match(r"(.+?[.!?])(\s|$)", t)
             return dash(m.group(1) if m else t)
-    return ""
-
-
-def learn_section() -> str:
-    """Retired: the Lean lessons are the tutorial's Parts E-I on the Learn page (tutorial_parts).
-    Kept, empty, only until learn_page stops calling it, so no build breaks in between."""
     return ""
 
 
@@ -545,7 +547,11 @@ def studio_pages(dst: Path) -> list[Path]:
     return out
 
 
-def build(out: Path, packs: Path | None = None, studio: bool = True) -> list[Path]:
+def build(out: Path, packs: Path | None = None, studio: bool = True, drafts: bool = False,
+          only: list[str] | None = None, solutions: bool = False) -> list[Path]:
+    """`drafts`: also lessons whose status is "draft" (an author's preview, never deployed);
+    `only`: just these lesson ids; `solutions`: book/_solutions/<slug>.json, each exercise's solved
+    code, for the browser harness (never deployed)."""
     from .build import PAGE, STYLE            # the site's own document page and stylesheet
     parts = outline()["parts"]
     css = (ASSETS / "book.css").read_text(encoding="utf-8")
@@ -557,9 +563,17 @@ def build(out: Path, packs: Path | None = None, studio: bool = True) -> list[Pat
     written.append(dst / "index.html")
     for part in parts:
         for c in part["lessons"]:
-            if c.get("status") != "live":
+            if c.get("status") != "live" and not (drafts and c.get("status") == "draft"):
                 continue
-            ch = parse_chapter(BOOK / c["source"], c["slug"], c.get("store"))
+            if only and c["id"] not in only:
+                continue
+            if c.get("status") == "draft" and not (BOOK / c["source"]).exists():
+                continue                      # a draft nobody has written yet
+            ch = parse_chapter(BOOK / c["source"], c["slug"], c.get("store"), c.get("ids"))
+            if solutions:
+                (dst / "_solutions").mkdir(exist_ok=True)
+                sol = {b.exercise["name"]: b.text for b in ch.blocks if b.exercise}
+                (dst / "_solutions" / f'{c["slug"]}.json').write_text(json.dumps(sol, ensure_ascii=False), encoding="utf-8")
             body = chapter_body(ch, part, c)
             page = PAGE.format(title=f'{c["id"]} {html.escape(ch.title)} - QCCD studio', style=STYLE,
                                extra_css=css, body=body)
@@ -607,7 +621,9 @@ def main(argv: list[str] | None = None) -> int:
         print(__doc__)
         return 2
     packs = Path(argv[argv.index("--packs") + 1]) if "--packs" in argv else None
-    written = build(Path(argv[0]), packs)
+    only = argv[argv.index("--only") + 1].split(",") if "--only" in argv else None
+    written = build(Path(argv[0]), packs, studio="--no-studio" not in argv, drafts="--drafts" in argv,
+                    only=only, solutions="--solutions" in argv)
     print(f"wrote {len(written)} files under {Path(argv[0]) / 'book'}")
     return 0
 

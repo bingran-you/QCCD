@@ -97,13 +97,28 @@
   };
   Figure.prototype.update = function (fig, dev) {
     this.fig = fig; this.dev = dev;
-    this.drawHead(); this.drawRows(); this.drawCircuit(-1);
+    if (this.opts.programme) {
+      // a programme the lesson built in Lean: no certificate, so no rows and no circuit strip
+      this.head.innerHTML = '';
+      this.head.appendChild(h('b', '', this.root.getAttribute('data-name')));
+      this.head.appendChild(document.createTextNode(' on ' + fig.arch + ': the programme the lesson builds in Lean, played in the studio.'));
+      this.circ.style.display = 'none'; this.list.innerHTML = ''; this.rows = [];
+    } else {
+      this.drawHead(); this.drawRows(); this.drawCircuit(-1);
+    }
     if (this.ready) this.load();
   };
   Figure.prototype.load = function () {
     var E = this.ed(); if (!E) return;
     this.studioSays.innerHTML = '';
-    if (this.opts.live) {
+    if (this.opts.programme) {
+      var rp = null;
+      try { rp = E.applyProgramSource(this.fig.src); } catch (e) { rp = { ok: false, problems: [{ message: e.message }] }; }
+      var pp = (rp && (rp.problems || []).concat(rp.errors || [])) || [];
+      if (pp.length) this.say('bad', 'The studio refuses this programme: ' + pp.map(function (x) { return String(x.message || x).replace(/^"|"$/g, ''); }).join('; ') + '.');
+      try { if (E.fit) E.fit(); } catch (e) { /* keep the studio's own view */ }
+      try { E.seekTo(+(this.root.getAttribute('data-at') || 0)); } catch (e) { /* no such step */ }
+    } else if (this.opts.live) {
       var prog = programme(this.fig, this.dev);
       this.prog = prog;
       var r = null;
@@ -186,6 +201,7 @@
     if (k === this.lastK) return;
     this.lastK = k;
     var keys = {}, ops = {};
+    if (this.opts.programme) return;
     if (this.opts.live && this.prog) {
       for (var key in this.prog.at) if (this.prog.at[key] === k) keys[key] = 1;
       this.fig.gates.forEach(function (g, i) { if (keys['g' + i]) ops[g[0]] = 1; });
@@ -247,6 +263,8 @@
   global.BookFigure = {
     // live: a certificate from the chapter, played on the device's studio page
     live: function (root, arch) { return new Figure(root, { live: true, src: 'ex/dev-' + arch + '.html#embed' }); },
+    // a programme the lesson builds in Lean (fields arch, src), played on the device's studio page
+    programme: function (root, arch) { return new Figure(root, { programme: true, src: 'ex/dev-' + arch + '.html#embed' }); },
     // a published certificate: its real compiled programme's studio page
     compiled: function (root, id) { return new Figure(root, { live: false, src: 'ex/' + id + '.html#embed&step=1' }); },
   };
