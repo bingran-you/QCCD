@@ -228,12 +228,14 @@ class Evaluator:
         if a is None or b is None:
             raise EvalError(f"{show(n)}: a value is none ({_brief(self, a)} {op} {_brief(self, b)})")
         if isinstance(a, Instant) and isinstance(b, Instant):
-            if self.exe.kind == "schedule":
+            if self.exe.kind != "programme":
                 # times, compared to the schedule's rounding: an operation that ends at 100 us
                 # and one that starts at 99.9999999 us do not overlap
                 ta, tb = self.exe.instant_time[a.id], self.exe.instant_time[b.id]
                 big = max([1.0] + [abs(x) for x in (ta, tb) if not math.isinf(x)])
-                tol = self.exe.settings.get("tol", 1e-6) * big
+                # a machine's times are its scheduler's, kept to the nanosecond: the bits of
+                # the classical half are tenths of a microsecond apart in a program seconds long
+                tol = self.exe.settings.get("tol", 1e-6) * (1.0 if self.exe.kind == "machine" else big)
                 if op in ("<=", ">=") and abs(ta - tb) <= tol:
                     return True
                 if op in ("<", ">") and abs(ta - tb) <= tol:
@@ -302,8 +304,10 @@ class Evaluator:
 
     # ------------------------------------------------------------------ quantifiers
     def domain(self, node: Node, env: dict, bound: set) -> list:
-        """A variable's domain; cached when it does not depend on another variable."""
-        if not (free_names(node) & bound):
+        """A variable's domain; cached when it does not depend on another variable -- one of
+        its own quantifier's, or one an enclosing quantifier has bound (`for some m in
+        decisions(e)` inside `for all e in ...`)."""
+        if not (free_names(node) & (bound | set(env))):
             key = id(node)
             v = self._domain_cache.get(key)
             if v is None:
@@ -408,7 +412,7 @@ class Evaluator:
             rel = [j for j in joins if j[0] == "rel"]
             if rel:
                 plan[i] = rel[0][1]
-            elif sims and self.exe.kind == "schedule":
+            elif sims and self.exe.kind != "programme":
                 plan[i] = self._sim_gen(sims[0][1], dom, nameset)
             elif keyed:
                 k = keyed[0]
@@ -571,7 +575,7 @@ class Evaluator:
                         groups.setdefault((kk, o.step), []).append(v)
                     else:
                         groups.setdefault(kk, []).append((o.t0, o.t1, v))
-            if exe.kind == "schedule":
+            if exe.kind != "programme":
                 for kk, items in groups.items():
                     items.sort(key=lambda x: (x[0], x[1]))
                     groups[kk] = (items, [x[0] for x in items],

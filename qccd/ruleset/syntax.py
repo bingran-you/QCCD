@@ -18,7 +18,7 @@ reader can check by eye:
 Grammar (EBNF; `#` starts a comment that runs to the end of the line):
 
     file      = { item } ;
-    item      = "ruleset" STRING | "title" STRING | "about" STRING
+    item      = "ruleset" STRING | "title" STRING | "about" STRING | "level" STRING
               | "include" STRING | "use" ID { "," ID } | "drop" ID { "," ID }
               | "param" NAME "=" expr
               | rule ;
@@ -89,10 +89,10 @@ _TOKEN = re.compile(r"""
 KEYWORDS = frozenset({
     "for", "all", "some", "in", "where", "and", "or", "not", "implies", "true", "false",
     "none", "rule", "ruleset", "title", "about", "source", "core", "param", "include",
-    "drop", "when", "count", "use",
+    "drop", "when", "count", "use", "level",
 })
 #: Words that start a top-level item: a rule's formula ends where one of these begins a line.
-ITEM_WORDS = frozenset({"rule", "ruleset", "title", "include", "drop", "param", "use"})
+ITEM_WORDS = frozenset({"rule", "ruleset", "title", "include", "drop", "param", "use", "level"})
 AGGREGATES = frozenset({"sum", "max", "min", "all_different", "count"})
 
 
@@ -236,6 +236,9 @@ class RuleSetSource:
     name: str = ""
     title: str = ""
     about: str = ""
+    #: what the rules are about: "device" (one QCCD device and an execution on it, the
+    #: default) or "machine" (a floorplan of verified places and a program scheduled on it)
+    level: str = "device"
     includes: list[str] = field(default_factory=list)
     drops: list[str] = field(default_factory=list)
     uses: list[str] = field(default_factory=list)
@@ -332,6 +335,11 @@ class _Parser:
             elif self.at("about"):
                 self.next()
                 rs.about = self.string()
+            elif self.at("level"):
+                self.next()
+                rs.level = self.string()
+                if rs.level not in ("device", "machine"):
+                    self.fail("a rule set's level is \"device\" or \"machine\"")
             elif self.at("include"):
                 self.next()
                 rs.includes.append(self.string())
@@ -357,7 +365,7 @@ class _Parser:
             elif self.at("rule"):
                 rs.rules.append(self.rule())
             else:
-                self.fail("expected ruleset, title, about, include, use, drop, param or rule")
+                self.fail("expected ruleset, title, about, level, include, use, drop, param or rule")
         ids = [r.id for r in rs.rules]
         dup = sorted({x for x in ids if ids.count(x) > 1})
         if dup:

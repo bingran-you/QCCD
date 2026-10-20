@@ -84,7 +84,8 @@ def test_a_resolved_rule_set_reads_back_as_itself():
 def test_every_word_says_what_it_means():
     for t in TERMS.values():
         assert t.meaning and t.signature and t.group in ("hardware", "execution", "time",
-                                                          "circuit", "model"), t.name
+                                                          "circuit", "model", "floorplan",
+                                                          "machine"), t.name
 
 
 # ------------------------------------------------------------------------- programmes

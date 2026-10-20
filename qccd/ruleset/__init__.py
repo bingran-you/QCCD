@@ -28,6 +28,7 @@ from .evaluate import FAILS, HOLDS, NOT_APPLICABLE, UNCHECKED, Evaluator, Report
 from .model import Execution
 from .syntax import Node, Rule, RuleSetSource, RuleSyntaxError, parse, show
 from .vocabulary import TERMS
+from . import machine as _machine  # noqa: F401  (registers the machine-level words)
 
 __all__ = [
     "RuleSet", "RuleSyntaxError", "load", "names", "catalogue", "check", "check_programme",
@@ -55,6 +56,7 @@ class RuleSet:
     params: dict[str, Node] = field(default_factory=dict)
     param_text: dict[str, str] = field(default_factory=dict)
     path: Path | None = None
+    level: str = "device"
 
     def rule(self, rid: str) -> Rule:
         for r in self.rules:
@@ -108,9 +110,17 @@ def catalogue() -> RuleSetSource:
     return _CATALOGUE
 
 
-def names() -> list[str]:
-    """The rule sets the website ships, by name."""
-    return sorted(p.stem for p in LIBRARY.glob("*.rules") if p.stem != "catalogue")
+def names(level: str = "device") -> list[str]:
+    """The rule sets the website ships, by name: those about one device (the default), or
+    with `level="machine"` those about a floorplan of places and a program scheduled on it."""
+    out = []
+    for p in LIBRARY.glob("*.rules"):
+        if p.stem == "catalogue":
+            continue
+        head = re.search(r'^level\s+"(\w+)"', p.read_text(encoding="utf-8"), re.M)
+        if (head.group(1) if head else "device") == level:
+            out.append(p.stem)
+    return sorted(out)
 
 
 def _source(spec: str | Path) -> tuple[RuleSetSource, Path | None]:
@@ -132,9 +142,11 @@ def load(spec: str | Path, _seen: frozenset = frozenset()) -> RuleSet:
     if src.name in _seen:
         raise RuleSyntaxError(f"rule set {src.name!r} includes itself")
     cat = catalogue()
-    known: dict[str, Rule] = {r.id: r for r in cat.rules}
-    params: dict[str, Node] = dict(cat.params)
-    ptext: dict[str, str] = dict(cat.param_text)
+    device = src.level == "device"
+    # the catalogue is the device level's: a machine-level rule set brings its own rules
+    known: dict[str, Rule] = {r.id: r for r in cat.rules} if device else {}
+    params: dict[str, Node] = dict(cat.params) if device else {}
+    ptext: dict[str, str] = dict(cat.param_text) if device else {}
     chosen: dict[str, Rule] = {}
     inherited: set[str] = set()      # parameters an included rule set travels with
     for inc in src.includes:
@@ -160,7 +172,7 @@ def load(spec: str | Path, _seen: frozenset = frozenset()) -> RuleSet:
             raise RuleSyntaxError(f"rule {rid} is a core rule and holds in every rule set; it "
                                   "cannot be dropped")
         chosen.pop(rid, None)
-    for r in cat.rules:
+    for r in (cat.rules if device else src.rules):
         if r.core:
             chosen.setdefault(r.id, r)
     params.update(src.params)
@@ -188,7 +200,8 @@ def load(spec: str | Path, _seen: frozenset = frozenset()) -> RuleSet:
     ptext = {k: v for k, v in ptext.items() if k in params}
     rules = sorted(chosen.values(), key=lambda r: rule_order(r.id))
     rs = RuleSet(name=src.name or (path.stem if path else "rules"), title=src.title,
-                 about=src.about, rules=rules, params=params, param_text=ptext, path=path)
+                 about=src.about, rules=rules, params=params, param_text=ptext, path=path,
+                 level=src.level)
     bad = problems(rs)
     if bad:
         raise RuleSyntaxError("; ".join(bad))

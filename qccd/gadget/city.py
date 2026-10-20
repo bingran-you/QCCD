@@ -7,11 +7,23 @@ is a bundle of nine ions that travels between places; every instruction of the a
 there.  Only characterized abstracts are read: op durations, per-ion door crossing times,
 junction passes, and channel transits replayed from the conveyor reference.
 
-The policy is deliberately simple, because what this layer has to prove is correctness,
-not throughput:
+Two policies (docs/ARCHITECTURE.md §7):
 
-* instructions run **one after another**: an instruction starts once everything the
-  previous one scheduled has finished;
+* **parallel** (the default): program order is the order instructions are *issued*, and each
+  is placed as early as its own blocks and the resources it needs allow -- so a factory
+  produces a magic state while a lattice surgery runs elsewhere, exactly when their places,
+  roads, junctions and ions are disjoint (G13).  A place serves the instructions it is given
+  in the order they are issued, and sends a bundle out of a door only once the road in front
+  of that door is clear of the last one.  A trip is a **green wave**: the bundle waits only on
+  the road in front of the door it leaves and the road in front of the door it reaches (each
+  holds a whole bundle, F5); between them every junction and road is leased to it for exactly
+  the time it is there, and the whole wave starts later if any of them is taken.
+* **sequential**: instructions run one after another (an instruction starts once everything
+  the previous one scheduled has finished) and road trips too, the policy the place model
+  began with, kept to compare against.
+
+In both:
+
 * a trip is the shortest route over channels and junctions (places are endpoints, never
   thoroughfares); a junction passes a bundle when it is free, and until then the bundle
   queues in the channel in front of it -- every channel a bundle can queue in holds at least
@@ -126,8 +138,13 @@ class Bundle:
 
 
 class City:
-    def __init__(self, alg: Algorithm, lib: Library, leaves: LeafLibrary, log=None):
+    def __init__(self, alg: Algorithm, lib: Library, leaves: LeafLibrary, log=None,
+                 parallel: bool = True):
         self.alg, self.lib, self.leaves = alg, lib, leaves
+        self.parallel = parallel
+        #: block -> when the last instruction on it finished: the only barrier there is,
+        #: when instructions run in parallel
+        self.block_free: dict[str, float] = {}
         self.log = log or (lambda *a, **k: None)
         self.wires: dict = {}
         self.leaf, self.nets, self.n_residents = flatten(lib, leaves, wires=self.wires)
@@ -187,10 +204,15 @@ class City:
         def edge(u, v, w, kind, info):
             self.adj.setdefault(u, []).append((v, w, kind, info))
 
+        #: (place, door) -> the road in front of it (a junction's arms are not doors)
+        self.door_net: dict[tuple, str] = {}
         for n in self.nets.values():
             w = self.leaves.channel_timing(n.length, 1)["transit_us"]
             edge(n.a, n.b, w, "net", n.path)
             edge(n.b, n.a, w, "net", n.path)
+            for end in (n.a, n.b):
+                if not self.leaf[end[0]].master.name.startswith("junc"):
+                    self.door_net[end] = n.path
         for path, li in self.leaf.items():
             if li.master.name.startswith("junc"):
                 for a in li.master.ports:
@@ -394,6 +416,10 @@ class City:
             said = " ".join(ins.blocks) or "the program"
             raise CityError(f"nothing to decode: every syndrome {said} has left is decoded "
                             f"already")
+        if self.parallel:
+            # one call: the program reaches `decode` once every window it names exists, and
+            # sends them together -- not each the moment it was measured
+            t0 = max([t0] + [w["measured_us"] for w in todo])
         for w in todo:
             t_send = max(t0, w["measured_us"])
             t1, _ = self.message((w["place"], "syn"), t_send, bits=w["bits"],
@@ -594,7 +620,15 @@ class City:
                 raise CityError(f"{li.master.name}.{opname} takes "
                                 f"{tin.count if tin else 0} ions on {port}, not {len(gids)}")
             s = max(s, max(a - i for a, i in zip(arr, tin.times_us)))
-        s = self.cal[path].earliest(s, O.duration_us)
+        if self.parallel:
+            # a place serves its instructions in the order they are issued, and sends a bundle
+            # out of a door only once the road in front of it is clear of the last one
+            for tr in O.transfers:
+                if tr.dir == "out" and (path, tr.port) in self.door_net:
+                    s = max(s, self.net_cal[self.door_net[(path, tr.port)]].end - tr.t_first_us)
+            s = self._start(path, s, O.duration_us)
+        else:
+            s = self.cal[path].earliest(s, O.duration_us)
         local = dict(li.ids)
         visitors = []
         for name, gid in (resting or {}).items():
@@ -628,9 +662,27 @@ class City:
                          guard=guard)
         return s, outputs, row
 
+    def _start(self, path, t: float, dur: float) -> float:
+        """When an op of `dur` may start at `path`, no earlier than `t`.  A junction and the
+        classical places fit it into any gap; every other place serves in issue order."""
+        fam = self.leaf[path].master.family
+        if path in self.junction_paths or fam in ("decoder", "archive"):
+            return self.cal[path].earliest(t, dur)
+        return max(t, self.cal[path].end)
+
+    @property
+    def junction_paths(self) -> set:
+        js = getattr(self, "_junctions", None)
+        if js is None:
+            js = self._junctions = {p for p, li in self.leaf.items()
+                                    if li.master.name.startswith("junc")}
+        return js
+
     def trip(self, gids, src, deps, dst, t_min, ins, grp):
         """Take a bundle leaving `src` at `deps` to door `dst`: junction passes are scheduled
         on the way; returns (arrival times at `dst`, the last channel, still open)."""
+        if self.parallel:
+            return self._wave(gids, src, deps, dst, t_min, ins, grp)
         t_min = max(t_min, self.road_free)
         t = list(deps)
         trip = None
@@ -659,14 +711,82 @@ class City:
         self.road_free = max([self.road_free] + list(t))
         return t, trip
 
+    def _wave(self, gids, src, deps, dst, t_min, ins, grp):
+        """A trip as a green wave.  The bundle leaves `src` onto the road in front of it and
+        may wait there; from the first junction on it never stops until the road in front of
+        `dst`, where it may wait again.  Every junction and road between is leased to it for
+        exactly the time it is there; if any is taken, the whole wave starts later."""
+        hops = self._route(src, dst)
+        nets = [h for h in hops if h[0] == "net"]
+        juncs = [h for h in hops if h[0] == "junction"]
+        taus = [self.leaves.channel_timing(self.nets[h[1]].length, 1)["transit_us"] for h in nets]
+        if not juncs:
+            net = nets[0][1]
+            return [d + taus[0] for d in deps], (net, nets[0][2], list(deps), taus[0])
+        passes = []
+        for h in juncs:
+            jpath, a, b, opname = h[1]
+            if len(gids) != 9:
+                opname = f"{opname}.{len(gids)}"
+            O = self.leaf[jpath].master.ops.get(opname)
+            if O is None:
+                raise CityError(f"junction {jpath} cannot pass a bundle of {len(gids)}")
+            passes.append((jpath, opname, O, O.transfer(a, "in"), O.transfer(b, "out")))
+        arr0 = [d + taus[0] for d in deps]
+        s1 = max([t_min] + [x - i for x, i in zip(arr0, passes[0][3].times_us)])
+        for _ in range(100000):
+            starts = [s1]
+            for k in range(1, len(passes)):
+                outs = [starts[-1] + x for x in passes[k - 1][4].times_us]
+                starts.append(max(o + taus[k] - i for o, i in zip(outs, passes[k][3].times_us)))
+            shift = 0.0
+            for k, (jpath, _opname, O, _tin, tout) in enumerate(passes):
+                a = starts[k]
+                got = self.cal[jpath].earliest(a, O.duration_us)
+                shift = max(shift, got - a)
+                if k + 1 < len(passes):
+                    a = starts[k] + min(tout.times_us)
+                    b = starts[k + 1] + max(passes[k + 1][3].times_us)
+                    got = self.net_cal[nets[k + 1][1]].earliest(a, b - a)
+                    shift = max(shift, got - a)
+            # the road in front of `dst`: the bundle may wait on it, so nothing may be booked
+            # on it after the bundle enters
+            a = starts[-1] + min(passes[-1][4].times_us)
+            shift = max(shift, self.net_cal[nets[-1][1]].end - a)
+            if shift <= 1e-9:
+                break
+            s1 += shift
+        else:
+            raise CityError(f"no time at which the road from {src[0]} to {dst[0]} is clear")
+        trip = (nets[0][1], nets[0][2], list(deps), taus[0])
+        t = list(deps)
+        for k, (jpath, opname, O, tin, tout) in enumerate(passes):
+            net, usrc, udeps, tau = trip
+            self.carry(net, usrc, udeps, tau, gids, "data", ins, grp,
+                       takes=[starts[k] + i for i in tin.times_us])
+            self.event(jpath, opname, starts[k], starts[k] + O.duration_us, ins, grp,
+                       bind=[[nm, g] for nm, g in zip(tin.ions, gids)])
+            outs = [starts[k] + x for x in tout.times_us]
+            trip = (nets[k + 1][1], nets[k + 1][2], outs, taus[k + 1])
+            t = [o + taus[k + 1] for o in outs]
+        return t, trip
+
     def bring(self, bundle: Bundle, dst, t_min, ins, grp):
         """A block to door `dst`: out of its zone first if it rests in one."""
         if bundle.resting:
             Z = bundle.leaf
+            lease = getattr(bundle, "lease", None)
+            if lease is not None:
+                # the zone was the block's from check-in on, open-ended; it is the block's
+                # until it checks out, and free after
+                self.cal[Z].iv.remove(lease)
+                bundle.lease = None
             O = self.leaf[Z].master.ops["check_out"]
             names = O.transfer("out", "out").ions
             s, outs, _ = self.op(Z, "check_out", {}, t_min, ins, grp,
                                  resting=dict(zip(names, bundle.gids)))
+            if lease is not None:
+                self.cal[Z].reserve(lease[0], s)
             bundle.deps = outs["out"][1]
             bundle.leaf, bundle.port = Z, "out"
             bundle.resting = False
@@ -684,6 +804,10 @@ class City:
         bundle.leaf, bundle.port, bundle.deps = Z, "in", []
         bundle.resting = True
         self.zone_holder[Z] = bundle.name
+        if self.parallel:
+            # the zone is the block's from now until it checks out: an open lease
+            bundle.lease = (row[1], float("inf"))
+            self.cal[Z].reserve(*bundle.lease)
         return row[2]
 
     # -- instructions ----------------------------------------------------------------------
@@ -709,8 +833,12 @@ class City:
 
     def instruction(self, ins: Instr):
         grp = f"i{ins.index}"
-        t0 = self.t_now
+        # sequential: everything before has finished.  Parallel: the blocks this instruction
+        # acts on are free; everything else is a resource, and its calendar says when.
+        t0 = self.t_now if not self.parallel else max(
+            [self.block_free.get(b, 0.0) for b in ins.blocks if ins.kind != "decode"] or [0.0])
         before = len(self.events)
+        before_c, before_m, before_f = len(self.carries), len(self.messages), len(self.frames)
         kind = ins.kind
         if ins.cond is not None and kind not in self.GUARDABLE:
             raise CityError(f"'{kind}' cannot be guarded: only {', '.join(self.GUARDABLE)} "
@@ -753,6 +881,7 @@ class City:
                     return
                 end = self.park(b, t0, ins.index, grp)
                 self.t_now = max(self.t_now, end)
+                self.block_free[q] = max(self.block_free.get(q, 0.0), end)
                 return
             C = self._choose("se", ins, near=(b.leaf, b.port))
             gids, arr, trip = self.bring(b, (C, "in"), t0, ins.index, grp)
@@ -921,6 +1050,14 @@ class City:
         ends = ([e[2] for e in self.events[before:]] + [c[11] for c in self.carries]
                 + [m[7] for m in self.messages])
         self.t_now = max([self.t_now] + ends)
+        if self.parallel:
+            # what this instruction did: its blocks are free when the last of it is over
+            mine = ([e[2] for e in self.events[before:]] + [c[11] for c in self.carries[before_c:]]
+                    + [m[7] for m in self.messages[before_m:]]
+                    + [f["t"] for f in self.frames[before_f:]])
+            done = max(mine + [t0])
+            for q in list(ins.blocks) + list(produced):
+                self.block_free[q] = max(self.block_free.get(q, 0.0), done)
 
     # -- output -----------------------------------------------------------------------------
 
@@ -1012,5 +1149,10 @@ class City:
         }
 
 
-def schedule(alg: Algorithm, lib: Library, leaves: LeafLibrary, *, log=None) -> dict:
-    return City(alg, lib, leaves, log=log).run()
+def schedule(alg: Algorithm, lib: Library, leaves: LeafLibrary, *, log=None,
+             parallel: bool = True) -> dict:
+    """Schedule `alg` on the design `lib`.  `parallel=False` runs one instruction, and one
+    road trip, at a time, as the place model first did."""
+    gir = City(alg, lib, leaves, log=log, parallel=parallel).run()
+    gir["policy"] = "parallel" if parallel else "sequential"
+    return gir

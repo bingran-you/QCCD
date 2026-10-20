@@ -38,23 +38,35 @@ def _load(alg) -> Algorithm:
 
 
 def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: bool = False,
-                    leaves: LeafLibrary | None = None, studio_dir=None, log=print) -> dict:
-    """Schedule, check and sign off one algorithm on the town, and write its page.  With
-    `studio_dir`, the studio page of every op the schedule uses is rendered there (shared by
-    several builds) and linked from the tool's inspector."""
+                    leaves: LeafLibrary | None = None, studio_dir=None, log=print,
+                    floorplan=None, parallel: bool = True) -> dict:
+    """Schedule, check and sign off one algorithm on a floorplan (the town unless `floorplan`
+    names a `.floor` file), and write its page.  With `studio_dir`, the studio page of every
+    op the schedule uses is rendered there (shared by several builds) and linked from the
+    tool's inspector.  `parallel=False` schedules one instruction at a time."""
     log = log or (lambda *a, **k: None)
     t_start = time.time()
     alg = _load(alg)
     leaves = leaves or LeafLibrary(cache_dir, rebuild=rebuild, log=log)
     t0 = time.time()
-    lib = town(leaves)
+    regions = None
+    if floorplan is None:
+        lib = town(leaves)
+    else:
+        from .floorplan import load_file
+        lib, fp = load_file(floorplan, leaves)
+        regions = fp.regions
     t_lib = time.time() - t0
     t0 = time.time()
-    gir = schedule(alg, lib, leaves, log=log)
+    gir = schedule(alg, lib, leaves, log=log, parallel=parallel)
     t_sched = time.time() - t0
     t0 = time.time()
     checks = check_places(gir, lib, leaves)
     t_check = time.time() - t0
+    t0 = time.time()
+    from .judge import judge_schedule, traffic
+    rules = judge_schedule(lib, leaves, gir, regions=regions)
+    t_rules = time.time() - t0
     t0 = time.time()
     signoff = sign_off(alg, gir, lib, leaves) if not gir["refused"] else {
         "passed": False, "why": ["instructions were refused"], "relations": [], "flows": [],
@@ -68,7 +80,12 @@ def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: boo
         "places": sum(1 for v in gir["leaves"].values() if lib[v[0]].family != "road"),
         "junctions": sum(1 for v in gir["leaves"].values() if lib[v[0]].family == "road"),
         "seconds": {"library": round(t_lib, 2), "schedule": round(t_sched, 2),
-                    "checks": round(t_check, 2), "signoff": round(t_sign, 2)},
+                    "checks": round(t_check, 2), "rules": round(t_rules, 2),
+                    "signoff": round(t_sign, 2)},
+        "policy": gir.get("policy"),
+        "traffic": traffic(gir, lib),
+        "rules": {"passed": len(rules["passed"]), "failed": rules["failed"],
+                  "total": len(rules["rules"])},
     }
     gir["stats"] = stats
     out = Path(out_dir)
@@ -76,6 +93,8 @@ def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: boo
     (out / "gir.json").write_text(json.dumps(gir), encoding="utf-8")
     lib.save(out / "library.json")
     (out / "checks.json").write_text(json.dumps(checks, indent=1), encoding="utf-8")
+    (out / "rules.json").write_text(json.dumps(rules, indent=1, ensure_ascii=False),
+                                    encoding="utf-8")
     (out / "signoff.json").write_text(json.dumps(signoff, indent=1, ensure_ascii=False),
                                       encoding="utf-8")
     (out / f"{alg.name}.alg").write_text(alg.source, encoding="utf-8")
@@ -101,5 +120,5 @@ def build_algorithm(alg, *, out_dir, cache_dir="out/gadgets/cache", rebuild: boo
         f"{stats['makespan_ms']} ms; G passed {len(checks['passed'])}/"
         f"{len(PLACE_RULES)}; sign-off "
         f"{'passed' if signoff.get('passed') else 'FAILED'}")
-    return {"out": str(out), "stats": stats, "checks": checks, "signoff": signoff,
+    return {"out": str(out), "stats": stats, "checks": checks, "signoff": signoff, "rules": rules,
             "algorithm": alg, "gir": gir, "library": lib}

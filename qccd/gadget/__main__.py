@@ -57,8 +57,21 @@ def _cmd_algorithm(a) -> int:
     from .verified import build_algorithm
     out = a.out or f"out/gadgets/algorithms/{Path(a.program).stem}"
     res = build_algorithm(a.program, out_dir=out, cache_dir=a.cache, rebuild=a.rebuild,
-                          studio_dir=Path(out) / "studio" if a.studio else None)
+                          studio_dir=Path(out) / "studio" if a.studio else None,
+                          floorplan=a.floorplan, parallel=not a.sequential)
     so = res["signoff"]
+    st = res["stats"]
+    tr = st["traffic"]
+    print(f"  {st['policy']}: makespan {st['makespan_ms']} ms; traffic {tr['ion_sites']} ion-sites "
+          f"in {tr['carries']} carries, {tr['junction_passes']} junction passes, bundles waited "
+          f"{tr['wait_us'] / 1000:.1f} ms; up to {tr['peak_parallel_ops']} places at work at once")
+    rl = res["rules"]
+    print(f"  machine rules: {len(rl['passed'])} hold" + (f", FAIL {', '.join(rl['failed'])}"
+                                                          if rl["failed"] else ""))
+    for r in rl["rules"]:
+        if r["verdict"] == "fails":
+            print(f"    {r['id']}: {r.get('count', 0)} counterexample(s), e.g. "
+                  f"{'; '.join(r.get('examples', [])[:2])}")
     for r in so.get("relations", []):
         print(f"  {'ok ' if r['ok'] else 'BAD'} {r['relation']}")
     for f in so.get("flows", []):
@@ -66,7 +79,33 @@ def _cmd_algorithm(a) -> int:
     d = so.get("distance", {})
     print(f"  distance: {d.get('skipped') or ('>= 3' if d.get('passed') else d)}")
     print(f"  wrote {Path(out) / 'index.html'}")
-    return 0 if so.get("passed") and not res["checks"]["failed"] else 1
+    return 0 if so.get("passed") and not res["checks"]["failed"] and not rl["failed"] else 1
+
+
+def _cmd_floorplan(a) -> int:
+    """Read a floorplan, judge it by the floorplan rules, print the verdicts."""
+    from .floorplan import FloorplanError, load_file
+    from .judge import judge_floorplan
+    from .library import LeafLibrary
+    leaves = LeafLibrary(a.cache, rebuild=a.rebuild)
+    try:
+        lib, fp = load_file(a.floorplan, leaves)
+    except FloorplanError as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    top = lib[lib.top]
+    n_j = sum(1 for i in top.instances if i.master == "junc9")
+    print(f"{fp.name}: {len(top.instances) - n_j} places, {n_j} junctions, "
+          f"{sum(1 for c in top.channels if c.kind != 'wire')} roads, "
+          f"{sum(1 for c in top.channels if c.kind == 'wire')} wires")
+    rep = judge_floorplan(lib, leaves, regions=fp.regions)
+    for r in rep["rules"]:
+        mark = {"holds": "ok  ", "fails": "FAIL"}.get(r["verdict"], "--  ")
+        extra = (f": {r.get('count', 0)} counterexample(s), e.g. "
+                 f"{'; '.join(r.get('examples', [])[:3])}" if r["verdict"] == "fails" else
+                 (f": {r.get('reason')}" if r.get("reason") else ""))
+        print(f"  {mark} {r['id']} {r['title']}{extra}")
+    return 0 if rep["ok"] else 1
 
 
 def _cmd_parse(a) -> int:
@@ -172,12 +211,18 @@ def main(argv=None) -> int:
     common(b)
     pl = sub.add_parser("places", help="characterize and verify the place library, print it")
     common(pl)
-    al = sub.add_parser("algorithm", help="schedule a logical algorithm on the town, sign it off")
+    al = sub.add_parser("algorithm", help="schedule a logical algorithm on a floorplan, sign it off")
     al.add_argument("program", help="an .alg file (qccd/gadget/algorithm.py)")
     al.add_argument("-o", "--out")
+    al.add_argument("--floorplan", help="a .floor file to run on (default: the town)")
+    al.add_argument("--sequential", action="store_true",
+                    help="one instruction, and one road trip, at a time")
     al.add_argument("--studio", action="store_true",
                     help="also write the full studio page for every op used")
     common(al)
+    fl = sub.add_parser("floorplan", help="read a floorplan and judge it by the floorplan rules")
+    fl.add_argument("floorplan", help="a .floor file (qccd/gadget/floorplan.py)")
+    common(fl)
     p = sub.add_parser("parse", help="show what the LogicQ front end understood")
     p.add_argument("program")
     lb = sub.add_parser("library", help="characterize and print the leaf and pair masters")
@@ -199,7 +244,7 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     return {"build": _cmd_build, "parse": _cmd_parse, "library": _cmd_library,
             "showcase": _cmd_showcase, "site": _cmd_site, "places": _cmd_places,
-            "algorithm": _cmd_algorithm}[a.cmd](a)
+            "algorithm": _cmd_algorithm, "floorplan": _cmd_floorplan}[a.cmd](a)
 
 
 if __name__ == "__main__":
