@@ -1,6 +1,8 @@
 # found by the floorplan optimiser from the floorplan shor, for Shor's algorithm: objective traffic,
 # 150 candidates (seed 7), each scheduled;
 # traffic 312,441 -> 189,743 ion-sites (before refresh rounds), makespan 10.67 -> 10.64 s
+# re-measured 2026-10-20, split and merge charged for what a move does: 313,727 -> 199,580 ion-sites
+# (refresh rounds included), makespan 11.16 -> 11.04 s
 
 floorplan shor_d3_traffic "A machine for Shor's algorithm (surface code, d = 3) (less traffic)"
 code surface_d3

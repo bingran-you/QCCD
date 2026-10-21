@@ -36,9 +36,10 @@ EXAMPLES = sorted(f for f in ALGS.glob("*.alg")
                   if "\nfloorplan " not in "\n" + f.read_text(encoding="utf-8"))
 
 #: GADGETS.md §9.3's makespans, from the sequential policy that measured them
-SEQUENTIAL_MS = {"bell_cnot": 173.9, "bell_surgery": 294.2, "ghz3": 190.0, "teleport": 566.8,
-                 "magic_state": 290.1, "magic_teleport": 791.1, "frames": 110.3,
-                 "s_gate": 524.6, "cond_cx": 140.5, "teleport_fix": 542.7, "t_gate": 706.8}
+#: re-measured 2026-10-20, when split and merge became charged for what a move does (#16/#17)
+SEQUENTIAL_MS = {"bell_cnot": 194.6, "bell_surgery": 310.0, "ghz3": 217.7, "teleport": 591.4,
+                 "magic_state": 297.7, "magic_teleport": 817.2, "frames": 121.9,
+                 "s_gate": 549.4, "cond_cx": 161.0, "teleport_fix": 568.4, "t_gate": 728.7}
 
 
 @pytest.fixture(scope="module")

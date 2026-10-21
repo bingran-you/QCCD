@@ -402,19 +402,19 @@ decoders).
 
 | algorithm | blocks | ions | machine time | flat circuit | relation / flow | schedule distance |
 |---|---:|---:|---:|---|---|---|
-| `bell_cnot` | 2 | 79 | 173.9 ms | 34 ions, 50 records | Z̄₀ ⊕ Z̄₁ = 0 | ≥ 3 (1,798 faults) |
-| `bell_surgery` | 2 | 79 | 294.2 ms | 49 ions, 97 records | m ⊕ Z̄₀ ⊕ Z̄₁ = 0 | ≥ 3 (4,058) |
-| `ghz3` | 3 | 88 | 190.0 ms | 43 ions, 59 records | Z̄₀ ⊕ Z̄₁ = 0, Z̄₀ ⊕ Z̄₂ = 0 | ≥ 3 (1,951) |
-| `teleport` | 3 | 88 | 566.8 ms | 66 ions, 176 records | 1 → X̄_b ⊕ m₂ | ≥ 3 (8,116) |
-| `magic_state` | 1 | 70 | 290.1 ms | 25 ions, 32 records | X̄_t → X̄_t, Z̄_t → Z̄_t (from the magic ion) | injection: 1 by design |
-| `magic_teleport` | 3 | 88 | 791.1 ms | 74 ions, 192 records | X̄_t → X̄_b ⊕ m₂; Z̄_t → Z̄_b ⊕ m₁ ⊕ m₃ ⊕ m₄ | injection: 1 by design |
-| `frames` | 2 | 79 | 110.3 ms | 34 ions, 42 records | m = 1, n = 1 (both flipped by a frame the archive holds) | ≥ 3 (1,290) |
-| `s_gate` | 1 | 88 | 524.6 ms | 74 ions, 185 records | m = 1 (two S̄ gadgets make a Z̄) | injection: 1 by design |
-| `cond_cx` | 3 | 88 | 140.5 ms | 2 branches | `m=0`: u = 0 · `m=1`: u ⊕ v = 0 | ≥ 3 per branch |
-| `teleport_fix` | 3 | 88 | 542.7 ms | 2 branches | r = 0 in **both** branches | ≥ 3 per branch |
-| `t_gate` | 2 | 88 | 706.8 ms | 4 branches | X̄[t] → X̄[q0] / Ȳ[q0]; Z̄[t] → Z̄[q0], exactly | injection: 1 by design |
+| `bell_cnot` | 2 | 79 | 194.6 ms | 34 ions, 50 records | Z̄₀ ⊕ Z̄₁ = 0 | ≥ 3 (1,798 faults) |
+| `bell_surgery` | 2 | 79 | 310.0 ms | 49 ions, 97 records | m ⊕ Z̄₀ ⊕ Z̄₁ = 0 | ≥ 3 (4,058) |
+| `ghz3` | 3 | 88 | 217.7 ms | 43 ions, 59 records | Z̄₀ ⊕ Z̄₁ = 0, Z̄₀ ⊕ Z̄₂ = 0 | ≥ 3 (1,951) |
+| `teleport` | 3 | 88 | 591.4 ms | 66 ions, 176 records | 1 → X̄_b ⊕ m₂ | ≥ 3 (8,116) |
+| `magic_state` | 1 | 70 | 297.7 ms | 25 ions, 32 records | X̄_t → X̄_t, Z̄_t → Z̄_t (from the magic ion) | injection: 1 by design |
+| `magic_teleport` | 3 | 88 | 817.2 ms | 74 ions, 192 records | X̄_t → X̄_b ⊕ m₂; Z̄_t → Z̄_b ⊕ m₁ ⊕ m₃ ⊕ m₄ | injection: 1 by design |
+| `frames` | 2 | 79 | 121.9 ms | 34 ions, 42 records | m = 1, n = 1 (both flipped by a frame the archive holds) | ≥ 3 (1,290) |
+| `s_gate` | 1 | 88 | 549.4 ms | 74 ions, 185 records | m = 1 (two S̄ gadgets make a Z̄) | injection: 1 by design |
+| `cond_cx` | 3 | 88 | 161.0 ms | 2 branches | `m=0`: u = 0 · `m=1`: u ⊕ v = 0 | ≥ 3 per branch |
+| `teleport_fix` | 3 | 88 | 568.4 ms | 2 branches | r = 0 in **both** branches | ≥ 3 per branch |
+| `t_gate` | 2 | 88 | 728.7 ms | 4 branches | X̄[t] → X̄[q0] / Ȳ[q0]; Z̄[t] → Z̄[q0], exactly | injection: 1 by design |
 
-(Makespans are the sequential policy's; ARCHITECTURE.md §7 has the parallel one. `t_gate` now applies X̄ to the magic block first: the factory makes T†|+⟩, and without it the program was never T -- the contract checker found it, ARCHITECTURE.md §6.)
+(Makespans are the sequential policy's, re-measured 2026-10-20 when split and merge became charged for what a move does rather than what its class is called; ARCHITECTURE.md §7 has the parallel one. `t_gate` now applies X̄ to the magic block first: the factory makes T†|+⟩, and without it the program was never T -- the contract checker found it, ARCHITECTURE.md §6.)
 
 All pass G1–G11; scheduling, checks and sign-off take under 0.3 s each warm (a guarded
 program takes one sign-off pass per branch). The checks fail

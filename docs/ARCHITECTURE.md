@@ -226,9 +226,11 @@ seeded hill climb over the floorplans the town builder makes (which places stand
 in what order), every candidate *scheduled* -- its traffic and makespan are the schedule's own,
 and a candidate that refuses an instruction or breaks a machine rule is not one. The best is
 written as an ordinary floorplan. From `shor.floor`, 150 candidates (160 s) found
-`shor_traffic.floor`: Shor moves 199,616 ion-sites there against 325,626 (39% fewer, refresh
+`shor_traffic.floor`: Shor moves 199,580 ion-sites there against 313,727 (36% fewer, refresh
 rounds included), every rule holding and the compositional sign-off unchanged; the makespan
-hardly moves (10.77 → 10.73 s), because Shor's critical path is lattice surgery, not travel.
+hardly moves (11.16 → 11.04 s), because Shor's critical path is lattice surgery, not travel.
+(Re-measured 2026-10-20 under split/merge charged for what a move does; the search was run
+under the earlier pricing, and its floorplan is still the better one.)
 
 ---
 
@@ -249,11 +251,11 @@ nor keep them alive for seconds.
 
 | | |
 |---|---|
-| instructions | 157 written (after `standard` expands) + 30 refresh rounds |
+| instructions | 157 written (after `standard` expands) + 32 refresh rounds |
 | magic states / π/4 gadgets / surgeries | 15 / 29 / 44 |
-| events, carries | 4,495, 3,734 |
-| makespan | 10.77 s |
-| traffic | 325,626 ion-sites; 3,328 junction passes; longest wait on a road 0.23 s |
+| events, carries | 4,435, 3,668 |
+| makespan | 11.16 s |
+| traffic | 313,727 ion-sites; 3,262 junction passes; longest wait on a road 0.23 s |
 | machine rules | F1–F9 and G1–G14 hold; nothing refused |
 | flat sign-off | does not apply: 11 outcomes a guard reads are corrected by frames that are products of bits |
 | compositional sign-off | passed: places (G9), gadgets (S̄, √X̄), gates (sdg, h, t, tdg, ccx, cswap), composition (23 rules), semantics m1 = 0, (m2, m3) uniform |
@@ -279,7 +281,7 @@ python -m qccd.gadget algorithm examples/gadgets/algorithms/shor15.alg   # its f
 |---|---|---|
 | A1 | machine vocabulary; G1–G11 as rules, equal to `place_checks.py` on every example and mutation | ✅ `qccd/ruleset/machine.py`, `library/machine.rules`; 0.05 s per example |
 | A2 | floorplan language, `town.floor`, F1–F9 | ✅ `qccd/gadget/floorplan.py`; the town round-trips exactly; seven broken floorplans each fail their rule |
-| A3 | parallel scheduler, G12–G14, traffic | ✅ `city.py` `parallel=True`; every example passes F1–F9 and G1–G14 and signs off; `magic_teleport` 791 → 490 ms |
+| A3 | parallel scheduler, G12–G14, traffic | ✅ `city.py` `parallel=True`; every example passes F1–F9 and G1–G14 and signs off; `magic_teleport` 817 → 508 ms (2026-10-20 pricing) |
 | A4 | gate definitions, nested guards, `sx`/`h`/`t`/`tdg`/`ccx`/`cswap`, contracts | ✅ `algorithm.py`, `gates/standard.alg`, `logic/contract.py`; every gate proved; the shipped T gadget was wrong, fixed |
 | A5 | `shor15.alg` on a Shor floorplan, compositional sign-off, logical check | ✅ `shor.floor`, `mem_d3`, `refresh.py`, `logic/compose.py`; 23 rules hold, compositional sign-off passed |
 | A6 | the design page: floorplans, traffic, parallel lanes | ✅ the page shows the 23 rules (each opening to its assertion), the compositional sign-off, a traffic panel and the floorplan's text; the editor exports `.floor`; `optimize` searches floorplans for traffic |
