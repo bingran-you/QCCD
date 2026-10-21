@@ -177,3 +177,12 @@ def test_qccdc_parses_the_qasm(key, tmp_path):
     cp = subprocess.run([str(qccdc), "parse", str(p)], capture_output=True, text=True,
                         timeout=60)
     assert cp.returncode == 0, cp.stdout[-500:] + cp.stderr[-500:]
+
+
+def test_logical_qubits_count_each_qubit_once_across_both_bases():
+    """Goal 1 divides a rate per round by k: a two-basis memory tests each logical qubit twice."""
+    from qccd.qec.experiments import logical_qubits
+    assert logical_qubits(rotated_surface_xz(3)) == 1 and logical_qubits(rotated_surface_xz(5)) == 1
+    assert logical_qubits(rotated_surface(3)) == 1 and logical_qubits(get_experiment("bb72")) == 12
+    s = rotated_surface_xz(5).summary()
+    assert s["logical_qubits"] == 1 and s["ions"] == 98

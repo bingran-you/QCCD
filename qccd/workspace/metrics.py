@@ -22,7 +22,9 @@ __all__ = ["replay_time", "broadcast_use", "compute_metrics", "METRIC_UNITS"]
 
 METRIC_UNITS = {"T_jones": "ms", "T_transport": "ms", "instructions": "count", "dacs": "count",
                 "ions_per_instruction": "ions", "transport_instructions": "count",
-                "total_cost": "model cost units", "total_steps": "machine steps"}
+                "total_cost": "model cost units", "total_steps": "machine steps",
+                "ler": "per experiment", "ler_per_round": "per round",
+                "ler_per_round_per_logical": "per round per logical qubit"}
 
 
 def _fastest_model(table: str):

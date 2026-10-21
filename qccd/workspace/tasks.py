@@ -320,6 +320,10 @@ def build_release(task: str, release: str, circuit_text: str, physics: Mapping, 
                                           encoding="utf-8")
         man["qec"] = {"experiment": qec["experiment"], "noise": qec["noise"], "ler": dict(qec["ler"]),
                       "detectors": {"file": "detectors.json", "digest": _sha256_file(d / "detectors.json")}}
+        # Goal 1's leaderboard reads these: what a row's rate is divided by, and the ion count
+        for key in ("logical_qubits", "n_ions"):
+            if qec.get(key) is not None:
+                man["qec"][key] = int(qec[key])
         man["required_checks"].append("ler")
     (d / "release.json").write_text(json.dumps(man, indent=1, sort_keys=True, ensure_ascii=False) + "\n",
                                     encoding="utf-8")

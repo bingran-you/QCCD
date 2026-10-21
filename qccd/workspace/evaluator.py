@@ -672,7 +672,9 @@ def _ler_stage(st: _Stage, release: TaskRelease, b, arch, prog, ctx: dict) -> No
         st.done("failed", "detectors deterministic with the circuit's parity", **detail)
         return
     est = rep["ler"]
-    ctx["ler_metrics"] = {"ler": est["ler"], "ler_per_round": est["per_round"]}
+    # Goal 1 ranks every code under 200 ions together, by the rate per round PER LOGICAL QUBIT
+    ctx["ler_metrics"] = {"ler": est["ler"], "ler_per_round": est["per_round"],
+                          "ler_per_round_per_logical": est["per_round"] / exp.logical_qubits}
     st.done("passed", f"{est['errors']} logical errors in {est['shots']} shots ({est['decoder']}), "
             f"noise {q['noise']}", **detail)
 

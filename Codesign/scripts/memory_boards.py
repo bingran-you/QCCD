@@ -53,7 +53,8 @@ OUT = ROOT / "MemoryBoard"
 TASKS = ROOT / "tasks"
 BOARDS = {"rep5_mem": {"order": 6, "short": "rep-5 memory"},
           "surface3_mem": {"order": 7, "short": "surface-3 memory"},
-          "surface5xz_mem": {"order": 8, "short": "surface-5 X+Z memory"}}
+          "surface5xz_mem": {"order": 8, "short": "surface-5 X+Z memory"},
+          "surface3xz_mem": {"order": 9, "short": "surface-3 X+Z memory"}}
 #: a release table -> the tag its time is reported under (`T_<tag>`)
 TABLE_TAGS = {"qccdsim_jones": "jones", "transport_excitation": "transport"}
 

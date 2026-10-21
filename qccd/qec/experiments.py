@@ -68,6 +68,7 @@ __all__ = [
     "repetition",
     "rotated_surface",
     "rotated_surface_xz",
+    "logical_qubits",
     "steane",
     "steane_code",
     "css_memory",
@@ -188,13 +189,27 @@ class MemoryExperiment:
                 uses[b] = uses.get(b, 0) + 1
         return max(uses.values(), default=0) <= 2
 
+    @property
+    def logical_qubits(self) -> int:
+        """k, the logical qubits the experiment tests.  A two-basis ("XZ") experiment tests each
+        one twice, a copy of the code per basis, so it is half its observables."""
+        n = len(self.observables)
+        return max(1, n // 2) if self.basis == "XZ" else max(1, n)
+
     def summary(self) -> dict:
         """What a report names the experiment by: the spec without its bit lists."""
         return {"experiment": self.name, "code": self.code, "distance": self.distance,
                 "rounds": self.rounds, "basis": self.basis, "n_data": self.n_data,
                 "n_ancilla": self.n_ancilla, "detectors": len(self.detectors),
                 "observables": len(self.observables), "matchable": self.matchable,
-                "readout": self.readout}
+                "readout": self.readout, "logical_qubits": self.logical_qubits,
+                "ions": self.n_data + self.n_ancilla}
+
+
+def logical_qubits(exp: MemoryExperiment) -> int:
+    """k of an experiment (`MemoryExperiment.logical_qubits`): what Goal 1's leaderboard divides a
+    logical error rate per round by, so that codes encoding more qubits are compared fairly."""
+    return exp.logical_qubits
 
 
 # ------------------------------------------------------------------ the builder
