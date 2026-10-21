@@ -102,7 +102,9 @@ def _page_quanta(view: dict) -> dict:
     for s in arch["segments"]:
         rail = SimpleNamespace(ends=(s["a"], s["b"]), loop=s["loop"])
         seg[(s["a"], s["b"])] = seg[(s["b"], s["a"])] = rail
-    on_loop = {n for nodes in loops.values() for n in nodes}
+    # the conveyors, as `rules.conveyor_nodes` reads them off the rails
+    per_loop = Counter(s["loop"] for s in arch["segments"] if s["loop"] is not None)
+    on_loop = {n for lid, nodes in loops.items() if len(nodes) > 2 and per_loop[lid] >= len(nodes) for n in nodes}
     rails = Counter()
     for s in arch["segments"]:
         if (s["a"] in on_loop) != (s["b"] in on_loop):

@@ -2568,18 +2568,9 @@ function priceFrames(frames, loops, model, classes, opts) {
   var warnings = [];
   var work = 0, workCap = opts.workCap || 0;
   var EMPTY = {};      // shared, never written: the transit map of a cycle with none
-  // `loop_node_set`: every node on a named loop or path, for `_moveEntails`' spur test
-  var onLoop = {};
-  for (var lid0 in loops) if (own(loops, lid0)) {
-    for (var li0 = 0; li0 < loops[lid0].length; li0++) onLoop[loops[lid0][li0]] = true;
-  }
-  // `rails_to_loop` for every off-path node: 1 is a dead end, a spur (`_moveEntails`)
-  var loopRails = {};
-  for (var sid0 in model._segs) if (own(model._segs, sid0)) {
-    var sg0 = model._segs[sid0], ia0 = own(onLoop, sg0.a), ib0 = own(onLoop, sg0.b);
-    if (ia0 && !ib0) loopRails[sg0.b] = (loopRails[sg0.b] || 0) + 1;
-    else if (ib0 && !ia0) loopRails[sg0.a] = (loopRails[sg0.a] || 0) + 1;
-  }
+  // the conveyors and their dead ends, for `_moveEntails`' dock test (`conveyor_nodes`)
+  var onLoop = _conveyorNodes(loops, model._segs || {});
+  var loopRails = _spurRails(onLoop, model._segs || {});
 
   // Overwrite pool slot `i`, growing the pool only when a cycle is wider than any before.
   function _pool(win, i, ion, src, dst, seg, ent) {
@@ -2932,6 +2923,36 @@ function _moveEntails(declared, parts, occ, routes, segs, onLoop, rails) {
     out.push([ordered(need), declared.slice()]);
   }
   return out;
+}
+
+// `rules.conveyor_nodes`: every node of a loop its rails close -- as many rails carry the
+// loop's id as it has nodes; an open path of k nodes has k - 1.  Read off the rails, as the
+// replay does, because `loops` here is bare node lists.  A hop from one of these to a dead
+// end is a dock; off an open path it is transport (`_moveEntails`).
+function _conveyorNodes(loops, segs) {
+  var count = {}, out = {}, sid, lid, i;
+  for (sid in segs) if (own(segs, sid)) {
+    var l = segs[sid].loop;
+    if (l != null) count[l] = (count[l] || 0) + 1;
+  }
+  for (lid in loops) if (own(loops, lid)) {
+    var nodes = loops[lid];
+    if (nodes.length > 2 && (count[lid] || 0) >= nodes.length) {
+      for (i = 0; i < nodes.length; i++) out[nodes[i]] = true;
+    }
+  }
+  return out;
+}
+
+// `rails_to_loop` against `conv`, for every node off it: 1 is a dead end, a spur
+function _spurRails(conv, segs) {
+  var r = {};
+  for (var sid in segs) if (own(segs, sid)) {
+    var s = segs[sid], ia = own(conv, s.a), ib = own(conv, s.b);
+    if (ia && !ib) r[s.b] = (r[s.b] || 0) + 1;
+    else if (ib && !ia) r[s.a] = (r[s.a] || 0) + 1;
+  }
+  return r;
 }
 
 function pairIndex(dev) {
@@ -5460,6 +5481,7 @@ var API = {
   renderProgramStmt: renderProgramStmt, renderProgramSource: renderProgramSource,
   // pricing
   pickPoint: pickPoint, makeModel: makeModel, priceFrames: priceFrames, moveEntails: _moveEntails,
+  conveyorNodes: _conveyorNodes, spurRails: _spurRails,
   pairIndex: pairIndex, validateProgram: validateProgram, loopLengths: loopLengths,
   // lint
   lint: lint, architectureViolations: architectureViolations,

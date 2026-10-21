@@ -47,6 +47,7 @@ __all__ = [
     "hop_label",
     "direction_label",
     "rails_to_loop",
+    "conveyor_nodes",
     "loop_node_set",
 ]
 
@@ -973,6 +974,21 @@ def loop_node_set(dev) -> frozenset[str]:
     out: set[str] = set()
     for lp in dev.loops.values():
         out.update(lp.nodes)
+    return frozenset(out)
+
+
+def conveyor_nodes(dev) -> frozenset[str]:
+    """Every node of a CLOSED loop -- a conveyor, whose slots ride one moving potential --
+    which the split/merge price asks about (`replay.move_entails`): a hop from one to a dead
+    end is a dock.  Closed as the RAILS say: as many rails carry the loop's id as it has nodes
+    (an open path of k nodes has k - 1).  Read off the rails rather than `Loop.closed`, because
+    the browser is handed the loops as bare node lists and the rails with their `loop`, and it
+    must decide this exactly as the replay does (`_conveyorNodes` in engine.js)."""
+    count = Counter(s.loop for s in dev.segments.values() if s.loop is not None)
+    out: set[str] = set()
+    for lid, lp in dev.loops.items():
+        if len(lp.nodes) > 2 and count.get(lid, 0) >= len(lp.nodes):
+            out.update(lp.nodes)
     return frozenset(out)
 
 

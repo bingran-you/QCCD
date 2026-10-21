@@ -115,3 +115,32 @@ def test_a_chord_is_a_translation_and_a_spur_is_a_dock():
     r1, _ = _replay(m.arch, dock.build())
     assert r0.quanta_components.get("split_merge", 0.0) == 0.0
     assert r1.quanta_components["split_merge"] == _point(m.arch, "split").quanta + _point(m.arch, "merge").quanta
+
+
+def test_a_stub_off_an_open_road_is_transport_and_off_a_conveyor_a_dock():
+    # a road (an open path) is not a moving potential: a lone ion stepping from it into a
+    # dead-end stub pays nothing extra; off a closed loop, the same hop is a dock (qccd-12)
+    from qccd.arch.builder import DeviceBuilder
+    from qccd.verify.rules import conveyor_nodes
+
+    def device(closed: bool) -> Machine:
+        b = DeviceBuilder("explicit")
+        road = [("R0", 0, 0), ("R1", 1, 0), ("R2", 2, 0), ("R3", 2, 1)]
+        for nid, x, y in road + [("P", 1, -1)]:
+            b.site(nid, float(x), float(y), zone="trap")
+        links = list(zip(road, road[1:])) + ([(road[-1], road[0])] if closed else [])
+        for i, ((u, _, _), (v, _, _)) in enumerate(links):
+            b.segment(f"r{i}", u, v, loop="L0")
+        b.loop("L0", [n for n, _, _ in road], closed=closed)
+        b.segment("stub", "R1", "P")
+        return Machine.from_device(b.build(), name="road")
+
+    for closed, expect_dock in ((False, False), (True, True)):
+        m = device(closed)
+        assert bool(conveyor_nodes(m.arch.device)) is closed
+        p = m.program("p", provenance="off")
+        p.init({"a": "R1"})
+        p.simd("shuttle", [["a", "R1", "P", ["stub"]]])
+        r, _ = _replay(m.arch, p.build())
+        charged = r.quanta_components.get("split_merge", 0.0)
+        assert (charged > 0) is expect_dock, (closed, charged)

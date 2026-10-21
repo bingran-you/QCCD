@@ -2508,14 +2508,11 @@ function cumAt(i){
 // node pair -> rail index, the nodes on a named path, and each off-path node's rails to one
 let SPUR_CTX = null;
 function spurContext(){
-  const segs={}, pair={}, onLoop={}, rails={};
+  const segs={}, pair={};
   for(const s of A.segments){ segs[s.id]=s; pair[s.a+'>'+s.b]=s.id; pair[s.b+'>'+s.a]=s.id; }
-  for(const lid in A.loops) for(const n of A.loops[lid]) onLoop[n]=true;
-  for(const s of A.segments){
-    const ia=!!onLoop[s.a], ib=!!onLoop[s.b];
-    if(ia&&!ib) rails[s.b]=(rails[s.b]||0)+1; else if(ib&&!ia) rails[s.a]=(rails[s.a]||0)+1;
-  }
-  return {segs, pair, onLoop, rails};
+  // the conveyors and their dead ends, decided by the engine exactly as `priceFrames` does
+  const onLoop=globalThis.QCCD.conveyorNodes(A.loops, segs);
+  return {segs, pair, onLoop, rails: globalThis.QCCD.spurRails(onLoop, segs)};
 }
 function deriveStage(frames){
   SPUR_CTX = spurContext();
