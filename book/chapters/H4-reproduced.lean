@@ -26,7 +26,7 @@ You need Lean's installer, elan, for the checker (lesson H1, step 1, says how to
 Then, from a terminal, on macOS or Linux:
 
 ```
-git clone -b compiler https://github.com/yezhuoyang/QCCD
+git clone -c core.autocrlf=false -b compiler https://github.com/yezhuoyang/QCCD
 cd QCCD
 python3.13 -m venv .venv && source .venv/bin/activate     # any Python 3.10 or newer
 pip install -e ".[agent]"
@@ -37,7 +37,7 @@ qccd toolchain build-checker
 On Windows, in PowerShell:
 
 ```
-git clone -b compiler https://github.com/yezhuoyang/QCCD
+git clone -c core.autocrlf=false -b compiler https://github.com/yezhuoyang/QCCD
 cd QCCD
 py -m venv .venv
 .venv\Scripts\activate
@@ -46,26 +46,30 @@ qccd toolchain install
 qccd toolchain build-checker
 ```
 
-`pip install -e ".[agent]"` installs the workspace, with what its grader needs (qiskit, stim and
-numpy, which the semantic check uses). `qccd toolchain install` downloads the compiler `qccdc` that
-the repository pins -- a version, and for each platform a URL, a size and a SHA-256 -- refuses it
-unless the size and the hash match, installs it in your home folder, and runs it once on a test
-circuit. Windows and Linux on x86-64 have a prebuilt compiler. When this lesson was written the
-pinned version had none for macOS; on a Mac the command says so and says how to build the compiler
-from the repository's OCaml sources.
+`-c core.autocrlf=false` keeps every file's line endings as published: a certificate records a hash
+of its circuit file's bytes, and Git on Windows would otherwise rewrite the circuit's line endings
+on checkout, so section 4's comparison would differ in that one field.
 
-**The checker.** On Windows and Linux there is no prebuilt `qcheck`, and `qccd toolchain install`
-ends by saying so: "no prebuilt checker for this platform; build it from source instead", with
-how to install elan and "run `qccd toolchain build-checker`". That command builds the checker
-from the clone's Lean sources, runs it once on a certificate it must accept and one it must
-reject, and from then on the workspace uses it:
+`pip install -e ".[agent]"` installs the workspace, with what its grader needs (qiskit, stim and
+numpy, which the semantic check uses). `qccd toolchain install` downloads the compiler `qccdc` and
+the checker `qcheck` that the repository pins -- for each, a version, and for each platform a URL,
+a size and a SHA-256 -- refuses either unless the size and the hash match, installs them in your
+home folder, and runs each once on a test (a circuit; a certificate it must accept and one it must
+reject). Windows and Linux on x86-64 have prebuilt binaries of both. When this lesson was written
+the pinned versions had none for macOS; on a Mac the command says so and says how to build the
+compiler from the repository's OCaml sources.
+
+**The checker, from source.** `qccd toolchain build-checker` builds the checker from the clone's
+own Lean sources, runs it once on a certificate it must accept and one it must reject, and from
+then on the workspace uses it:
 
 ```
 built the checker (checked: it accepted and rejected a test certificate): ...
 the workspace uses it from now on; `qccd toolchain check <file>.qcheck.json` runs it
 ```
 
-Build it on a Mac too (lesson H1 says why). Then
+On a Mac it is the way to get a checker at all; elsewhere it makes the checker the one of the
+sources in front of you (lesson H1). Then
 
 ```
 qccd toolchain status
@@ -78,8 +82,10 @@ grade with the Lean stage `unsupported` is never eligible.
 
 When this lesson was written, the Windows lines of this section and all of the next, and the
 checks of sections 4 and 6, were run as written, in PowerShell, from a fresh clone, a fresh
-environment and an empty home folder for the toolchain. The macOS and Linux lines differ only in
-how the environment is made and activated; they were not run on macOS or Linux.
+environment and an empty home folder for the toolchain; when the pinned compiler moved to
+`e799ecf5a5cd` the same day, the workspace steps were run again, and the numbers quoted below are
+that run's. The macOS and Linux lines differ only in how the environment is made and activated;
+they were not run on macOS or Linux.
 
 ## 2. A workspace, a compile, a grade
 
@@ -114,7 +120,7 @@ qccd submit --local --wait --json
 The first prints
 
 ```
-succeeded: compiled GHZ state on four qubits (starter) at r0: 25 instructions (cooled); certificate stored
+succeeded: compiled GHZ state on four qubits (starter) at r0: 28 instructions (cooled); certificate stored
 adopted as the final program at r1
 ```
 
@@ -129,7 +135,7 @@ submission sub_... of r1 (Local result - not published); bundle sha256:...
 eligible  bundle=passed  device=passed  physics_lock=passed  program=passed  rules=passed
           correspondence=passed  certificate_binding=passed  lean_certificate=passed
           semantics=passed  metrics=passed
-  T_jones                  0.83 ms
+  T_jones                  2.13 ms
 ```
 
 (one line, here broken; then the other metrics), and with `--json` the whole report. Nothing has
@@ -174,9 +180,9 @@ Three things tie your grade to the Compilation page's GHZ chain.
 Your bundle's own digest, `bundle sha256:...`, will differ from anyone else's: the bundle records
 where it came from (your workspace's ids), and that is part of what it hashes.
 
-When this lesson was written we also compiled all 19 of the Compilation page's examples from a
-fresh clone with the pinned compiler (version `f88754a2fa71`): each one's programme, certificate
-and checker input came out equal to the page's files, and its R10 verdict the same.
+When this lesson was written we also compiled all 19 of the Compilation page's examples with the
+pinned compiler (version `e799ecf5a5cd`, and before it `f88754a2fa71`): each one's programme and
+certificate came out byte for byte the page's files, and its R10 verdict the same.
 
 ## 5. The verdict, in Lean
 
@@ -342,7 +348,7 @@ theorem ghz_late_rejected : check ghzLate = false :=
 /-!
 ## 7. What `qccd toolchain install` asks of a checker
 
-When it installs a prebuilt `qcheck` (on macOS), `qccd toolchain install` runs it twice before
+When it installs a prebuilt `qcheck` (Windows and Linux), `qccd toolchain install` runs it twice before
 calling it installed (and `qccd toolchain build-checker` does the same with the one it builds): on
 an input it must accept and one it must reject. The first is a certificate of nothing: no qubits,
 no ops, no moves, no witnesses, one gate site `S0`, every field written out (the checker's strict

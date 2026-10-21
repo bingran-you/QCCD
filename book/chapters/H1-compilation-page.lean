@@ -356,7 +356,7 @@ install the workspace from the repository's `compiler` branch (its default branc
 not have the checker yet). On macOS or Linux:
 
 ```
-git clone -b compiler https://github.com/yezhuoyang/QCCD
+git clone -c core.autocrlf=false -b compiler https://github.com/yezhuoyang/QCCD
 cd QCCD
 python3.13 -m venv .venv && source .venv/bin/activate     # any Python 3.10 or newer
 pip install -e ".[agent]"
@@ -365,12 +365,16 @@ pip install -e ".[agent]"
 On Windows, in PowerShell:
 
 ```
-git clone -b compiler https://github.com/yezhuoyang/QCCD
+git clone -c core.autocrlf=false -b compiler https://github.com/yezhuoyang/QCCD
 cd QCCD
 py -m venv .venv
 .venv\Scripts\activate
 pip install -e ".[agent]"
 ```
+
+(`-c core.autocrlf=false` keeps every file's line endings as published. Git on Windows otherwise
+rewrites them on checkout, and a certificate records a hash of its circuit file's bytes, so a
+circuit checked out with other line endings gives a certificate that differs in that field.)
 
 **Step 2: build the checker.**
 
@@ -420,14 +424,13 @@ missing or cannot be read as a checker input.
 When this lesson was written, steps 1 to 4 were run as written on Windows, from a fresh clone,
 and printed what is quoted here; they were not run on macOS or Linux.
 
-A prebuilt `qcheck` is published for macOS on Apple silicon only, pinned with its size and
-SHA-256 in the repository's toolchain manifest, and `qccd toolchain install` fetches it there
-together with the compiler. When this lesson was written, that published binary had been built
-before two changes to the checker (`OwnIons`, condition 8, and the strict order of condition 11),
-and the pinned compiler had no macOS build, so on a Mac `qccd toolchain install` stopped before
-fetching either. So build the checker yourself, as above, on every platform: then it is the
-checker of the sources in front of you, and of lesson F1. `qccd toolchain status` says which
-checker the workspace uses.
+A prebuilt `qcheck` is published too, for Windows and Linux on x86-64, pinned with its size and
+SHA-256 in the repository's toolchain manifest; `qccd toolchain install` fetches it there,
+together with the compiler, and runs it once on a certificate it must accept and one it must
+reject. When this lesson was written there was no macOS build of either, so on a Mac step 2 is
+the way. Building it yourself is worth doing on every platform anyway: then it is the checker of
+the sources in front of you, and of lesson F1. `qccd toolchain status` says which checker the
+workspace uses.
 
 ## 8. What you have checked, and what you have not
 
