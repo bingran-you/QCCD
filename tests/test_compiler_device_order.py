@@ -131,6 +131,37 @@ def test_shuffled_device_compiles_to_the_same_programme(case, tmp_path):
         assert got[1] == want[1], f"{case}: shuffle {seed} changed the certificate"
 
 
+SURFACE17 = ("06-a09-b7294b0b", "07-a05-314e4fe0", "08-a08-514dae97")
+
+
+@pytest.mark.parametrize("key", SURFACE17)
+def test_surface17_hillclimb_design_compiles_whatever_its_order(key, tmp_path):
+    """Three surface17 hillclimb designs -- five traps in a ring, seventeen ions -- compiled
+    with the published compiler only in the file order a search had found for them (it
+    compiled 6, 11 and 15 of 30 random orders), and the canonical order was refused as
+    unroutable at any horizon.  The compiler now tries the trap order rotated before it
+    refuses (`Compile.run`): each compiles, passes every rule, and a shuffled copy gives the
+    same programme."""
+    from qccd.arch.device import Architecture
+    from qccd.cost.models import corrected_model
+    from qccd.ir.tsir import TSIR
+    from qccd.verify.replay import replay
+
+    design = json.loads((HILLCLIMB.parent / f"hillclimb_surface17_{key}.arch.json").read_text(encoding="utf-8"))
+    qasm = REPO / "qccd" / "workspace" / "releases" / "surface17@1" / "circuit.qasm"
+    expanded = _export(design, tmp_path / "export")
+    want = _compile(expanded, qasm, "compile", tmp_path / "file")
+    subprocess.run([sys.executable, str(BRIDGE / "insert_cooling.py"), str(tmp_path / "file" / "prog.tsir.json"),
+                    "--arch", str(tmp_path / "export" / "device.arch.json"), "-o",
+                    str(tmp_path / "file" / "prog.cooled.tsir.json")], check=True, capture_output=True)
+    cooled = json.loads((tmp_path / "file" / "prog.cooled.tsir.json").read_text(encoding="utf-8"))
+    res = replay(TSIR.from_json(cooled), Architecture.from_json(design), corrected_model("qccdsim_jones"),
+                 check_rules=True)
+    assert not res.rules.violations, f"{key}: {res.rules.violations[:3]}"
+    got = _compile(_shuffled(expanded, 1), qasm, "compile", tmp_path / "shuffled")
+    assert got == want, f"{key}: a shuffled copy compiled to another programme"
+
+
 def test_design_file_order_does_not_change_the_programme(tmp_path):
     """The hillclimb's own move: the same explicit design, its lists reordered in the DESIGN
     file, through the exporter and the compiler."""
