@@ -130,15 +130,19 @@ PEOPLE: list[dict] = [
 #: `University_of_Michigan_wordmark.svg`, `University_of_California,_San_Diego_logo.svg`,
 #: `Cornell_University_logo.svg`, each licence read on its Commons page before use.
 INSTITUTIONS = (
+    # first: the project QCCD studio grew out of (Hartmut Haeffner, 2026-10-21: "it was triggered
+    # mostly by FTL, so maybe we should put this a bit more front and center")
+    {"name": "FTL: Accelerating Fault-Tolerant Quantum Logic", "short": "NQVL FTL",
+     "url": "https://www.samueli.ucla.edu/ucla-led-team-selected-for-national-science-foundation-quantum-technology-award/",
+     "what": "The project QCCD studio grew out of, and its funder: the UCLA-led project of the NSF National "
+             "Quantum Virtual Laboratory that is designing a fault-tolerant trapped-ion (QCCD) computer "
+             "with 60 logical qubits."},
     {"name": "University of California, Los Angeles", "short": "UCLA", "url": "https://www.ucla.edu/",
      "logo": "ucla.svg", "what": "Leads the project."},
     {"name": "University of California, Berkeley", "short": "UC Berkeley", "url": "https://www.berkeley.edu/",
      "logo": "berkeley.svg", "what": "Partner in the collaboration."},
     {"name": "Challenge Institute for Quantum Computation", "short": "CIQC", "url": "https://ciqc.berkeley.edu/",
      "logo": "ciqc.png", "what": "Funds the work, as an NSF Quantum Leap Challenge Institute."},
-    {"name": "NQVL FTL", "short": "NQVL FTL",
-     "what": "Funds the work, through the National Quantum Virtual Laboratory; the project began "
-             "within it."},
     {"name": "University of Arizona", "short": "Arizona", "url": "https://www.arizona.edu/",
      "logo": "arizona.svg", "what": "A contributor is based here."},
     {"name": "University of Michigan", "short": "Michigan", "url": "https://umich.edu/",

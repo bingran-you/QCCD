@@ -325,10 +325,13 @@ APP_CSS = "<style>main{height:calc(100vh - 40px)!important}</style>"
 # three marks.  The wordmarks are the public-domain text logos; CIQC's is its own header
 # image.  `__SITEROOT__` becomes the page's path back to the site root.
 FOOTER = """<footer id="sitefoot">
-  <p>Led by a collaboration between <a href="https://www.ucla.edu/">UCLA</a> and
-  <a href="https://www.berkeley.edu/">UC Berkeley</a>, funded by the
+  <p>QCCD studio grew out of
+  <a href="https://www.samueli.ucla.edu/ucla-led-team-selected-for-national-science-foundation-quantum-technology-award/">FTL:
+  Accelerating Fault-Tolerant Quantum Logic</a>, the UCLA-led project of the NSF National Quantum
+  Virtual Laboratory that is designing a fault-tolerant trapped-ion computer, and is funded by it and by the
   <a href="https://ciqc.berkeley.edu/">Challenge Institute for Quantum Computation</a> (CIQC),
-  an NSF Quantum Leap Challenge Institute, and by NQVL FTL.</p>
+  an NSF Quantum Leap Challenge Institute. It is led by a collaboration between
+  <a href="https://www.ucla.edu/">UCLA</a> and <a href="https://www.berkeley.edu/">UC Berkeley</a>.</p>
   <div class="logos">
     <a href="https://www.ucla.edu/" title="UCLA"><img src="__SITEROOT__static/ucla.svg" alt="UCLA"></a>
     <a href="https://www.berkeley.edu/" title="University of California, Berkeley"><img src="__SITEROOT__static/berkeley.svg" alt="University of California, Berkeley"></a>
@@ -857,7 +860,7 @@ def board_index(ts: list[dict]) -> str:
               "".join(f'<span><i style="background:{c}"></i>{f}</span>' for f, c in FAMHEX.items()) +
               f'<span><i style="background:{GREY}"></i>a loop without docks, a line, rails, or two loops</span>'
               '<span><i style="background:#0b7a4b"></i>fastest verified</span></div>')
-    body = ("<h1>Leaderboard</h1>" + boards.architecture_intro() +
+    body = ("<h1>Leaderboard</h1>" + boards.goals_section() + boards.architecture_intro() +
             '<section class="lb-sec" id="architecture"><h2>Architecture</h2>'
             "<p class=\"sub\">Devices, each compiled by the reference compiler. One board per task. A task is a "
             "fixed circuit, physics package and cost table; every design on a board ran that circuit, was "
@@ -876,7 +879,7 @@ def board_index(ts: list[dict]) -> str:
             cowork.board_section() + "</section>" +
             boards.compiler_section() + cowork.board_script() + leaderboard.script())
     return PAGE.format(title="Leaderboard - QCCD studio", style=STYLE,
-                       extra_css=qec_cycle.CSS + boards.CSS + leaderboard.CSS, body=body)
+                       extra_css=qec_cycle.CSS + boards.CSS + boards.GOALS_CSS + leaderboard.CSS, body=body)
 
 
 CREDIT_CSS = """

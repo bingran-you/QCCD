@@ -111,6 +111,44 @@ def _noise(model: str = "qccd-noise@1") -> dict | None:
 
 # ---------------------------------------------------------------------- the Leaderboard page's parts
 
+#: The two goals the leaderboard is for (John, Ke, Hartmut and Jens, 2026-10-21): what each asks,
+#: and where the platform measures progress on it today.
+GOALS = (
+    ("Goal 1", "The best QEC design under 200 ions",
+     "The machine of fewer than 200 ions whose logical memory has the lowest logical error rate per "
+     "round: low enough to challenge the best logical error rates demonstrated so far. Every design "
+     "is compiled by the reference compiler, judged by every rule and sampled under the same noise "
+     "model, so the ranking is a ranking of machines.",
+     "#memory", "The memory boards, ranked by logical error rate"),
+    ("Goal 2", "A verified resource estimate for Shor's algorithm",
+     "A complete fault-tolerant resource estimate for Shor's algorithm (the ions, the time and the "
+     "machine it needs), in which every step is compiled and checked rather than modelled: the "
+     "logical gadgets, their placement on the machine and the schedule that runs them.",
+     "../gadgets/algorithms/shor15/", "Shor's algorithm for 15, scheduled end to end on verified gadgets"),
+)
+
+GOALS_CSS = """
+.lb-goals{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0 18px}
+.lb-goal{border:1px solid var(--line,#e4e2db);border-left:3px solid var(--accent,#1f5bb5);border-radius:10px;
+ background:var(--card,#fbfaf7);padding:14px 16px}
+.lb-goal .k{font:700 10.5px/1 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--accent,#1f5bb5)}
+.lb-goal h3{font-family:var(--serif);font-size:19px;font-weight:600;color:var(--head,#1a2540);margin:6px 0 6px}
+.lb-goal p{margin:0 0 8px;color:var(--ink2,#56545e);font-size:14px;line-height:1.55}
+.lb-goal a{font-size:13.5px;font-weight:600;color:var(--accent,#1f5bb5);text-decoration:none}
+.lb-goal a:hover{text-decoration:underline}
+@media (max-width:760px){.lb-goals{grid-template-columns:1fr}}
+"""
+
+
+def goals_section() -> str:
+    """The two goals at the top of the Leaderboard page, each with where it is measured today."""
+    cards = "".join(
+        f'<div class="lb-goal"><span class="k">{_e(k)}</span><h3>{_e(title)}</h3><p>{_e(what)}</p>'
+        f'<a href="{_e(href)}">{_e(label)} &rarr;</a></div>'
+        for k, title, what, href, label in GOALS)
+    return f'<section class="lb-goals" id="goals" aria-label="Goals">{cards}</section>'
+
+
 def architecture_intro() -> str:
     return (
         '<p class="sub">Two leaderboards. <b>Architecture</b> ranks devices: you design the machine, and the '
