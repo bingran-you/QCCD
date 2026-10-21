@@ -339,9 +339,9 @@ The floorplan rules F1-F9 are evaluated on every floorplan the design page loads
 language of Part E, with words for footprints, crossings and reachability: there `reachable`
 is decided by a search over the roads, and the routes and closed regions of this lesson are
 what that search finds. Traffic is measured on the real schedule: Shor's algorithm on `shor`
-moves 325,626 ion-sites. The optimiser searched 150 rearrangements of that floorplan's places,
-scheduling each, and found one (`shor_traffic`) that moves 199,616 -- 39% less -- while
+moves 313,727 ion-sites. The optimiser searched 150 rearrangements of that floorplan's places,
+scheduling each, and found one (`shor_traffic`) that moves 199,580 -- 36% less -- while
 every rule still holds and the compiled program signs off the same. Its makespan hardly
-changed (10.77 s to 10.73 s): Shor's critical path is lattice surgery, not travel, so a faster
+changed (11.16 s to 11.04 s): Shor's critical path is lattice surgery, not travel, so a faster
 Shor needs more bridges, which is the next design decision, not the layout.
 -/

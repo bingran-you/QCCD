@@ -60,18 +60,18 @@ produces the magic state for one T gate (instruction 21) while a bridge runs ano
 instruction's lattice surgery (19) and a memory refreshes a resting block (84); then the magic
 ion leaves the factory down the road in front of its door, and the pharmacy injects it.
 
-The same moment on the design page, 1.05 s into the run: `factory1`, `bridge2` and `mem5` are
+The same moment on the design page, 1.065 s into the run: `factory1`, `bridge2` and `mem5` are
 all at work. Press play to watch the magic state leave the factory.
 
-{{gadget algorithms/shor15 focus=factory1 at=1050000}}
+{{gadget algorithms/shor15 focus=factory1 at=1065000}}
 -/
 
 def slice : List Act :=
-  [ ⟨"produce", 21, "factory1", 915255, 1109915⟩,
-    ⟨"zz", 19, "bridge2", 922025, 1125490⟩,
-    ⟨"refresh", 84, "mem5", 1045610, 1058840⟩,
-    ⟨"carry", 21, "door_factory1_out", 1109215, 1109265⟩,
-    ⟨"inject", 21, "pharmacy2", 1111505, 1140125⟩ ]
+  [ ⟨"produce", 21, "factory1", 954640, 1149300⟩,
+    ⟨"zz", 19, "bridge2", 960050, 1166075⟩,
+    ⟨"refresh", 84, "mem5", 1061400, 1074630⟩,
+    ⟨"carry", 21, "door_factory1_out", 1148600, 1148650⟩,
+    ⟨"inject", 21, "pharmacy2", 1150890, 1180710⟩ ]
 
 #eval exclusive slice
 
@@ -88,8 +88,8 @@ theorem slice_exclusive : exclusive slice = true := by
 And that it really is parallel: the factory's `produce` overlaps the bridge's `zz`.
 -/
 
-theorem factory_runs_beside_surgery : overlap ⟨"produce", 21, "factory1", 915255, 1109915⟩
-    ⟨"zz", 19, "bridge2", 922025, 1125490⟩ = true := by
+theorem factory_runs_beside_surgery : overlap ⟨"produce", 21, "factory1", 954640, 1149300⟩
+    ⟨"zz", 19, "bridge2", 960050, 1166075⟩ = true := by
   decide
 
 /-!
@@ -216,7 +216,7 @@ theorem exclusive_overlaps_commute (acts : List Act) (hx : exclusive acts = true
 The rules on the site are this lesson's propositions over the real schedule: `exclusive` is G5
 for places and junctions and G13 for roads, `fits` is G3 and G4, and every one is evaluated on
 every schedule the design page shows (its Checks panel lists all of them, each opening to its
-own assertion). Shor's run on the floorplan `shor` has 4,495 events and 3,734 carries; G5 and G13 hold
+own assertion). Shor's run on the floorplan `shor` has 4,435 events and 3,668 carries; G5 and G13 hold
 on all of them. Exercise 7 is the reason that is enough: whatever runs at the same time holds
 different things, so it could have run in either order.
 -/

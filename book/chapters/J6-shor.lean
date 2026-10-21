@@ -162,7 +162,7 @@ theorem iteration_two : (1 ^^^ 0b0101) = 7 ^ 2 * 1 % 15 ∧ (2 ^^^ 0b0101) ≠ 7
 ## 4. The machine, the schedule, the sign-off
 
 The rest is what Part J built, used on this program. Here it is, all of it, on the design page
--- the floorplan, the 4,495 events, the rules and the sign-off:
+-- the floorplan, the 4,435 events, the rules and the sign-off:
 
 {{gadget algorithms/shor15}}
 
@@ -173,11 +173,11 @@ The rest is what Part J built, used on this program. Here it is, all of it, on t
   classical memory. F1-F9 hold on it.
 * **The program.** After `include "standard"` expands, 157 instructions: 15 magic states (two
   Toffolis of seven T each, and the conditional T† of the last iteration), 29 π/4 gadgets, 22
-  transversal CNOTs, 18 readouts, and 43 guarded instructions. The refresh pass adds 30
+  transversal CNOTs, 18 readouts, and 43 guarded instructions. The refresh pass adds 32
   syndrome rounds so no block waits past its coherence budget (G8).
-* **The schedule.** In parallel, on `shor`: 4,495 events and 3,734 carries in 10.77 s, the
+* **The schedule.** In parallel, on `shor`: 4,435 events and 3,668 carries in 11.16 s, the
   factories producing while the bridges work; G1-G14 hold. On `shor_traffic`, which the
-  optimiser found, the same program moves 39% fewer ion-sites (lesson J3).
+  optimiser found, the same program moves 36% fewer ion-sites (lesson J3).
 * **The sign-off**, in parts (lesson J5): every op a verified place op; the S̄ and √X̄ gadgets are
   their rotations in every branch; `sdg`, `h`, `t`, `tdg`, `ccx`, `cswap` are their contracts;
   every machine rule holds; and the program, calls as contracts, gives exactly `m1 = 0` and
