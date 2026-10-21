@@ -107,7 +107,7 @@ parallel execution must respect. An execution is the GIR of a scheduled program.
 | G11 | classical | every syndrome is decoded, the decoder keeps up, nothing reads an outcome before it is decoded |
 | G12 | ownership | every bundle that travels is taken in at the far end, by exactly one op: no ion is left on a road |
 | G13 | non-interference | a road carries one bundle at a time, from its first ion in to its last taken off |
-| G14 | traffic | a bundle waits only where the whole bundle fits: on the road in front of a door |
+| G14 | traffic | a road holds the ions on it: at no moment are more of a bundle's ions on a road (travelling, or stopped until taken in) than it has sites -- so a whole bundle stops only in front of a door |
 
 G5 and G13 are the rules that make parallelism safe: a place runs one op at a time and a road
 carries one bundle at a time, so a magic-state factory producing while a lattice surgery runs
