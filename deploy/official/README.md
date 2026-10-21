@@ -101,7 +101,26 @@ the `include snippets/qccd-official.conf;` line and `nginx -t && systemctl reloa
 The site file as it was before the include was added is
 `/root/qccd.academy.nginx.bak-20260923-000848`.
 
-**Deployed** 2026-10-20 17:22 UTC (10:22 PDT), from commit `6ac56ad` (pushed): the proved
+**Deployed** 2026-10-21 07:57 UTC (00:57 PDT), from commit `db3e6fc` (pushed): the platform fixes
+#15-#21 that the hillclimb PRs (#10-#14) prompted. The device stage fails a device over the
+release's budget (`DEVICE.OVER_BUDGET`), counting what it declares about its own wiring at no
+less than the deck's physics (#15); a move is charged split and merge for what it does -- the
+class, a hop from a conveyor to a dead end, the chains -- whatever its class is called (#16,
+#17); R22 labels a hop by its direction and a chord is not a spur (#18, #19); `verify()` judges
+R19-R21 (#21); and the compiler is `e799ecf5a5cd`, which reads a device in one canonical order
+(#20) and mirrors the new R22 labels. suite@1 was re-pinned for it (283ec95, measured in this
+image: 100 valid / 0 wrong / 8 refused, T_jones median 1.78x, digest `303ed0d5...`).
+The image was derived from `qccd-official:6ac56ad`: `rm` and `COPY` of `qccd/`, `arch/` and
+`Compiler/bridge` from the git archive of `db3e6fc`, and `qccdc_cli` the published Linux
+`e799ecf5a5cd` (sha256 `2b5f562e...`); qcheck is 6ac56ad's (sha256 `923528c0...`, `e8acd6640fd3`).
+The 40 layers are identical on both machines. The previous deployment is in `.env.bak-6ac56ad`,
+`VERSION.bak-6ac56ad` and `docker-compose.prod.yml.bak-6ac56ad`. Private smoke tests by the
+operator uploader `deploy-smoke-db3e6fc` (quota 2, token deleted): GHZ `os_279a40d1b742be4e`
+eligible, and the Compiler board `os_c91a6abb7a186f36` eligible in 473 s, 108 valid / 0 wrong /
+8 refused of 116, speedup 1.0, ler_ratio 1.000, no public pair different from the baseline. The
+local rehearsal gave the same (721 s).
+
+**Before that** 2026-10-20 17:22 UTC (10:22 PDT), from commit `6ac56ad` (pushed): the proved
 checker reads its input strictly -- a file missing a field the checker relies on, or with an
 entry it cannot read (a move whose `t` is `20.0`, an op's qubit `0.5`), is REJECTED naming
 what is wrong, where before `{}` was accepted as an empty programme and an unreadable move was
