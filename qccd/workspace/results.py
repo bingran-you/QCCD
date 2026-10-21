@@ -41,6 +41,7 @@ from .bundle import _FILE_LIMITS as PROGRAM_LIMITS
 from .bundle import BundleError, archive_bundle, read_bundle, write_bundle
 from .jsonsafe import canonical_bytes, digest, strict_loads
 from .store import dumps, loads
+from .tasks import board_device
 
 # The compiler's programmes are read with the limits a submitted bundle's files get
 # (`bundle._FILE_LIMITS`), not the general default: a canonicalised bb144 round is 15,223
@@ -259,8 +260,8 @@ class ResultsMixin:
             raise WorkspaceError("design_invalid", "the design at that revision does not build", status=422)
         work = self.root / ".qccd" / "runs" / jid
         work.mkdir(parents=True, exist_ok=True)
-        (work / "device.arch.json").write_text(json.dumps(r.arch_doc), encoding="utf-8")
         rel = self.board(params.get("board"))
+        (work / "device.arch.json").write_text(json.dumps(board_device(r.arch_doc, rel)), encoding="utf-8")
         (work / "circuit.qasm").write_bytes(rel.circuit_path.read_bytes())
         self._progress(jid, "export", "expanding the device for the compiler")
         ex = run_limited([tc.python, tc.bridge / "export_arch.py", work / "device.arch.json", "-o",
@@ -352,7 +353,7 @@ class ResultsMixin:
                 "compiled_for": fp.get("compiled_for"), "compiler": fp.get("compiler")}
         pres = {"title": title[:200], "studio": rev.state.to_studio(None)}
         b = write_bundle(d / "bundle", task_id=rel.id, task_digest=rel.digest,
-                         device=r.arch_doc, program=prog, certified_program=certified, certificate=cert,
+                         device=board_device(r.arch_doc, rel), program=prog, certified_program=certified, certificate=cert,
                          presentation=pres, provenance=prov)
         _freeze_dir(d / "bundle")
         with self.store.tx() as db:

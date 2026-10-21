@@ -252,6 +252,22 @@ Split rounds (`Compiler/README.md`) are qccdc's last fallback. With them:
 Still refused: ring144_24v at 98 ions (rotation needs 48 docks, it has 24), ring24_8, and
 devices with fewer slots than ions.
 
+### Goal 1's board: `surface5xz_mem@1` (2026-10-21)
+
+The board is `surface5xz` (98 ions) under `qccd-noise@2` and `qccd-physics@2`. It is timed on
+the `quantinuum` table (`T_quantinuum`), ranked by the LER per round, and sampled up to 2,000,000
+shots or 400 logical errors (seed 20261021). The starter is grid(9, 9).
+
+A design is entered on a board with that board's physics (`qccd.workspace.tasks.board_device`).
+A design still carrying the template's fixed blocks takes the board's, and one whose physics was
+edited keeps it and is exploratory, as before. This applies to the compile job, the frozen
+bundle, program runs and a board's LER job. Every earlier board's physics is the template's, so
+nothing changes on them.
+
+End to end with the released tools (qccdc c774b87b677f, qcheck e8acd6640fd3), the starter is
+eligible: every stage passes, 5.2e-5 per round, 598 ms. `Codesign/scripts/memory_boards.py`
+builds the board's pages from the release its task names.
+
 ## As built (2026-09-28)
 
 Where the implementation departed from the plan, and why.

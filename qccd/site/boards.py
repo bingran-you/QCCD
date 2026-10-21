@@ -119,7 +119,7 @@ GOALS = (
      "round: low enough to challenge the best logical error rates demonstrated so far. Every design "
      "is compiled by the reference compiler, judged by every rule and sampled under the same noise "
      "model, so the ranking is a ranking of machines.",
-     "#memory", "The memory boards, ranked by logical error rate"),
+     "#surface5xz_mem", "Surface code memory, distance 5, both bases: 98 ions, ranked by logical error rate"),
     ("Goal 2", "A verified resource estimate for Shor's algorithm",
      "A complete fault-tolerant resource estimate for Shor's algorithm (the ions, the time and the "
      "machine it needs), in which every step is compiled and checked rather than modelled: the "
@@ -166,7 +166,7 @@ def _ler_bars(t: dict) -> str:
     rows = [r for r in t.get("rows", []) if r.get("status") == "ok" and (r.get("numbers") or {}).get("ler_per_round") is not None]
     if not rows:
         return ""
-    key = lambda r: (r["numbers"]["ler_per_round"], r["numbers"].get("ler_round_hi_1e4", 0.0), r["numbers"].get("T_jones", 0.0))  # noqa: E731
+    key = lambda r: (r["numbers"]["ler_per_round"], r["numbers"].get("ler_round_hi_1e4", 0.0), r["numbers"].get("T_jones", r["numbers"].get("T_quantinuum", 0.0)))  # noqa: E731
     rows.sort(key=key)
     shown = rows[:3]
     top = max((r["ler"]["per_round_hi"] for r in shown), default=0.0) or 1.0
@@ -209,8 +209,10 @@ def memory_section(ts: list | None = None) -> str:
             f'<div class="lb-card" id="{_e(b.manifest["task"])}"><h3>{_e(b.title)}</h3>'
             f'<p>{_e(b.manifest.get("description", ""))}</p><div class="lb-kv">'
             f'<b>ranked by</b><span>logical error rate per round (lower is better), with its 95% interval</span>'
-            f'<b>noise model</b><span><a href="noise/">{_e(q["noise"])}</a>, built from the device\'s own physics</span>'
-            f'<b>sampling</b><span>up to {int(q["ler"].get("max_shots", 0)):,} shots or {int(q["ler"].get("max_errors", 0))} '
+            f'<b>noise model</b><span><a href="noise/#{dict(NOISE_MODELS).get(q["noise"], "")}">{_e(q["noise"])}</a>, '
+            + ("with the board's cited physics, qccd-physics@2, on every design entered on it</span>"
+               if q["noise"] == "qccd-noise@2" else "built from the device's own physics</span>")
+            + f'<b>sampling</b><span>up to {int(q["ler"].get("max_shots", 0)):,} shots or {int(q["ler"].get("max_errors", 0))} '
             f'logical errors, decoder {_e(q["ler"].get("decoder", "auto"))}, fixed seed</span>'
             f'<b>a start that passes</b><span>{_e(start.get("generator", ""))} ({_e(sp)})</span>'
             f'<b>submit</b><span>Try your own design below, or ask your agent to submit a design to it</span></div>'
@@ -333,48 +335,137 @@ def compiler_page(PAGE: str, STYLE: str) -> str:
 
 # ---------------------------------------------------------------------- the noise model's page
 
+#: The noise models a board can name, newest first, and the anchor each has on the noise page.
+NOISE_MODELS = (("qccd-noise@2", "noise2"), ("qccd-noise@1", "noise1"))
+
+
+def _physics2_rows() -> str:
+    """qccd-physics@2, the physics the @2 boards are graded under: every number and its source."""
+    try:
+        from pathlib import Path
+        p = Path(__file__).resolve().parents[1] / "workspace" / "physics" / "qccd-physics@2.json"
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    rows = []
+
+    def row(name, value, source, note=""):
+        rows.append(f'<tr><td><code>{_e(name)}</code></td><td>{_e(value)}</td><td>{_e(source)}</td>'
+                    f'<td>{_e(note)}</td></tr>')
+
+    prim = d.get("primitives", {})
+    for name in ("ms_gate", "1q_gate", "measure", "reset", "cool"):
+        s = prim.get(name)
+        if not s:
+            continue
+        bits = []
+        if "fidelity_at_n0" in s:
+            bits.append(f"error {1 - float(s['fidelity_at_n0']):.2g} at n̄ = 0")
+        if "fidelity" in s:
+            bits.append(f"error {1 - float(s['fidelity']):.2g}")
+        if "error" in s:
+            bits.append(f"error {float(s['error']):.2g}")
+        if "error_vs_quanta" in s:
+            bits.append(f"+{str(s['error_vs_quanta']).split(':')[-1]} per quantum")
+        if "us" in s:
+            bits.append(f"{s['us']} µs")
+        row(name, ", ".join(bits), s.get("source", ""), s.get("note", ""))
+    for name in ("shuttle_segment", "split", "merge", "ion_swap"):
+        for pt in (prim.get(name) or {}).get("curve", []):
+            row(name, f"{pt['us']} µs, {pt['quanta']} quanta", pt.get("source", ""), pt.get("label", ""))
+    for deg, pts in sorted(((prim.get("junction_cross") or {}).get("curve_by_degree") or {}).items()):
+        for pt in pts:
+            row(f"junction_cross (degree {deg})", f"{pt['us']} µs, {pt['quanta']} quanta", pt.get("source", ""),
+                pt.get("label", ""))
+    h = d.get("heating") or {}
+    if h:
+        row("heating", f"{h.get('anomalous_rate_quanta_per_ms')} quanta/ms", h.get("source", ""), h.get("note", ""))
+    sp = d.get("species") or {}
+    if sp:
+        row("species", f"{sp.get('qubit')} qubit, {sp.get('coolant')} coolant", sp.get("source", ""), sp.get("note", ""))
+    return "".join(rows)
+
+
 def noise_page(PAGE: str, STYLE: str) -> str:
-    n = _noise()
-    if n is None:
+    models = [(mid, anchor, _noise(mid)) for mid, anchor in NOISE_MODELS]
+    models = [(mid, anchor, n) for mid, anchor, n in models if n is not None]
+    if not models:
         body = "<h1>The noise model</h1><p>The noise model is not in this build.</p>"
         return PAGE.format(title="Noise model - QCCD studio", style=STYLE, extra_css=CSS, body=body)
-    rows = "".join(f'<tr><td><code>{_e(c["channel"])}</code></td><td>{_e(c["where"])}</td>'
-                   f'<td>{_e(c["formula"])}</td><td><code>{_e(c["stim"])}</code></td><td>{_e(c["source"])}</td></tr>'
-                   for c in n["channels"])
+    used: dict = {}
+    for b in memory_boards():
+        used.setdefault(b.manifest["qec"]["noise"], []).append(b)
     try:
         from ..qec import EXPERIMENTS, get_experiment
         exps = [get_experiment(k).summary() for k in EXPERIMENTS]
     except Exception:
         exps = []
     erows = "".join(f'<tr><td><code>{_e(e.get("experiment") or e.get("name"))}</code></td><td>{_e(e.get("code"))}</td>'
+                    f'<td>{_e(e.get("basis"))}</td>'
                     f'<td class="n">{_e(e.get("distance"))}</td><td class="n">{_e(e.get("rounds"))}</td>'
                     f'<td class="n">{_e(e.get("n_data"))} + {_e(e.get("n_ancilla"))}</td></tr>' for e in exps)
     body = [
-        f"<h1>The noise model <small>{_e(n['id'])}</small></h1>",
+        "<h1>The noise models</h1>",
         '<p class="sub">How a compiled QCCD program becomes a logical error rate. The program is replayed on the '
-        "device, which says where every ion is, how hot it is and how long everything takes; each operation "
-        "becomes a gate of a stim circuit followed by the error channels below, each with a probability computed "
-        "from a parameter of the device itself. The circuit's detectors come from the memory experiment's "
-        "circuit, so the same experiment means the same thing whichever compiler compiled it.</p>",
-        '<nav class="lb-tabs"><a href="../#memory">The memory boards</a><a href="../compiler/">The compiler '
-        'benchmark</a><a href="../../physics/">Physics background</a></nav>',
-        '<h2 id="channels">The channels</h2>',
-        f'<div style="overflow-x:auto"><table class="lb-t"><thead><tr><th>channel</th><th>where</th><th>probability</th>'
-        f'<th>in stim</th><th>from the device</th></tr></thead><tbody>{rows}</tbody></table></div>',
+        "device, which says where every ion is, how hot it is and how long everything takes. Each operation "
+        "becomes a gate of a stim circuit followed by the error channels below, and each channel's probability "
+        "comes from a parameter of the device. Every channel is a Pauli channel that stim samples directly. The "
+        "circuit's detectors come from the memory experiment's circuit, so an experiment means the same thing "
+        "whichever compiler compiled it. A board names its model; changing the physics makes a new model, never "
+        "an edit to an old one.</p>",
+        '<nav class="lb-tabs">' + "".join(f'<a href="#{a}">{_e(m)}</a>' for m, a, _ in models)
+        + '<a href="../#memory">The memory boards</a><a href="../../physics/">Physics background</a></nav>',
+    ]
+    for mid, anchor, n in models:
+        boards = used.get(mid, [])
+        on = (" Used by " + ", ".join(f'<a href="../#{_e(b.manifest["task"])}">{_e(b.title)}</a>' for b in boards)
+              + "." if boards else "")
+        rows = "".join(f'<tr><td><code>{_e(c["channel"])}</code></td><td>{_e(c["where"])}</td>'
+                       f'<td>{_e(c["formula"])}</td><td><code>{_e(c["stim"])}</code></td><td>{_e(c["source"])}</td></tr>'
+                       for c in n["channels"])
+        body.append(f'<h2 id="{anchor}">{_e(mid)}</h2>')
+        if mid == "qccd-noise@2":
+            body.append(
+                "<p>It prices what the schedule does, not only the gates. An ion loses memory for every instruction "
+                "that does not operate on it, whether it idles, rides a rotation or is shuttled, linearly in time "
+                "and coherently over each idle stretch. A readout disturbs the ions beside it, and every gate starts "
+                "from the motion cooling leaves behind. Every number is a published measurement on trapped-ion "
+                "hardware. A per-shuttle error is left out because no experiment reports one: transport is charged "
+                "through its time and its heating instead. Ion loss is left out too, because no vendor reports a "
+                "number and it is not a Pauli channel. "
+                "A Z-basis memory cannot see dephasing, so the boards under this model measure an X and a Z "
+                f"memory together.{on}</p>")
+        else:
+            body.append("<p>Gates, readout, reset and a T₂ dephasing on every ion, priced from the device's own "
+                        f"physics block.{on}</p>")
+        body.append(f'<div style="overflow-x:auto"><table class="lb-t"><thead><tr><th>channel</th><th>where</th>'
+                    f'<th>probability</th><th>in stim</th><th>from</th></tr></thead><tbody>{rows}</tbody></table></div>')
+        if mid == "qccd-noise@2":
+            prow = _physics2_rows()
+            if prow:
+                body.append(
+                    '<h3 id="physics2">The physics it is graded under: qccd-physics@2</h3>'
+                    "<p>A ¹³⁷Ba⁺ QCCD with ¹⁷¹Yb⁺ coolant. Its gate, readout and memory errors are Helios's "
+                    "(Quantinuum, arXiv:2511.05465), and its transport times are Quantinuum's published primitives, "
+                    "in the operating-point table <code>quantinuum</code>. One segment of a design is one zone "
+                    "pitch, 375 µm. A design entered on a board with this physics takes it unless it set its own.</p>"
+                    '<div style="overflow-x:auto"><table class="lb-t"><thead><tr><th>primitive</th><th>value</th>'
+                    f'<th>source</th><th>note</th></tr></thead><tbody>{prow}</tbody></table></div>')
+    body += [
         '<h2 id="check">What counts as running the experiment</h2>',
         "<p>Before any sampling, the noiseless circuit is checked. Every detector and observable must be "
         "deterministic, and must have the parity the source circuit gives it. The second half matters: a program "
         "that implements a gate with the opposite sign (an MS pulse of &minus;&pi;/2 for +&pi;/2) keeps every "
         "detector deterministic but flips its value, and is caught only there.</p>",
         '<h2 id="experiments">The memory experiments</h2>',
-        '<table class="lb-t"><thead><tr><th>experiment</th><th>code</th><th>distance</th><th>rounds</th>'
+        '<table class="lb-t"><thead><tr><th>experiment</th><th>code</th><th>basis</th><th>distance</th><th>rounds</th>'
         f'<th>qubits (data + ancilla)</th></tr></thead><tbody>{erows}</tbody></table>',
         "<p>The data readout after the last round is added by the grader, where the ions are, with the device's "
-        "measurement error. The reference compiler's rotation cannot measure an ion that rides the loop. This is "
-        "an approximation, and the next version of the model revisits it together with the rest: idle time per ion "
-        "from the schedule, dephasing from transport, crosstalk, ion loss and imperfect cooling.</p>",
+        "measurement error; an XZ experiment reads each patch in its own basis. The reference compiler's rotation "
+        "cannot measure an ion that rides the loop. This is an approximation: the readout's own transport is not "
+        "charged.</p>",
     ]
-    return PAGE.format(title="Noise model - QCCD studio", style=STYLE, extra_css=CSS, body="\n".join(body))
+    return PAGE.format(title="Noise models - QCCD studio", style=STYLE, extra_css=CSS, body="\n".join(body))
 
 
 # ---------------------------------------------------------------------- declarations for the seed pages

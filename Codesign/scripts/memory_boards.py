@@ -2,6 +2,11 @@
 
     rep5_mem       repetition code, distance 5, five rounds
     surface3_mem   rotated surface code, distance 3, three rounds
+    surface5xz_mem two rotated surface-code patches, distance 5, a Z and an X memory in lockstep
+                   (98 ions), under qccd-noise@2 and its cited physics: Goal 1's board
+
+A board with physics of its own (`qccd-physics@2`) is entered by every design with that physics
+(`qccd.workspace.tasks.board_device`), and its times come from the release's own tables.
 
 Each board's memory experiment (the release's own circuit and detectors) is compiled onto
 every shipped device and onto small members of the study's families with the REFERENCE
@@ -47,7 +52,25 @@ from qccd.ir.tsir import TSIR  # noqa: E402
 OUT = ROOT / "MemoryBoard"
 TASKS = ROOT / "tasks"
 BOARDS = {"rep5_mem": {"order": 6, "short": "rep-5 memory"},
-          "surface3_mem": {"order": 7, "short": "surface-3 memory"}}
+          "surface3_mem": {"order": 7, "short": "surface-3 memory"},
+          "surface5xz_mem": {"order": 8, "short": "surface-5 X+Z memory"}}
+#: a release table -> the tag its time is reported under (`T_<tag>`)
+TABLE_TAGS = {"qccdsim_jones": "jones", "transport_excitation": "transport"}
+
+
+def board_release(board: str):
+    """The release a board is built from: its task's (tasks/<board>/task.json `release`), so a
+    board follows its task to a new release; a board with no task yet starts at `@1`."""
+    from qccd.workspace.tasks import find_release
+    tj = TASKS / board / "task.json"
+    rid = json.loads(tj.read_text(encoding="utf-8")).get("release") if tj.is_file() else None
+    return find_release(rid or board + "@1")
+
+
+def time_key(release) -> str:
+    """The number a board's round time is reported under: its rank table's."""
+    table = release.manifest["physics"].get("rank_table", "qccdsim_jones")
+    return "T_" + TABLE_TAGS.get(table, table)
 SCALE = 1e4          # the index shows rates in units of 1e-4
 WORK_NEW = "work.new"  # where a run grades; it replaces `work` only when the run is kept
 
@@ -107,7 +130,9 @@ def devices(release) -> list[dict]:
          "claim": "32 traps on a random expander: short paths, no drawing",
          "doc": SC.random_doc("random16", 16, 7)},
     ]
-    return out
+    # a starter named like a shipped device (surface5xz_mem's grid9x9) is that device: one row
+    seen: set = set()
+    return [d for d in out if not (d["key"] in seen or seen.add(d["key"]))]
 
 
 def grade_point(out: Path, release, exp, dev: dict) -> dict:
@@ -118,11 +143,20 @@ def grade_point(out: Path, release, exp, dev: dict) -> dict:
     # a run that fails in the old folder would take the last good program with it
     work = out / WORK_NEW / dev["key"]
     work.mkdir(parents=True, exist_ok=True)
+    from qccd.workspace.tasks import board_device
+    # every design is entered on the board, so it carries the board's physics (unchanged on a
+    # board whose physics is the template's, as every board before qccd-physics@2)
     if "doc" in dev:
         arch_p = out / f"{dev['key']}.arch.json"
-        arch_p.write_text(json.dumps(dev["doc"], indent=1), encoding="utf-8")
+        arch_p.write_text(json.dumps(board_device(dev["doc"], release), indent=1), encoding="utf-8")
     else:
-        arch_p = Path(dev["arch"])
+        src = json.loads(Path(dev["arch"]).read_text(encoding="utf-8"))
+        doc = board_device(src, release)
+        if doc == src:
+            arch_p = Path(dev["arch"])
+        else:
+            arch_p = out / f"{dev['key']}.arch.json"
+            arch_p.write_text(json.dumps(doc, indent=1), encoding="utf-8")
     row["arch"] = str(arch_p)
     t0 = time.time()
     try:
@@ -145,13 +179,25 @@ def grade_point(out: Path, release, exp, dev: dict) -> dict:
     arch = load(str(arch_p)); prog = TSIR.load(str(cooled))
     numbers: dict = {}
     transport_us = 0.0
-    for table, tag in (("qccdsim_jones", "jones"), ("transport_excitation", "transport")):
+    rank_table = release.manifest["physics"].get("rank_table", "qccdsim_jones")
+    for table in release.manifest["physics"].get("tables") or [rank_table]:
         try:
             s = score(arch, prog, table=table)
         except Exception:  # noqa: BLE001
+            # the campaign's scorer needs code that is not committed; the round's time is then the
+            # grader's own metric (`compute_metrics` -> `replay_time`), the number a submission gets
+            try:
+                from qccd.workspace.metrics import replay_time
+                ms, res = replay_time(arch, prog, table)
+            except Exception:  # noqa: BLE001
+                continue
+            numbers[f"T_{TABLE_TAGS.get(table, table)}"] = round(ms, 3)
+            if table == rank_table:
+                transport_us = sum(us for k, us in (getattr(res, "us_by_class", {}) or {}).items()
+                                   if k not in ("gate", "measure", "reset", "cool"))
             continue
-        numbers[f"T_{tag}"] = round(s["T_round_ms"], 3)
-        if tag == "jones":
+        numbers[f"T_{TABLE_TAGS.get(table, table)}"] = round(s["T_round_ms"], 3)
+        if table == rank_table:
             numbers["p_eff_vs_threshold"] = round(s["p_eff_vs_threshold"], 3)
             transport_us = sum(us for k, us in s["us_by_class"].items() if k not in ("gate", "measure", "reset", "cool"))
     bc = broadcast_use(arch, prog)
@@ -349,9 +395,11 @@ def pages(board: str, release, exp, rows: list[dict], out: Path) -> None:
     sound = [r for r in ok if not r.get("rules_failed_replay")]
     # ties are real on a board whose code is too good for its shot budget (zero errors in
     # every shot): they break on the interval's upper end, then on the round's time
+    tk = time_key(release)
+
     def rank(r):
         n = r.get("numbers", {})
-        return (n.get("ler_per_round", 1e9), n.get("ler_round_hi_1e4", 1e9), n.get("T_jones", 1e9))
+        return (n.get("ler_per_round", 1e9), n.get("ler_round_hi_1e4", 1e9), n.get(tk, 1e9))
     # no design is singled out when the leaders are statistically tied
     few = bool(sound) and max(r["ler"]["errors"] for r in sound) < 20
     best = min(sound, key=rank) if (sound and not few) else None
@@ -393,9 +441,13 @@ def pages(board: str, release, exp, rows: list[dict], out: Path) -> None:
                  + (" At this budget the designs give at most a few logical errors each, so their 95% intervals "
                     "overlap: the order among them is not significant." if few else ""))
     s = idx.read_text(encoding="utf-8")
-    for a, b in (("var METRICS = [\n", "var METRICS = [\n" + LER_METRICS),
+    # a board timed on another table (qccd-physics@2: "quantinuum") names that time too
+    extra = ("" if tk in ("T_jones", "T_transport") else
+             f" {{k:'{tk}', name:'Total running time — {tk[2:]} table', unit:'ms', better:'low', log:true}},\n")
+    for a, b in (("var METRICS = [\n", "var METRICS = [\n" + LER_METRICS + extra),
                  (": 'T_jones'; xsel.value", ": 'ler_round_1e4'; xsel.value"),
-                 ("var cols=['T_jones',", "var cols=['ler_round_1e4','ler_round_lo_1e4','ler_round_hi_1e4','noise_heating','nbar_max','T_jones',")):
+                 ("var cols=['T_jones',", "var cols=['ler_round_1e4','ler_round_lo_1e4','ler_round_hi_1e4','noise_heating','nbar_max',"
+                                         f"'{tk}',")):
         assert s.count(a) == 1, a
         s = s.replace(a, b)
     idx.write_text(s, encoding="utf-8")
@@ -410,8 +462,10 @@ def write_task(board: str, release, exp) -> None:
            "title": release.title, "short": BOARDS[board]["short"],
            "description": release.manifest.get("description", ""), "circuit": "circuit.qasm",
            "n_data": exp.summary()["n_data"],
-           "physics": {"model": "corrected", "tables": ["qccdsim_jones", "qccdsim_transport"]},
-           "metrics": ["ler_per_round", "ler", "T_jones", "ions_per_instruction", "dacs", "area_mm2", "buildable"],
+           "physics": ({"model": "corrected", "tables": ["qccdsim_jones", "qccdsim_transport"]}
+                       if time_key(release) == "T_jones" else
+                       {"model": "corrected", "tables": list(release.manifest["physics"].get("tables") or [])}),
+           "metrics": ["ler_per_round", "ler", time_key(release), "ions_per_instruction", "dacs", "area_mm2", "buildable"],
            "rank_by": "ler_per_round", "release": release.id,
            "qec": {"experiment": q.get("experiment"), "noise": q["noise"], "ler": q["ler"]},
            "seed": f"MemoryBoard/{board}"}
@@ -420,7 +474,6 @@ def write_task(board: str, release, exp) -> None:
 
 def main(argv=None) -> int:
     from qccd.qec import MemoryExperiment
-    from qccd.workspace.tasks import find_release
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--board", default=None)
     ap.add_argument("--device", default=None)
@@ -454,7 +507,7 @@ def main(argv=None) -> int:
     for board in BOARDS:
         if a.board and board != a.board:
             continue
-        release = find_release(board + "@1")
+        release = board_release(board)
         exp = MemoryExperiment.from_spec(release.detectors(), release.circuit_text())
         out = OUT / board
         out.mkdir(parents=True, exist_ok=True)
@@ -473,7 +526,7 @@ def main(argv=None) -> int:
                 if r["status"] == "ok":
                     n = r["numbers"]
                     print(f"   {dev['key']:18s} LER/round {n['ler_per_round']:.2e}  n-bar max {n['nbar_max']:6.3f}  "
-                          f"{n.get('T_jones', 0):8.2f} ms  rules {'ok' if not r['rules_failed_replay'] else 'FAIL ' + str(r['rules_failed_replay'])}"
+                          f"{n.get(time_key(release), 0):8.2f} ms  rules {'ok' if not r['rules_failed_replay'] else 'FAIL ' + str(r['rules_failed_replay'])}"
                           f"  R10 {n.get('r10')}  ({r['compile_seconds']:.0f}s, {r['compiler_mode']})", flush=True)
                 else:
                     print(f"   {dev['key']:18s} refused: {r.get('reason', '')[:110]}", flush=True)
@@ -491,8 +544,10 @@ def main(argv=None) -> int:
                 continue
             rows = _keep_work(out, rows, a.device)
             rj.write_text(json.dumps(rows, indent=1, default=str), encoding="utf-8")
-        pages(board, release, exp, rows, out)
+        # the task first: the pages read it (bb_studio.release_of decides which release's budget
+        # judges a device, through tasks/*/task.json)
         write_task(board, release, exp)
+        pages(board, release, exp, rows, out)
     return 1 if failed else 0
 
 
