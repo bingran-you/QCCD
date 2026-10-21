@@ -101,7 +101,30 @@ the `include snippets/qccd-official.conf;` line and `nginx -t && systemctl reloa
 The site file as it was before the include was added is
 `/root/qccd.academy.nginx.bak-20260923-000848`.
 
-**Deployed** 2026-10-21 07:57 UTC (00:57 PDT), from commit `db3e6fc` (pushed): the platform fixes
+**Deployed** 2026-10-21, from commit `d2da98d` (pushed, also on `website/invitations`):
+- `qccd-noise@2` and `qccd-physics@2`: every number cited, every channel a Pauli channel for stim.
+- Goal 1's board, `surface5xz_mem@1`: a Z and an X surface-5 memory side by side, 98 ions.
+- A design entered on a board takes that board's physics (`board_device`).
+- The compiler is `c774b87b677f`. Its new last fallback, split rounds, compiles 98-ion memories,
+  and it is byte-identical on every program `e799ecf5a5cd` produced (77/77), so suite@1 was not
+  re-pinned.
+
+The image is derived from `qccd-official:db3e6fc`:
+- `qccd/`, `arch/` and `Compiler/bridge` are the git archive of `d2da98d`;
+- `qccdc_cli` is the published Linux `c774b87b677f` (sha256 `ed8838c6...`);
+- qcheck is db3e6fc's (`e8acd6640fd3`, sha256 `923528c0...`).
+
+The 45 layers are identical on both machines, and the previous deployment is in `.env.bak-db3e6fc`,
+`VERSION.bak-db3e6fc` and `docker-compose.prod.yml.bak-db3e6fc`.
+
+The local rehearsal and production agreed. The operator uploader was `deploy-smoke-d2da98d`
+(quota 2, token deleted). Both private smoke tests matched their local reports, with no stage
+and no metric different:
+- GHZ, `os_b9a317a40d4cfee2`: eligible.
+- The Goal 1 board's starter, `os_25336188e127741b`: eligible in about 23 s, at 5.2e-5 per round
+  and 598 ms.
+
+**Before that** 2026-10-21 07:57 UTC (00:57 PDT), from commit `db3e6fc` (pushed): the platform fixes
 #15-#21 that the hillclimb PRs (#10-#14) prompted. The device stage fails a device over the
 release's budget (`DEVICE.OVER_BUDGET`), counting what it declares about its own wiring at no
 less than the deck's physics (#15); a move is charged split and merge for what it does -- the
