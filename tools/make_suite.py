@@ -19,22 +19,19 @@ measured on Windows, the reference compiler graded ler_ratio 0.992 on its own bo
 32 memory pairs had a different LER under the same seed, although every status and every
 metric matched.
 
-The current baseline was measured 2026-10-18 on Linux in the official image
-qccd-official:5b1a3f3 by the grader itself.  The reference compiler was submitted as the
-starter compiler (`qccd.bench.starter()`, whose compile.py calls qccd.bench.baseline): private
-run os_d5c2c3b0f1f13e5a.  Production's run os_c4bce259b7d0bc7a gave identical records, LERs
-included.  With qccdc 7265883d596f (the published Linux binary), 100 of the 108 public pairs
-are valid, 0 wrong and 8 refused -- the room a better compiler has.  The reference now grades
-ler_ratio 1.000 and speedup 1.0 on its own board.  This file's main() wrote those records into
-the suite, with run_suite returning them, so build_suite wrote every file.  The pair timings
+The current baseline was measured 2026-10-20 on Linux in the official image qccd-official:dfdf77b
+(the published Linux qccdc e799ecf5a5cd), by this file's main() run inside it: 100 of the 108
+public pairs valid, 0 wrong and 8 refused -- the room a better compiler has.  The pair timings
 (`seconds`) are the sandbox's, and the one refusal that names its circuit file carries the
 sandbox's path.
 
 main() measures on the machine it runs on, and only when suite@1 is missing from SUITES_DIR.
-The intended in-image route is UNTESTED: run main() in the image, with this checkout's tools/,
-Compiler/examples and Compiler/bench mounted under /opt/qccd/ and an empty writable directory
-mounted over /opt/qccd/qccd/bench/suites.  Then copy baseline.json and suite.json back, after
-checking that every other file is byte-identical.
+The in-image route, as used on 2026-10-20: `git archive <commit> -- qccd arch tools
+Compiler/examples Compiler/bench Compiler/bridge` into a scratch directory, move its
+qccd/bench/suites/suite@1 aside, and run `docker run --rm -v <dir>:/repo -w /repo -e JOBS=2
+--entrypoint python qccd-official:<commit> tools/make_suite.py` (the image's QCCD_QCCDC is the
+published Linux compiler).  Then check that every file but baseline.json and suite.json is
+byte-identical to the old suite, and copy those two back.
 
 History.  2026-09-28: the first measurement, with a router that predated R22 (20 wrong pairs, so
 the reference could not pass its own board).  2026-09-29: re-pinned the day it was published,
@@ -44,8 +41,14 @@ programs measured on Linux; only the LERs, the timings and that refusal's path c
 2026-10-19: re-pinned for qccdc dbd13d8952f3, which keeps every qubit's gate order (commuting or
 not) and sweeps the conveyor greedily, measured the same way in a rehearsal of the image
 qccd-official:b4535df (private run os_3275b2eadbe9a312): still 100 / 0 / 8; the three memory
-pairs on ring144_24v, the rotation pass's, changed their times (and two their LERs).  A
-published suite is otherwise immutable: change it by adding suite@2.
+pairs on ring144_24v, the rotation pass's, changed their times (and two their LERs).
+2026-10-20: re-pinned for the platform fixes #15-#21 and qccdc e799ecf5a5cd -- split and merge
+charged for what a move does (#16), R22's direction labels (#19), the device's canonical order
+(#20) -- measured in qccd-official:dfdf77b: still 100 / 0 / 8, no status changed; T_jones moved
+on 96 of the 100 valid pairs (median 1.78x, at most 7.37x on surface3_r3_z@h2_racetrack; only
+ghz8@stationary_chain and the three rotation-pass memory pairs on ring144_24v unchanged), and
+the LER on 24 memory pairs.  A published suite is otherwise immutable: change it by adding
+suite@2.
 """
 
 from __future__ import annotations

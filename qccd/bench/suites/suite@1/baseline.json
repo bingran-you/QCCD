@@ -1,819 +1,791 @@
 {
  "compiler": "qccdc (reference) + insert_cooling",
- "measured": "2026-10-19",
+ "measured": "2026-10-21",
  "pairs": {
   "adder3@chain": {
    "ler": null,
    "metrics": {
-    "T_jones": 6.705,
-    "T_transport": 7.517,
+    "T_jones": 20.485,
+    "T_transport": 14.747,
     "dacs": 1728,
-    "instructions": 288,
+    "instructions": 299,
     "ions_per_instruction": 1.2758620689655173,
     "transport_instructions": 116
    },
    "reason": "",
-   "seconds": 1.57,
+   "seconds": 1.973,
    "status": "valid"
   },
   "adder3@cyclone_base": {
    "ler": null,
    "metrics": {
-    "T_jones": 6.255,
-    "T_transport": 6.857,
+    "T_jones": 18.815,
+    "T_transport": 13.817,
     "dacs": 38,
-    "instructions": 257,
+    "instructions": 269,
     "ions_per_instruction": 1.2674418604651163,
     "transport_instructions": 86
    },
    "reason": "",
-   "seconds": 1.407,
+   "seconds": 5.071,
    "status": "valid"
   },
   "adder3@cyclone_dual_loop": {
    "ler": null,
    "metrics": {
-    "T_jones": 7.13,
-    "T_transport": 8.957,
+    "T_jones": 30.825,
+    "T_transport": 22.553,
     "dacs": 44,
-    "instructions": 432,
-    "ions_per_instruction": 1.0957854406130267,
-    "transport_instructions": 261
+    "instructions": 687,
+    "ions_per_instruction": 1.1904761904761905,
+    "transport_instructions": 504
    },
    "reason": "",
-   "seconds": 6.813,
+   "seconds": 12.414,
    "status": "valid"
   },
   "adder3@deck_unit_cell": {
    "ler": null,
    "metrics": {
-    "T_jones": 20.8,
-    "T_transport": 21.437,
+    "T_jones": 28.8,
+    "T_transport": 24.437,
     "dacs": 44,
     "instructions": 274,
     "ions_per_instruction": 1.2307692307692308,
     "transport_instructions": 91
    },
    "reason": "",
-   "seconds": 1.721,
+   "seconds": 5.169,
    "status": "valid"
   },
   "adder3@grid9x9": {
    "ler": null,
    "metrics": {
-    "T_jones": 20.8,
-    "T_transport": 21.437,
+    "T_jones": 28.8,
+    "T_transport": 24.437,
     "dacs": 5760,
     "instructions": 274,
     "ions_per_instruction": 1.2307692307692308,
     "transport_instructions": 91
    },
    "reason": "",
-   "seconds": 1.037,
+   "seconds": 5.961,
    "status": "valid"
   },
   "adder3@h2_racetrack": {
    "ler": null,
    "metrics": {
-    "T_jones": 6.65,
-    "T_transport": 7.805,
+    "T_jones": 19.53,
+    "T_transport": 14.885,
     "dacs": 72,
-    "instructions": 336,
+    "instructions": 348,
     "ions_per_instruction": 1.1515151515151516,
     "transport_instructions": 165
    },
    "reason": "",
-   "seconds": 1.269,
+   "seconds": 5.144,
    "status": "valid"
   },
   "adder3@ladder_2x72": {
    "ler": null,
    "metrics": {
-    "T_jones": 12.885,
-    "T_transport": 13.753,
+    "T_jones": 23.925,
+    "T_transport": 18.043,
     "dacs": 56,
     "instructions": 307,
     "ions_per_instruction": 1.1935483870967742,
     "transport_instructions": 124
    },
    "reason": "",
-   "seconds": 1.32,
+   "seconds": 6.338,
    "status": "valid"
   },
   "adder3@ring144_24v": {
    "ler": null,
    "metrics": {
-    "T_jones": 25.59,
-    "T_transport": 29.041,
+    "T_jones": 40.23,
+    "T_transport": 34.531,
     "dacs": 46,
     "instructions": 676,
     "ions_per_instruction": 1.1967545638945234,
     "transport_instructions": 493
    },
    "reason": "",
-   "seconds": 1.119,
+   "seconds": 7.08,
    "status": "valid"
   },
   "adder3@stationary_chain": {
    "ler": null,
    "metrics": {
-    "T_jones": 3.76,
-    "T_transport": 3.991,
+    "T_jones": 16.76,
+    "T_transport": 13.741,
     "dacs": 48,
-    "instructions": 274,
+    "instructions": 300,
     "ions_per_instruction": 1.0,
     "transport_instructions": 33
    },
    "reason": "",
-   "seconds": 1.009,
+   "seconds": 6.885,
    "status": "valid"
   },
   "bell2@chain": {
    "ler": null,
    "metrics": {
-    "T_jones": 0.49,
-    "T_transport": 0.497,
+    "T_jones": 0.87,
+    "T_transport": 0.827,
     "dacs": 1728,
-    "instructions": 11,
+    "instructions": 12,
     "ions_per_instruction": 1.0,
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 2.071,
+   "seconds": 2.975,
    "status": "valid"
   },
   "bell2@cyclone_base": {
    "ler": null,
    "metrics": {
-    "T_jones": 0.49,
-    "T_transport": 0.497,
+    "T_jones": 0.87,
+    "T_transport": 0.827,
     "dacs": 38,
-    "instructions": 11,
+    "instructions": 12,
     "ions_per_instruction": 1.0,
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 3.258,
+   "seconds": 14.55,
    "status": "valid"
   },
   "bell2@cyclone_dual_loop": {
    "ler": null,
    "metrics": {
-    "T_jones": 0.49,
-    "T_transport": 0.497,
-    "dacs": 44,
-    "instructions": 11,
-    "ions_per_instruction": 1.0,
-    "transport_instructions": 1
-   },
-   "reason": "",
-   "seconds": 2.322,
-   "status": "valid"
-  },
-  "bell2@deck_unit_cell": {
-   "ler": null,
-   "metrics": {
-    "T_jones": 0.91,
-    "T_transport": 0.917,
+    "T_jones": 0.87,
+    "T_transport": 0.827,
     "dacs": 44,
     "instructions": 12,
     "ions_per_instruction": 1.0,
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 2.423,
+   "seconds": 2.737,
+   "status": "valid"
+  },
+  "bell2@deck_unit_cell": {
+   "ler": null,
+   "metrics": {
+    "T_jones": 0.99,
+    "T_transport": 0.947,
+    "dacs": 44,
+    "instructions": 12,
+    "ions_per_instruction": 1.0,
+    "transport_instructions": 1
+   },
+   "reason": "",
+   "seconds": 2.096,
    "status": "valid"
   },
   "bell2@grid9x9": {
    "ler": null,
    "metrics": {
-    "T_jones": 0.91,
-    "T_transport": 0.917,
+    "T_jones": 0.99,
+    "T_transport": 0.947,
     "dacs": 5760,
     "instructions": 12,
     "ions_per_instruction": 1.0,
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 2.174,
+   "seconds": 2.082,
    "status": "valid"
   },
   "bell2@h2_racetrack": {
    "ler": null,
    "metrics": {
-    "T_jones": 0.49,
-    "T_transport": 0.497,
+    "T_jones": 0.87,
+    "T_transport": 0.827,
     "dacs": 72,
-    "instructions": 11,
+    "instructions": 12,
     "ions_per_instruction": 1.0,
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 2.407,
+   "seconds": 3.198,
    "status": "valid"
   },
   "bell2@ladder_2x72": {
    "ler": null,
    "metrics": {
-    "T_jones": 0.49,
-    "T_transport": 0.497,
+    "T_jones": 0.87,
+    "T_transport": 0.827,
     "dacs": 56,
-    "instructions": 11,
+    "instructions": 12,
     "ions_per_instruction": 1.0,
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 2.407,
+   "seconds": 3.375,
    "status": "valid"
   },
   "bell2@ring144_24v": {
    "ler": null,
    "metrics": {
-    "T_jones": 1.015,
-    "T_transport": 1.057,
+    "T_jones": 1.335,
+    "T_transport": 1.177,
     "dacs": 46,
     "instructions": 17,
     "ions_per_instruction": 1.0,
     "transport_instructions": 6
    },
    "reason": "",
-   "seconds": 2.17,
+   "seconds": 2.213,
    "status": "valid"
   },
   "bell2@stationary_chain": {
    "ler": null,
    "metrics": {
-    "T_jones": 0.49,
-    "T_transport": 0.497,
+    "T_jones": 0.87,
+    "T_transport": 0.827,
     "dacs": 48,
-    "instructions": 11,
+    "instructions": 12,
     "ions_per_instruction": 1.0,
     "transport_instructions": 1
    },
    "reason": "",
-   "seconds": 2.07,
+   "seconds": 2.111,
    "status": "valid"
   },
   "bv6@chain": {
    "ler": null,
    "metrics": {
-    "T_jones": 1.04,
-    "T_transport": 1.089,
+    "T_jones": 2.82,
+    "T_transport": 2.319,
     "dacs": 1728,
-    "instructions": 36,
+    "instructions": 39,
     "ions_per_instruction": 1.0,
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 2.37,
+   "seconds": 1.809,
    "status": "valid"
   },
   "bv6@cyclone_base": {
    "ler": null,
    "metrics": {
-    "T_jones": 1.03,
-    "T_transport": 1.065,
+    "T_jones": 2.65,
+    "T_transport": 2.235,
     "dacs": 38,
-    "instructions": 34,
+    "instructions": 37,
     "ions_per_instruction": 1.2,
     "transport_instructions": 5
    },
    "reason": "",
-   "seconds": 2.17,
+   "seconds": 1.808,
    "status": "valid"
   },
   "bv6@cyclone_dual_loop": {
    "ler": null,
    "metrics": {
-    "T_jones": 1.035,
-    "T_transport": 1.077,
+    "T_jones": 2.815,
+    "T_transport": 2.307,
     "dacs": 44,
-    "instructions": 35,
+    "instructions": 38,
     "ions_per_instruction": 1.0,
     "transport_instructions": 6
    },
    "reason": "",
-   "seconds": 2.421,
+   "seconds": 1.804,
    "status": "valid"
   },
   "bv6@deck_unit_cell": {
    "ler": null,
    "metrics": {
-    "T_jones": 2.53,
-    "T_transport": 2.565,
+    "T_jones": 3.25,
+    "T_transport": 2.835,
     "dacs": 44,
     "instructions": 37,
     "ions_per_instruction": 1.0,
     "transport_instructions": 5
    },
    "reason": "",
-   "seconds": 2.571,
+   "seconds": 1.783,
    "status": "valid"
   },
   "bv6@grid9x9": {
    "ler": null,
    "metrics": {
-    "T_jones": 2.53,
-    "T_transport": 2.565,
+    "T_jones": 3.25,
+    "T_transport": 2.835,
     "dacs": 5760,
     "instructions": 37,
     "ions_per_instruction": 1.0,
     "transport_instructions": 5
    },
    "reason": "",
-   "seconds": 2.406,
+   "seconds": 1.592,
    "status": "valid"
   },
   "bv6@h2_racetrack": {
    "ler": null,
    "metrics": {
-    "T_jones": 1.035,
-    "T_transport": 1.077,
+    "T_jones": 2.815,
+    "T_transport": 2.307,
     "dacs": 72,
-    "instructions": 35,
+    "instructions": 38,
     "ions_per_instruction": 1.0,
     "transport_instructions": 6
    },
    "reason": "",
-   "seconds": 2.27,
+   "seconds": 1.532,
    "status": "valid"
   },
   "bv6@ladder_2x72": {
    "ler": null,
    "metrics": {
-    "T_jones": 1.44,
-    "T_transport": 1.489,
+    "T_jones": 2.92,
+    "T_transport": 2.419,
     "dacs": 56,
-    "instructions": 37,
+    "instructions": 39,
     "ions_per_instruction": 1.0,
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 2.47,
+   "seconds": 1.642,
    "status": "valid"
   },
   "bv6@ring144_24v": {
    "ler": null,
    "metrics": {
-    "T_jones": 3.075,
-    "T_transport": 3.313,
+    "T_jones": 4.355,
+    "T_transport": 3.793,
     "dacs": 46,
     "instructions": 66,
     "ions_per_instruction": 1.0,
     "transport_instructions": 34
    },
    "reason": "",
-   "seconds": 2.12,
+   "seconds": 1.68,
    "status": "valid"
   },
   "bv6@stationary_chain": {
    "ler": null,
    "metrics": {
-    "T_jones": 1.125,
-    "T_transport": 1.181,
+    "T_jones": 2.925,
+    "T_transport": 2.231,
     "dacs": 48,
-    "instructions": 45,
+    "instructions": 47,
     "ions_per_instruction": 1.0,
     "transport_instructions": 8
    },
    "reason": "",
-   "seconds": 3.142,
+   "seconds": 2.926,
    "status": "valid"
   },
   "clifford12@chain": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
-   "seconds": 7.276,
+   "seconds": 15.181,
    "status": "refused"
   },
   "clifford12@cyclone_base": {
    "ler": null,
    "metrics": {
-    "T_jones": 20.43,
-    "T_transport": 22.502,
+    "T_jones": 58.09,
+    "T_transport": 42.062,
     "dacs": 38,
-    "instructions": 781,
+    "instructions": 810,
     "ions_per_instruction": 1.162162162162162,
     "transport_instructions": 296
    },
    "reason": "",
-   "seconds": 3.006,
+   "seconds": 2.529,
    "status": "valid"
   },
   "clifford12@cyclone_dual_loop": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has 2 closed loops; this pass drives exactly one",
-   "seconds": 6.877,
+   "seconds": 12.07,
    "status": "refused"
   },
   "clifford12@deck_unit_cell": {
    "ler": null,
    "metrics": {
-    "T_jones": 45.275,
-    "T_transport": 46.262,
+    "T_jones": 60.155,
+    "T_transport": 51.842,
     "dacs": 44,
     "instructions": 655,
     "ions_per_instruction": 1.1418439716312057,
     "transport_instructions": 141
    },
    "reason": "",
-   "seconds": 4.809,
+   "seconds": 4.526,
    "status": "valid"
   },
   "clifford12@grid9x9": {
    "ler": null,
    "metrics": {
-    "T_jones": 45.275,
-    "T_transport": 46.262,
+    "T_jones": 60.155,
+    "T_transport": 51.842,
     "dacs": 5760,
     "instructions": 655,
     "ions_per_instruction": 1.1418439716312057,
     "transport_instructions": 141
    },
    "reason": "",
-   "seconds": 4.324,
+   "seconds": 5.687,
    "status": "valid"
   },
   "clifford12@h2_racetrack": {
    "ler": null,
    "metrics": {
-    "T_jones": 21.835,
-    "T_transport": 25.069,
+    "T_jones": 61.495,
+    "T_transport": 41.629,
     "dacs": 72,
-    "instructions": 956,
+    "instructions": 965,
     "ions_per_instruction": 1.12987012987013,
     "transport_instructions": 462
    },
    "reason": "",
-   "seconds": 3.774,
+   "seconds": 8.497,
    "status": "valid"
   },
   "clifford12@ladder_2x72": {
    "ler": null,
    "metrics": {
-    "T_jones": 49.045,
-    "T_transport": 51.138,
+    "T_jones": 73.785,
+    "T_transport": 62.628,
     "dacs": 56,
-    "instructions": 806,
+    "instructions": 813,
     "ions_per_instruction": 1.0535117056856187,
     "transport_instructions": 299
    },
    "reason": "",
-   "seconds": 27.675,
+   "seconds": 22.333,
    "status": "valid"
   },
   "clifford12@ring144_24v": {
    "ler": null,
    "metrics": {
-    "T_jones": 66.795,
-    "T_transport": 76.098,
+    "T_jones": 90.235,
+    "T_transport": 84.888,
     "dacs": 46,
     "instructions": 1843,
     "ions_per_instruction": 1.1203912716328066,
     "transport_instructions": 1329
    },
    "reason": "",
-   "seconds": 2.797,
+   "seconds": 9.586,
    "status": "valid"
   },
   "clifford12@stationary_chain": {
    "ler": null,
    "metrics": {
-    "T_jones": 9.73,
-    "T_transport": 10.171,
+    "T_jones": 40.13,
+    "T_transport": 34.321,
     "dacs": 48,
-    "instructions": 618,
+    "instructions": 686,
     "ions_per_instruction": 1.0,
     "transport_instructions": 63
    },
    "reason": "",
-   "seconds": 2.12,
+   "seconds": 4.178,
    "status": "valid"
   },
   "ghz16@chain": {
    "ler": null,
    "metrics": {
-    "T_jones": 2.87,
-    "T_transport": 2.975,
+    "T_jones": 9.69,
+    "T_transport": 8.345,
     "dacs": 1728,
-    "instructions": 109,
+    "instructions": 124,
     "ions_per_instruction": 1.0,
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 2.52,
+   "seconds": 2.224,
    "status": "valid"
   },
   "ghz16@cyclone_base": {
    "ler": null,
    "metrics": {
-    "T_jones": 4.095,
-    "T_transport": 4.655,
+    "T_jones": 9.215,
+    "T_transport": 8.825,
     "dacs": 38,
-    "instructions": 177,
+    "instructions": 189,
     "ions_per_instruction": 1.0,
     "transport_instructions": 80
    },
    "reason": "",
-   "seconds": 2.811,
+   "seconds": 2.273,
    "status": "valid"
   },
   "ghz16@cyclone_dual_loop": {
    "ler": null,
    "metrics": {
-    "T_jones": 2.87,
-    "T_transport": 2.975,
-    "dacs": 44,
-    "instructions": 109,
-    "ions_per_instruction": 1.0,
-    "transport_instructions": 15
-   },
-   "reason": "",
-   "seconds": 2.873,
-   "status": "valid"
-  },
-  "ghz16@deck_unit_cell": {
-   "ler": null,
-   "metrics": {
-    "T_jones": 9.13,
-    "T_transport": 9.235,
+    "T_jones": 9.69,
+    "T_transport": 8.345,
     "dacs": 44,
     "instructions": 124,
     "ions_per_instruction": 1.0,
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 2.721,
+   "seconds": 2.214,
+   "status": "valid"
+  },
+  "ghz16@deck_unit_cell": {
+   "ler": null,
+   "metrics": {
+    "T_jones": 11.45,
+    "T_transport": 10.105,
+    "dacs": 44,
+    "instructions": 124,
+    "ions_per_instruction": 1.0,
+    "transport_instructions": 15
+   },
+   "reason": "",
+   "seconds": 2.081,
    "status": "valid"
   },
   "ghz16@grid9x9": {
    "ler": null,
    "metrics": {
-    "T_jones": 9.13,
-    "T_transport": 9.235,
+    "T_jones": 11.45,
+    "T_transport": 10.105,
     "dacs": 5760,
     "instructions": 124,
     "ions_per_instruction": 1.0,
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 2.207,
+   "seconds": 2.128,
    "status": "valid"
   },
   "ghz16@h2_racetrack": {
    "ler": null,
    "metrics": {
-    "T_jones": 2.87,
-    "T_transport": 2.975,
+    "T_jones": 9.69,
+    "T_transport": 8.345,
     "dacs": 72,
-    "instructions": 109,
+    "instructions": 124,
     "ions_per_instruction": 1.0,
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 3.064,
+   "seconds": 4.056,
    "status": "valid"
   },
   "ghz16@ladder_2x72": {
    "ler": null,
    "metrics": {
-    "T_jones": 4.07,
-    "T_transport": 4.175,
+    "T_jones": 9.99,
+    "T_transport": 8.645,
     "dacs": 56,
-    "instructions": 112,
+    "instructions": 124,
     "ions_per_instruction": 1.0,
     "transport_instructions": 15
    },
    "reason": "",
-   "seconds": 2.371,
+   "seconds": 4.195,
    "status": "valid"
   },
   "ghz16@ring144_24v": {
    "ler": null,
    "metrics": {
-    "T_jones": 10.745,
-    "T_transport": 11.375,
+    "T_jones": 15.545,
+    "T_transport": 13.175,
     "dacs": 46,
     "instructions": 199,
     "ions_per_instruction": 1.0,
     "transport_instructions": 90
    },
    "reason": "",
-   "seconds": 2.214,
+   "seconds": 3.635,
    "status": "valid"
   },
   "ghz16@stationary_chain": {
    "ler": null,
    "metrics": {
-    "T_jones": 2.805,
-    "T_transport": 2.819,
+    "T_jones": 3.725,
+    "T_transport": 3.539,
     "dacs": 48,
-    "instructions": 96,
+    "instructions": 98,
     "ions_per_instruction": 1.0,
     "transport_instructions": 2
    },
    "reason": "",
-   "seconds": 2.522,
+   "seconds": 3.724,
    "status": "valid"
   },
   "ghz32@chain": {
    "ler": null,
    "metrics": {
-    "T_jones": 5.59,
-    "T_transport": 5.807,
+    "T_jones": 19.77,
+    "T_transport": 16.937,
     "dacs": 1728,
-    "instructions": 221,
+    "instructions": 252,
     "ions_per_instruction": 1.0,
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 2.607,
+   "seconds": 3.602,
    "status": "valid"
   },
   "ghz32@cyclone_base": {
    "ler": null,
    "metrics": {
-    "T_jones": 12.79,
-    "T_transport": 15.107,
+    "T_jones": 19.67,
+    "T_transport": 19.937,
     "dacs": 38,
-    "instructions": 540,
+    "instructions": 552,
     "ions_per_instruction": 1.0,
     "transport_instructions": 331
    },
    "reason": "",
-   "seconds": 2.872,
+   "seconds": 3.36,
    "status": "valid"
   },
   "ghz32@cyclone_dual_loop": {
    "ler": null,
    "metrics": {
-    "T_jones": 5.59,
-    "T_transport": 5.807,
-    "dacs": 44,
-    "instructions": 221,
-    "ions_per_instruction": 1.0,
-    "transport_instructions": 31
-   },
-   "reason": "",
-   "seconds": 2.824,
-   "status": "valid"
-  },
-  "ghz32@deck_unit_cell": {
-   "ler": null,
-   "metrics": {
-    "T_jones": 18.53,
-    "T_transport": 18.747,
+    "T_jones": 19.77,
+    "T_transport": 16.937,
     "dacs": 44,
     "instructions": 252,
     "ions_per_instruction": 1.0,
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 2.607,
+   "seconds": 3.301,
+   "status": "valid"
+  },
+  "ghz32@deck_unit_cell": {
+   "ler": null,
+   "metrics": {
+    "T_jones": 23.41,
+    "T_transport": 20.577,
+    "dacs": 44,
+    "instructions": 252,
+    "ions_per_instruction": 1.0,
+    "transport_instructions": 31
+   },
+   "reason": "",
+   "seconds": 3.058,
    "status": "valid"
   },
   "ghz32@grid9x9": {
    "ler": null,
    "metrics": {
-    "T_jones": 18.53,
-    "T_transport": 18.747,
+    "T_jones": 23.41,
+    "T_transport": 20.577,
     "dacs": 5760,
     "instructions": 252,
     "ions_per_instruction": 1.0,
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 2.473,
+   "seconds": 3.113,
    "status": "valid"
   },
   "ghz32@h2_racetrack": {
    "ler": null,
    "metrics": {
-    "T_jones": 5.59,
-    "T_transport": 5.807,
+    "T_jones": 19.77,
+    "T_transport": 16.937,
     "dacs": 72,
-    "instructions": 221,
+    "instructions": 252,
     "ions_per_instruction": 1.0,
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 2.206,
+   "seconds": 2.994,
    "status": "valid"
   },
   "ghz32@ladder_2x72": {
    "ler": null,
    "metrics": {
-    "T_jones": 7.99,
-    "T_transport": 8.207,
+    "T_jones": 20.37,
+    "T_transport": 17.537,
     "dacs": 56,
-    "instructions": 227,
+    "instructions": 252,
     "ions_per_instruction": 1.0,
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 3.492,
+   "seconds": 7.849,
    "status": "valid"
   },
   "ghz32@ring144_24v": {
    "ler": null,
    "metrics": {
-    "T_jones": 37.23,
-    "T_transport": 42.403,
+    "T_jones": 50.51,
+    "T_transport": 47.383,
     "dacs": 46,
     "instructions": 960,
     "ions_per_instruction": 1.3856562922868743,
     "transport_instructions": 739
    },
    "reason": "",
-   "seconds": 3.27,
+   "seconds": 8.186,
    "status": "valid"
   },
   "ghz32@stationary_chain": {
    "ler": null,
    "metrics": null,
-   "reason": "qccdc cannot compile this pair: /sandbox/jobs/oj_332baebd4037fa88/req/00072/in/circuit.qasm: stationary_chain has 2 usable traps (30 ion slots) but the circuit needs 32",
-   "seconds": 1.169,
+   "reason": "qccdc cannot compile this pair: /tmp/tmpyv_0qzi5/work/pairs/ghz32@stationary_chain/circuit.qasm: stationary_chain has 2 usable traps (30 ion slots) but the circuit needs 32",
+   "seconds": 0.902,
    "status": "refused"
   },
   "ghz8@chain": {
    "ler": null,
    "metrics": {
-    "T_jones": 1.51,
-    "T_transport": 1.559,
+    "T_jones": 4.65,
+    "T_transport": 4.049,
     "dacs": 1728,
-    "instructions": 53,
+    "instructions": 60,
     "ions_per_instruction": 1.0,
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 2.412,
+   "seconds": 2.178,
    "status": "valid"
   },
   "ghz8@cyclone_base": {
    "ler": null,
    "metrics": {
-    "T_jones": 1.57,
-    "T_transport": 1.703,
+    "T_jones": 4.39,
+    "T_transport": 4.073,
     "dacs": 38,
-    "instructions": 65,
+    "instructions": 72,
     "ions_per_instruction": 1.0,
     "transport_instructions": 19
    },
    "reason": "",
-   "seconds": 2.321,
+   "seconds": 2.128,
    "status": "valid"
   },
   "ghz8@cyclone_dual_loop": {
    "ler": null,
    "metrics": {
-    "T_jones": 1.51,
-    "T_transport": 1.559,
+    "T_jones": 4.65,
+    "T_transport": 4.049,
     "dacs": 44,
-    "instructions": 53,
+    "instructions": 60,
     "ions_per_instruction": 1.0,
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 2.808,
+   "seconds": 2.413,
    "status": "valid"
   },
   "ghz8@deck_unit_cell": {
    "ler": null,
    "metrics": {
-    "T_jones": 4.41,
-    "T_transport": 4.459,
+    "T_jones": 5.45,
+    "T_transport": 4.849,
     "dacs": 44,
     "instructions": 60,
-    "ions_per_instruction": 1.0,
-    "transport_instructions": 7
-   },
-   "reason": "",
-   "seconds": 2.975,
-   "status": "valid"
-  },
-  "ghz8@grid9x9": {
-   "ler": null,
-   "metrics": {
-    "T_jones": 4.41,
-    "T_transport": 4.459,
-    "dacs": 5760,
-    "instructions": 60,
-    "ions_per_instruction": 1.0,
-    "transport_instructions": 7
-   },
-   "reason": "",
-   "seconds": 2.406,
-   "status": "valid"
-  },
-  "ghz8@h2_racetrack": {
-   "ler": null,
-   "metrics": {
-    "T_jones": 1.51,
-    "T_transport": 1.559,
-    "dacs": 72,
-    "instructions": 53,
     "ions_per_instruction": 1.0,
     "transport_instructions": 7
    },
@@ -821,32 +793,60 @@
    "seconds": 2.371,
    "status": "valid"
   },
-  "ghz8@ladder_2x72": {
+  "ghz8@grid9x9": {
    "ler": null,
    "metrics": {
-    "T_jones": 2.31,
-    "T_transport": 2.359,
-    "dacs": 56,
-    "instructions": 55,
+    "T_jones": 5.45,
+    "T_transport": 4.849,
+    "dacs": 5760,
+    "instructions": 60,
     "ions_per_instruction": 1.0,
     "transport_instructions": 7
    },
    "reason": "",
-   "seconds": 2.208,
+   "seconds": 3.443,
+   "status": "valid"
+  },
+  "ghz8@h2_racetrack": {
+   "ler": null,
+   "metrics": {
+    "T_jones": 4.65,
+    "T_transport": 4.049,
+    "dacs": 72,
+    "instructions": 60,
+    "ions_per_instruction": 1.0,
+    "transport_instructions": 7
+   },
+   "reason": "",
+   "seconds": 3.423,
+   "status": "valid"
+  },
+  "ghz8@ladder_2x72": {
+   "ler": null,
+   "metrics": {
+    "T_jones": 4.85,
+    "T_transport": 4.249,
+    "dacs": 56,
+    "instructions": 60,
+    "ions_per_instruction": 1.0,
+    "transport_instructions": 7
+   },
+   "reason": "",
+   "seconds": 2.525,
    "status": "valid"
   },
   "ghz8@ring144_24v": {
    "ler": null,
    "metrics": {
-    "T_jones": 5.185,
-    "T_transport": 5.479,
+    "T_jones": 7.425,
+    "T_transport": 6.319,
     "dacs": 46,
     "instructions": 95,
     "ions_per_instruction": 1.0,
     "transport_instructions": 42
    },
    "reason": "",
-   "seconds": 2.607,
+   "seconds": 2.419,
    "status": "valid"
   },
   "ghz8@stationary_chain": {
@@ -860,235 +860,235 @@
     "transport_instructions": 0
    },
    "reason": "",
-   "seconds": 2.208,
+   "seconds": 2.144,
    "status": "valid"
   },
   "qft6@chain": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
-   "seconds": 9.681,
+   "seconds": 17.806,
    "status": "refused"
   },
   "qft6@cyclone_base": {
    "ler": null,
    "metrics": {
-    "T_jones": 4.395,
-    "T_transport": 4.661,
+    "T_jones": 15.015,
+    "T_transport": 12.581,
     "dacs": 38,
-    "instructions": 232,
+    "instructions": 253,
     "ions_per_instruction": 1.131578947368421,
     "transport_instructions": 38
    },
    "reason": "",
-   "seconds": 1.921,
+   "seconds": 2.21,
    "status": "valid"
   },
   "qft6@cyclone_dual_loop": {
    "ler": null,
    "metrics": {
-    "T_jones": 6.875,
-    "T_transport": 7.673,
+    "T_jones": 17.235,
+    "T_transport": 14.183,
     "dacs": 44,
-    "instructions": 315,
+    "instructions": 329,
     "ions_per_instruction": 1.0964912280701755,
     "transport_instructions": 114
    },
    "reason": "",
-   "seconds": 2.922,
+   "seconds": 2.674,
    "status": "valid"
   },
   "qft6@deck_unit_cell": {
    "ler": null,
    "metrics": {
-    "T_jones": 14.38,
-    "T_transport": 14.597,
+    "T_jones": 17.82,
+    "T_transport": 15.887,
     "dacs": 44,
     "instructions": 246,
     "ions_per_instruction": 1.1612903225806452,
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 5.078,
+   "seconds": 3.614,
    "status": "valid"
   },
   "qft6@grid9x9": {
    "ler": null,
    "metrics": {
-    "T_jones": 14.38,
-    "T_transport": 14.597,
+    "T_jones": 17.82,
+    "T_transport": 15.887,
     "dacs": 5760,
     "instructions": 246,
     "ions_per_instruction": 1.1612903225806452,
     "transport_instructions": 31
    },
    "reason": "",
-   "seconds": 4.422,
+   "seconds": 3.012,
    "status": "valid"
   },
   "qft6@h2_racetrack": {
    "ler": null,
    "metrics": {
-    "T_jones": 6.715,
-    "T_transport": 7.289,
+    "T_jones": 17.075,
+    "T_transport": 13.799,
     "dacs": 72,
-    "instructions": 283,
+    "instructions": 297,
     "ions_per_instruction": 1.1341463414634145,
     "transport_instructions": 82
    },
    "reason": "",
-   "seconds": 2.07,
+   "seconds": 2.373,
    "status": "valid"
   },
   "qft6@ladder_2x72": {
    "ler": null,
    "metrics": {
-    "T_jones": 13.305,
-    "T_transport": 13.753,
+    "T_jones": 19.105,
+    "T_transport": 16.603,
     "dacs": 56,
-    "instructions": 277,
+    "instructions": 279,
     "ions_per_instruction": 1.140625,
     "transport_instructions": 64
    },
    "reason": "",
-   "seconds": 2.671,
+   "seconds": 3.124,
    "status": "valid"
   },
   "qft6@ring144_24v": {
    "ler": null,
    "metrics": {
-    "T_jones": 18.48,
-    "T_transport": 20.265,
+    "T_jones": 25.04,
+    "T_transport": 22.725,
     "dacs": 46,
     "instructions": 470,
     "ions_per_instruction": 1.1411764705882352,
     "transport_instructions": 255
    },
    "reason": "",
-   "seconds": 7.728,
+   "seconds": 6.21,
    "status": "valid"
   },
   "qft6@stationary_chain": {
    "ler": null,
    "metrics": {
-    "T_jones": 2.655,
-    "T_transport": 2.739,
+    "T_jones": 10.935,
+    "T_transport": 9.969,
     "dacs": 48,
-    "instructions": 220,
+    "instructions": 242,
     "ions_per_instruction": 1.0,
     "transport_instructions": 12
    },
    "reason": "",
-   "seconds": 1.522,
+   "seconds": 2.206,
    "status": "valid"
   },
   "rep3_r3_z@chain": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 5.083332782207517e-06,
+     "idle": 1.791666375233758e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
-     "ms_heating": 0.008189999999999994,
+     "ms_heating": 0.0,
      "reset": 0.02,
-     "total": 0.06587508333278458
+     "total": 0.05769791666375472
     },
-    "errors": 12,
-    "hi": 0.00020975501269607244,
-    "ler": 0.00012,
-    "lo": 6.86488807399473e-05,
+    "errors": 8,
+    "hi": 0.00015786843812503332,
+    "ler": 8e-05,
+    "lo": 4.053852835999305e-05,
     "noise": "qccd-noise@1",
-    "per_round": 4.0001600106642776e-05,
+    "per_round": 2.6667377809319603e-05,
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 1.1,
-    "T_transport": 1.198,
+    "T_jones": 4.18,
+    "T_transport": 3.478,
     "dacs": 1728,
-    "instructions": 51,
+    "instructions": 57,
     "ions_per_instruction": 1.5714285714285714,
     "transport_instructions": 14
    },
    "reason": "",
-   "seconds": 1.728,
+   "seconds": 1.626,
    "status": "valid"
   },
   "rep3_r3_z@cyclone_base": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 5.145832781550119e-06,
+     "idle": 1.8979163587673487e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
-     "ms_heating": 0.007595999999999996,
+     "ms_heating": 0.0,
      "reset": 0.02,
-     "total": 0.06528114583278392
+     "total": 0.057698979163590056
     },
-    "errors": 10,
-    "hi": 0.00018408469545089215,
-    "ler": 0.0001,
-    "lo": 5.4320734509630915e-05,
+    "errors": 8,
+    "hi": 0.00015786843812503332,
+    "ler": 8e-05,
+    "lo": 4.053852835999305e-05,
     "noise": "qccd-noise@1",
-    "per_round": 3.3334444506150085e-05,
+    "per_round": 2.6667377809319603e-05,
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 1.115,
-    "T_transport": 1.234,
+    "T_jones": 4.435,
+    "T_transport": 3.604,
     "dacs": 38,
-    "instructions": 54,
+    "instructions": 60,
     "ions_per_instruction": 1.3529411764705883,
     "transport_instructions": 17
    },
    "reason": "",
-   "seconds": 1.775,
+   "seconds": 1.626,
    "status": "valid"
   },
   "rep3_r3_z@cyclone_dual_loop": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 5.041666115979115e-06,
+     "idle": 1.9666663582385002e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
-     "ms_heating": 0.008780999999999995,
+     "ms_heating": 0.0,
      "reset": 0.02,
-     "total": 0.06646604166611836
+     "total": 0.05769966666358477
     },
-    "errors": 18,
-    "hi": 0.00028453276522102933,
-    "ler": 0.00018,
-    "lo": 0.00011386651864148043,
+    "errors": 1,
+    "hi": 5.664709659040966e-05,
+    "ler": 1e-05,
+    "lo": 1.7652477303783126e-06,
     "noise": "qccd-noise@1",
-    "per_round": 6.000360036007013e-05,
+    "per_round": 3.333344444467201e-06,
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 1.09,
-    "T_transport": 1.174,
+    "T_jones": 4.6,
+    "T_transport": 3.676,
     "dacs": 44,
-    "instructions": 49,
-    "ions_per_instruction": 2.0,
-    "transport_instructions": 12
+    "instructions": 61,
+    "ions_per_instruction": 1.3333333333333333,
+    "transport_instructions": 18
    },
    "reason": "",
-   "seconds": 1.656,
+   "seconds": 2.277,
    "status": "valid"
   },
   "rep3_r3_z@deck_unit_cell": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 1.9583330148897904e-05,
+     "idle": 2.4916661928997552e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.02,
-     "total": 0.05769958333015128
+     "total": 0.05770491666193138
     },
     "errors": 8,
     "hi": 0.00015786843812503332,
@@ -1099,28 +1099,28 @@
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 4.58,
-    "T_transport": 4.678,
+    "T_jones": 5.86,
+    "T_transport": 5.158,
     "dacs": 44,
     "instructions": 57,
     "ions_per_instruction": 1.5714285714285714,
     "transport_instructions": 14
    },
    "reason": "",
-   "seconds": 1.838,
+   "seconds": 2.337,
    "status": "valid"
   },
   "rep3_r3_z@grid9x9": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 1.9583330148897904e-05,
+     "idle": 2.4916661928997552e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.02,
-     "total": 0.05769958333015128
+     "total": 0.05770491666193138
     },
     "errors": 8,
     "hi": 0.00015786843812503332,
@@ -1131,79 +1131,79 @@
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 4.58,
-    "T_transport": 4.678,
+    "T_jones": 5.86,
+    "T_transport": 5.158,
     "dacs": 5760,
     "instructions": 57,
     "ions_per_instruction": 1.5714285714285714,
     "transport_instructions": 14
    },
    "reason": "",
-   "seconds": 3.012,
+   "seconds": 1.93,
    "status": "valid"
   },
   "rep3_r3_z@h2_racetrack": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 5.041666115979115e-06,
+     "idle": 1.7541663732967283e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
-     "ms_heating": 0.008780999999999995,
+     "ms_heating": 0.0,
      "reset": 0.02,
-     "total": 0.06646604166611836
+     "total": 0.05769754166373535
     },
-    "errors": 18,
-    "hi": 0.00028453276522102933,
-    "ler": 0.00018,
-    "lo": 0.00011386651864148043,
+    "errors": 5,
+    "hi": 0.0001170520768033956,
+    "ler": 5e-05,
+    "lo": 2.1357194468385736e-05,
     "noise": "qccd-noise@1",
-    "per_round": 6.000360036007013e-05,
+    "per_round": 1.666694445212613e-05,
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 1.09,
-    "T_transport": 1.174,
+    "T_jones": 4.09,
+    "T_transport": 3.424,
     "dacs": 72,
-    "instructions": 49,
+    "instructions": 55,
     "ions_per_instruction": 2.0,
     "transport_instructions": 12
    },
    "reason": "",
-   "seconds": 1.52,
+   "seconds": 1.883,
    "status": "valid"
   },
   "rep3_r3_z@ladder_2x72": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 1.3520831028124292e-05,
+     "idle": 2.177082982474099e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
-     "ms_heating": 0.0004019999999999996,
+     "ms_heating": 0.0,
      "reset": 0.02,
-     "total": 0.058095520831030506
+     "total": 0.05770177082982712
     },
-    "errors": 9,
-    "hi": 0.00017105476038045442,
-    "ler": 9e-05,
-    "lo": 4.735143784232029e-05,
+    "errors": 7,
+    "hi": 0.00014449869695711302,
+    "ler": 7e-05,
+    "lo": 3.390903779016499e-05,
     "noise": "qccd-noise@1",
-    "per_round": 3.000090004501299e-05,
+    "per_round": 2.3333877798958902e-05,
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 3.125,
-    "T_transport": 3.258,
+    "T_jones": 5.105,
+    "T_transport": 4.188,
     "dacs": 56,
-    "instructions": 61,
+    "instructions": 62,
     "ions_per_instruction": 1.1578947368421053,
     "transport_instructions": 19
    },
    "reason": "",
-   "seconds": 1.521,
+   "seconds": 1.774,
    "status": "valid"
   },
   "rep3_r3_z@ring144_24v": {
@@ -1235,52 +1235,52 @@
     "transport_instructions": 35
    },
    "reason": "",
-   "seconds": 1.721,
+   "seconds": 1.936,
    "status": "valid"
   },
   "rep3_r3_z@stationary_chain": {
    "ler": {
     "budget": {
      "gate_1q": 0.0012000000000025324,
-     "idle": 5.062499449093316e-06,
+     "idle": 2.0895829748457384e-05,
      "measure": 0.014400000000000412,
      "ms_base": 0.022079999999999433,
      "ms_chain": 0.0,
-     "ms_heating": 0.006386999999999997,
+     "ms_heating": 0.0,
      "reset": 0.02,
-     "total": 0.06407206249945147
+     "total": 0.05770089582975084
     },
-    "errors": 10,
-    "hi": 0.00018408469545089215,
-    "ler": 0.0001,
-    "lo": 5.4320734509630915e-05,
+    "errors": 6,
+    "hi": 0.00013090968394310096,
+    "ler": 6e-05,
+    "lo": 2.74988190664287e-05,
     "noise": "qccd-noise@1",
-    "per_round": 3.3334444506150085e-05,
+    "per_round": 2.0000400013264752e-05,
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 1.095,
-    "T_transport": 1.186,
+    "T_jones": 4.895,
+    "T_transport": 3.736,
     "dacs": 48,
-    "instructions": 50,
+    "instructions": 56,
     "ions_per_instruction": 1.0,
     "transport_instructions": 13
    },
    "reason": "",
-   "seconds": 1.32,
+   "seconds": 3.327,
    "status": "valid"
   },
   "rep5_r5_z@chain": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 1.5674998208425883e-05,
+     "idle": 5.2724991568220414e-05,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
-     "ms_heating": 0.037155999999999974,
+     "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.2347716749982161
+     "total": 0.19765272499157593
     },
     "errors": 0,
     "hi": 3.841311258303963e-05,
@@ -1291,28 +1291,28 @@
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 1.97,
-    "T_transport": 2.138,
+    "T_jones": 6.91,
+    "T_transport": 5.678,
     "dacs": 1728,
-    "instructions": 86,
+    "instructions": 95,
     "ions_per_instruction": 3.1666666666666665,
     "transport_instructions": 24
    },
    "reason": "",
-   "seconds": 1.606,
+   "seconds": 3.209,
    "status": "valid"
   },
   "rep5_r5_z@cyclone_base": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 2.5237495951568878e-05,
+     "idle": 6.58874898175621e-05,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
-     "ms_heating": 0.013151999999999994,
+     "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.21077723749595925
+     "total": 0.19766588748982528
     },
     "errors": 0,
     "hi": 3.841311258303963e-05,
@@ -1323,92 +1323,124 @@
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 3.245,
-    "T_transport": 3.518,
+    "T_jones": 8.665,
+    "T_transport": 6.488,
     "dacs": 38,
-    "instructions": 105,
+    "instructions": 110,
     "ions_per_instruction": 2.076923076923077,
     "transport_instructions": 39
    },
    "reason": "",
-   "seconds": 1.607,
+   "seconds": 4.011,
    "status": "valid"
   },
   "rep5_r5_z@cyclone_dual_loop": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 1.5524998210003638e-05,
+     "idle": 5.7149991171956405e-05,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
-     "ms_heating": 0.03791599999999998,
+     "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.23553152499821767
+     "total": 0.19765714999117967
     },
-    "errors": 1,
-    "hi": 5.664709659040966e-05,
-    "ler": 1e-05,
-    "lo": 1.7652477303783126e-06,
+    "errors": 0,
+    "hi": 3.841311258303963e-05,
+    "ler": 0.0,
+    "lo": 0.0,
     "noise": "qccd-noise@1",
-    "per_round": 2.00000799999156e-06,
+    "per_round": 0.0,
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 1.95,
-    "T_transport": 2.09,
+    "T_jones": 7.5,
+    "T_transport": 5.96,
     "dacs": 44,
-    "instructions": 82,
-    "ions_per_instruction": 4.0,
-    "transport_instructions": 20
+    "instructions": 101,
+    "ions_per_instruction": 2.6666666666666665,
+    "transport_instructions": 30
    },
    "reason": "",
-   "seconds": 1.622,
+   "seconds": 3.879,
    "status": "valid"
   },
   "rep5_r5_z@deck_unit_cell": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 7.248748950033912e-05,
+     "idle": 0.00010068748138897243,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.19767248748950805
+     "total": 0.1977006874813967
     },
-    "errors": 0,
-    "hi": 3.841311258303963e-05,
-    "ler": 0.0,
-    "lo": 0.0,
+    "errors": 2,
+    "hi": 7.292683754201227e-05,
+    "ler": 2e-05,
+    "lo": 5.484738516524055e-06,
     "noise": "qccd-noise@1",
-    "per_round": 0.0,
+    "per_round": 4.000032000406328e-06,
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 9.545,
-    "T_transport": 9.846,
+    "T_jones": 13.305,
+    "T_transport": 11.256,
     "dacs": 44,
     "instructions": 114,
     "ions_per_instruction": 1.8837209302325582,
     "transport_instructions": 43
    },
    "reason": "",
-   "seconds": 2.808,
+   "seconds": 3.806,
    "status": "valid"
   },
   "rep5_r5_z@grid9x9": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 7.248748950033912e-05,
+     "idle": 0.00010068748138897243,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.19767248748950805
+     "total": 0.1977006874813967
+    },
+    "errors": 2,
+    "hi": 7.292683754201227e-05,
+    "ler": 2e-05,
+    "lo": 5.484738516524055e-06,
+    "noise": "qccd-noise@1",
+    "per_round": 4.000032000406328e-06,
+    "shots": 100000
+   },
+   "metrics": {
+    "T_jones": 13.305,
+    "T_transport": 11.256,
+    "dacs": 5760,
+    "instructions": 114,
+    "ions_per_instruction": 1.8837209302325582,
+    "transport_instructions": 43
+   },
+   "reason": "",
+   "seconds": 3.738,
+   "status": "valid"
+  },
+  "rep5_r5_z@h2_racetrack": {
+   "ler": {
+    "budget": {
+     "gate_1q": 0.004000000000008441,
+     "idle": 5.077499162370325e-05,
+     "measure": 0.040000000000001146,
+     "ms_base": 0.07359999999999811,
+     "ms_chain": 0.0,
+     "ms_heating": 0.0,
+     "reset": 0.08,
+     "total": 0.19765077499163142
     },
     "errors": 0,
     "hi": 3.841311258303963e-05,
@@ -1419,79 +1451,47 @@
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 9.545,
-    "T_transport": 9.846,
-    "dacs": 5760,
-    "instructions": 114,
-    "ions_per_instruction": 1.8837209302325582,
-    "transport_instructions": 43
-   },
-   "reason": "",
-   "seconds": 2.772,
-   "status": "valid"
-  },
-  "rep5_r5_z@h2_racetrack": {
-   "ler": {
-    "budget": {
-     "gate_1q": 0.004000000000008441,
-     "idle": 1.5524998210003638e-05,
-     "measure": 0.040000000000001146,
-     "ms_base": 0.07359999999999811,
-     "ms_chain": 0.0,
-     "ms_heating": 0.03791599999999998,
-     "reset": 0.08,
-     "total": 0.23553152499821767
-    },
-    "errors": 1,
-    "hi": 5.664709659040966e-05,
-    "ler": 1e-05,
-    "lo": 1.7652477303783126e-06,
-    "noise": "qccd-noise@1",
-    "per_round": 2.00000799999156e-06,
-    "shots": 100000
-   },
-   "metrics": {
-    "T_jones": 1.95,
-    "T_transport": 2.09,
+    "T_jones": 6.65,
+    "T_transport": 5.54,
     "dacs": 72,
-    "instructions": 82,
+    "instructions": 91,
     "ions_per_instruction": 4.0,
     "transport_instructions": 20
    },
    "reason": "",
-   "seconds": 2.474,
+   "seconds": 2.614,
    "status": "valid"
   },
   "rep5_r5_z@ladder_2x72": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 5.088749183784769e-05,
+     "idle": 8.208748687738021e-05,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.19765088749184556
+     "total": 0.1976820874868851
     },
-    "errors": 1,
-    "hi": 5.664709659040966e-05,
-    "ler": 1e-05,
-    "lo": 1.7652477303783126e-06,
+    "errors": 0,
+    "hi": 3.841311258303963e-05,
+    "ler": 0.0,
+    "lo": 0.0,
     "noise": "qccd-noise@1",
-    "per_round": 2.00000799999156e-06,
+    "per_round": 0.0,
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 6.665,
-    "T_transport": 6.966,
+    "T_jones": 10.825,
+    "T_transport": 8.526,
     "dacs": 56,
     "instructions": 114,
     "ions_per_instruction": 1.7674418604651163,
     "transport_instructions": 43
    },
    "reason": "",
-   "seconds": 2.737,
+   "seconds": 2.814,
    "status": "valid"
   },
   "rep5_r5_z@ring144_24v": {
@@ -1523,20 +1523,20 @@
     "transport_instructions": 119
    },
    "reason": "",
-   "seconds": 2.721,
+   "seconds": 4.737,
    "status": "valid"
   },
   "rep5_r5_z@stationary_chain": {
    "ler": {
     "budget": {
      "gate_1q": 0.004000000000008441,
-     "idle": 2.1974997583107392e-05,
+     "idle": 0.0001122749804392531,
      "measure": 0.040000000000001146,
      "ms_base": 0.07359999999999811,
-     "ms_chain": 0.003882528282968054,
-     "ms_heating": 0.031232999999999945,
+     "ms_chain": 0.0024586649020455304,
+     "ms_heating": 0.0,
      "reset": 0.08,
-     "total": 0.2327375032805588
+     "total": 0.2001709398824925
     },
     "errors": 0,
     "hi": 3.841311258303963e-05,
@@ -1547,106 +1547,170 @@
     "shots": 100000
    },
    "metrics": {
-    "T_jones": 2.81,
-    "T_transport": 3.104,
+    "T_jones": 14.85,
+    "T_transport": 10.994,
     "dacs": 48,
-    "instructions": 155,
+    "instructions": 173,
     "ions_per_instruction": 1.0,
     "transport_instructions": 42
    },
    "reason": "",
-   "seconds": 2.922,
+   "seconds": 4.075,
    "status": "valid"
   },
   "steane_r3_z@chain": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
-   "seconds": 9.047,
+   "seconds": 16.506,
    "status": "refused"
   },
   "steane_r3_z@cyclone_base": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.00024139996516847617,
+     "idle": 0.0008413998886691587,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
      "ms_chain": 0.0,
-     "ms_heating": 0.004448499999999998,
+     "ms_heating": 0.0,
      "reset": 0.09,
-     "total": 0.3241398999651857
+     "total": 0.3202913998886864
     },
-    "errors": 114,
-    "hi": 0.006842480926671937,
-    "ler": 0.0057,
-    "lo": 0.004747365918393096,
+    "errors": 109,
+    "hi": 0.006569623629916195,
+    "ler": 0.00545,
+    "lo": 0.00452031923317689,
     "noise": "qccd-noise@1",
-    "per_round": 0.001903621475289441,
+    "per_round": 0.0018199769734039695,
     "shots": 20000
    },
    "metrics": {
-    "T_jones": 17.985,
-    "T_transport": 23.76,
+    "T_jones": 62.985,
+    "T_transport": 41.01,
     "dacs": 38,
-    "instructions": 1063,
+    "instructions": 1065,
     "ions_per_instruction": 1.2351515151515151,
     "transport_instructions": 825
    },
    "reason": "",
-   "seconds": 5.641,
+   "seconds": 3.526,
    "status": "valid"
   },
   "steane_r3_z@cyclone_dual_loop": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has 2 closed loops; this pass drives exactly one",
-   "seconds": 9.079,
+   "seconds": 13.406,
    "status": "refused"
   },
   "steane_r3_z@deck_unit_cell": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.0005060665979028656,
+     "idle": 0.0007673998494972523,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.09,
-     "total": 0.3199560665979201
+     "total": 0.3202173998495145
     },
-    "errors": 113,
-    "hi": 0.00678795062969948,
-    "ler": 0.00565,
-    "lo": 0.004701915418971162,
+    "errors": 100,
+    "hi": 0.006077104370877246,
+    "ler": 0.005,
+    "lo": 0.004113011324666333,
     "noise": "qccd-noise@1",
-    "per_round": 0.001886891453352857,
+    "per_round": 0.0016694521863086509,
     "shots": 20000
    },
    "metrics": {
-    "T_jones": 37.835,
-    "T_transport": 39.144,
+    "T_jones": 57.435,
+    "T_transport": 46.494,
     "dacs": 44,
     "instructions": 427,
     "ions_per_instruction": 1.3903743315508021,
     "transport_instructions": 187
    },
    "reason": "",
-   "seconds": 8.663,
+   "seconds": 7.056,
    "status": "valid"
   },
   "steane_r3_z@grid9x9": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.0005060665979028656,
+     "idle": 0.0007673998494972523,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.09,
-     "total": 0.3199560665979201
+     "total": 0.3202173998495145
+    },
+    "errors": 100,
+    "hi": 0.006077104370877246,
+    "ler": 0.005,
+    "lo": 0.004113011324666333,
+    "noise": "qccd-noise@1",
+    "per_round": 0.0016694521863086509,
+    "shots": 20000
+   },
+   "metrics": {
+    "T_jones": 57.435,
+    "T_transport": 46.494,
+    "dacs": 5760,
+    "instructions": 427,
+    "ions_per_instruction": 1.3903743315508021,
+    "transport_instructions": 187
+   },
+   "reason": "",
+   "seconds": 6.621,
+   "status": "valid"
+  },
+  "steane_r3_z@h2_racetrack": {
+   "ler": {
+    "budget": {
+     "gate_1q": 0.009450000000019942,
+     "idle": 0.0011905998987344901,
+     "measure": 0.05440000000000156,
+     "ms_base": 0.16559999999999575,
+     "ms_chain": 0.0,
+     "ms_heating": 0.0,
+     "reset": 0.09000000000000002,
+     "total": 0.32064059989875177
+    },
+    "errors": 115,
+    "hi": 0.006896991177135669,
+    "ler": 0.00575,
+    "lo": 0.004792836464323753,
+    "noise": "qccd-noise@1",
+    "per_round": 0.0019203520580997058,
+    "shots": 20000
+   },
+   "metrics": {
+    "T_jones": 89.175,
+    "T_transport": 49.959,
+    "dacs": 72,
+    "instructions": 1118,
+    "ions_per_instruction": 1.1469298245614035,
+    "transport_instructions": 912
+   },
+   "reason": "",
+   "seconds": 6.67,
+   "status": "valid"
+  },
+  "steane_r3_z@ladder_2x72": {
+   "ler": {
+    "budget": {
+     "gate_1q": 0.009450000000019942,
+     "idle": 0.0013368663698987149,
+     "measure": 0.05440000000000156,
+     "ms_base": 0.16559999999999575,
+     "ms_chain": 0.0,
+     "ms_heating": 0.0,
+     "reset": 0.09,
+     "total": 0.32078686636991594
     },
     "errors": 113,
     "hi": 0.00678795062969948,
@@ -1657,317 +1721,253 @@
     "shots": 20000
    },
    "metrics": {
-    "T_jones": 37.835,
-    "T_transport": 39.144,
-    "dacs": 5760,
-    "instructions": 427,
-    "ions_per_instruction": 1.3903743315508021,
-    "transport_instructions": 187
-   },
-   "reason": "",
-   "seconds": 9.329,
-   "status": "valid"
-  },
-  "steane_r3_z@h2_racetrack": {
-   "ler": {
-    "budget": {
-     "gate_1q": 0.009450000000019942,
-     "idle": 0.000209799973339031,
-     "measure": 0.05440000000000156,
-     "ms_base": 0.16559999999999575,
-     "ms_chain": 0.0,
-     "ms_heating": 0.009887999999999987,
-     "reset": 0.09000000000000002,
-     "total": 0.3295477999733563
-    },
-    "errors": 103,
-    "hi": 0.0062414842252658895,
-    "ler": 0.00515,
-    "lo": 0.004248573859460859,
-    "noise": "qccd-noise@1",
-    "per_round": 0.0017196220717046184,
-    "shots": 20000
-   },
-   "metrics": {
-    "T_jones": 15.615,
-    "T_transport": 21.999,
-    "dacs": 72,
-    "instructions": 1116,
-    "ions_per_instruction": 1.1469298245614035,
-    "transport_instructions": 912
-   },
-   "reason": "",
-   "seconds": 4.96,
-   "status": "valid"
-  },
-  "steane_r3_z@ladder_2x72": {
-   "ler": {
-    "budget": {
-     "gate_1q": 0.009450000000019942,
-     "idle": 0.0008019331573523303,
-     "measure": 0.05440000000000156,
-     "ms_base": 0.16559999999999575,
-     "ms_chain": 0.0,
-     "ms_heating": 0.0,
-     "reset": 0.09,
-     "total": 0.32025193315736955
-    },
-    "errors": 104,
-    "hi": 0.006296230472696864,
-    "ler": 0.0052,
-    "lo": 0.004293808408424273,
-    "noise": "qccd-noise@1",
-    "per_round": 0.0017363464874881052,
-    "shots": 20000
-   },
-   "metrics": {
-    "T_jones": 60.025,
-    "T_transport": 63.448,
+    "T_jones": 100.145,
+    "T_transport": 78.268,
     "dacs": 56,
     "instructions": 729,
     "ions_per_instruction": 1.1206543967280163,
     "transport_instructions": 489
    },
    "reason": "",
-   "seconds": 92.077,
+   "seconds": 64.4,
    "status": "valid"
   },
   "steane_r3_z@ring144_24v": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.0009993999016515431,
+     "idle": 0.0014260664400636003,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.09,
-     "total": 0.32044939990166876
+     "total": 0.3208760664400808
     },
-    "errors": 104,
-    "hi": 0.006296230472696864,
-    "ler": 0.0052,
-    "lo": 0.004293808408424273,
+    "errors": 101,
+    "hi": 0.0061319215168955665,
+    "ler": 0.00505,
+    "lo": 0.004158174975042402,
     "noise": "qccd-noise@1",
-    "per_round": 0.0017363464874881052,
+    "per_round": 0.0016861749211618537,
     "shots": 20000
    },
    "metrics": {
-    "T_jones": 74.835,
-    "T_transport": 89.5,
+    "T_jones": 106.835,
+    "T_transport": 101.5,
     "dacs": 46,
     "instructions": 2335,
     "ions_per_instruction": 1.3379474940334128,
     "transport_instructions": 2095
    },
    "reason": "",
-   "seconds": 18.866,
+   "seconds": 12.304,
    "status": "valid"
   },
   "steane_r3_z@stationary_chain": {
    "ler": {
     "budget": {
      "gate_1q": 0.009450000000019942,
-     "idle": 0.00015726664508619592,
+     "idle": 0.0005409999062742088,
      "measure": 0.05440000000000156,
      "ms_base": 0.16559999999999575,
-     "ms_chain": 0.048688970620497894,
-     "ms_heating": 0.04172899999999988,
+     "ms_chain": 0.034589048492364736,
+     "ms_heating": 0.0,
      "reset": 0.09,
-     "total": 0.4100252372656012
+     "total": 0.3545800483986562
     },
-    "errors": 143,
-    "hi": 0.00841605357029801,
-    "ler": 0.00715,
-    "lo": 0.00607323637020432,
+    "errors": 123,
+    "hi": 0.007332381267051059,
+    "ler": 0.00615,
+    "lo": 0.00515729274556348,
     "noise": "qccd-noise@1",
-    "per_round": 0.002389036282555712,
+    "per_round": 0.0020542169176784864,
     "shots": 20000
    },
    "metrics": {
-    "T_jones": 11.675,
-    "T_transport": 12.396,
+    "T_jones": 40.455,
+    "T_transport": 30.876,
     "dacs": 48,
-    "instructions": 462,
+    "instructions": 503,
     "ions_per_instruction": 1.0,
     "transport_instructions": 103
    },
    "reason": "",
-   "seconds": 2.324,
+   "seconds": 6.884,
    "status": "valid"
   },
   "surface3_r3_z@chain": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has no closed loop",
-   "seconds": 7.871,
+   "seconds": 16.269,
    "status": "refused"
   },
   "surface3_r3_z@cyclone_base": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 0.00014343747692041608,
+     "idle": 0.0005871374230183024,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.0,
-     "ms_heating": 0.004101499999999999,
+     "ms_heating": 0.0,
      "reset": 0.07999999999999999,
-     "total": 0.277324937476935
+     "total": 0.27366713742303284
     },
-    "errors": 118,
-    "hi": 0.0017659427934341432,
-    "ler": 0.001475,
-    "lo": 0.0012319314891919544,
+    "errors": 105,
+    "hi": 0.0018153435315257408,
+    "ler": 0.0015,
+    "lo": 0.0012393668152840835,
     "noise": "qccd-noise@1",
-    "per_round": 0.0004919086010620743,
-    "shots": 80000
+    "per_round": 0.0005002502085418303,
+    "shots": 70000
    },
    "metrics": {
-    "T_jones": 10.005,
-    "T_transport": 11.951,
+    "T_jones": 41.325,
+    "T_transport": 24.071,
     "dacs": 38,
-    "instructions": 431,
+    "instructions": 433,
     "ions_per_instruction": 1.485611510791367,
     "transport_instructions": 278
    },
    "reason": "",
-   "seconds": 2.722,
+   "seconds": 3.586,
    "status": "valid"
   },
   "surface3_r3_z@cyclone_dual_loop": {
    "ler": null,
    "metrics": null,
    "reason": "qccdc cannot compile this pair:   the race track does not apply either: the device has 2 closed loops; this pass drives exactly one",
-   "seconds": 7.177,
+   "seconds": 9.251,
    "status": "refused"
   },
   "surface3_r3_z@deck_unit_cell": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 0.00036245411765528646,
+     "idle": 0.0005551207239952172,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.07999999999999999,
-     "total": 0.2734424541176699
+     "total": 0.27363512072400975
     },
-    "errors": 115,
-    "hi": 0.0015334145940315417,
-    "ler": 0.0012777777777777779,
-    "lo": 0.001064712941754619,
+    "errors": 106,
+    "hi": 0.0016021441469673875,
+    "ler": 0.001325,
+    "lo": 0.0010957445404375956,
     "noise": "qccd-noise@1",
-    "per_round": 0.00042610746771087893,
-    "shots": 90000
+    "per_round": 0.00044186187983086267,
+    "shots": 80000
    },
    "metrics": {
-    "T_jones": 25.465,
-    "T_transport": 26.375,
+    "T_jones": 39.065,
+    "T_transport": 31.475,
     "dacs": 44,
     "instructions": 285,
     "ions_per_instruction": 1.5384615384615385,
     "transport_instructions": 130
    },
    "reason": "",
-   "seconds": 4.899,
+   "seconds": 3.526,
    "status": "valid"
   },
   "surface3_r3_z@grid9x9": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 0.00036245411765528646,
+     "idle": 0.0005551207239952172,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.07999999999999999,
-     "total": 0.2734424541176699
+     "total": 0.27363512072400975
     },
-    "errors": 115,
-    "hi": 0.0015334145940315417,
-    "ler": 0.0012777777777777779,
-    "lo": 0.001064712941754619,
+    "errors": 106,
+    "hi": 0.0016021441469673875,
+    "ler": 0.001325,
+    "lo": 0.0010957445404375956,
     "noise": "qccd-noise@1",
-    "per_round": 0.00042610746771087893,
-    "shots": 90000
+    "per_round": 0.00044186187983086267,
+    "shots": 80000
    },
    "metrics": {
-    "T_jones": 25.465,
-    "T_transport": 26.375,
+    "T_jones": 39.065,
+    "T_transport": 31.475,
     "dacs": 5760,
     "instructions": 285,
     "ions_per_instruction": 1.5384615384615385,
     "transport_instructions": 130
    },
    "reason": "",
-   "seconds": 3.973,
+   "seconds": 3.646,
    "status": "valid"
   },
   "surface3_r3_z@h2_racetrack": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 0.0001350791515057348,
+     "idle": 0.0009847957540091157,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.0,
-     "ms_heating": 0.0012180000000000003,
+     "ms_heating": 0.0,
      "reset": 0.07999999999999999,
-     "total": 0.2744330791515203
+     "total": 0.27406479575402365
     },
-    "errors": 106,
-    "hi": 0.0018309821447948448,
-    "ler": 0.0015142857142857143,
-    "lo": 0.0012522980627300729,
+    "errors": 102,
+    "hi": 0.0017683887285986346,
+    "ler": 0.0014571428571428572,
+    "lo": 0.0012006120360659087,
     "noise": "qccd-noise@1",
-    "per_round": 0.0005050169039015895,
+    "per_round": 0.00048595039524890193,
     "shots": 70000
    },
    "metrics": {
-    "T_jones": 9.415,
-    "T_transport": 14.798,
+    "T_jones": 69.395,
+    "T_transport": 37.478,
     "dacs": 72,
-    "instructions": 877,
+    "instructions": 878,
     "ions_per_instruction": 1.1560468140442133,
     "transport_instructions": 769
    },
    "reason": "",
-   "seconds": 4.877,
+   "seconds": 6.587,
    "status": "valid"
   },
   "surface3_r3_z@ladder_2x72": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 0.000674829024024548,
+     "idle": 0.0011247622420617054,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
      "ms_chain": 0.0,
      "ms_heating": 0.0,
      "reset": 0.07999999999999999,
-     "total": 0.27375482902403914
+     "total": 0.27420476224207624
     },
-    "errors": 111,
-    "hi": 0.0016704835247337451,
-    "ler": 0.0013875,
-    "lo": 0.0011523991606800358,
+    "errors": 103,
+    "hi": 0.0017840469165408494,
+    "ler": 0.0014714285714285714,
+    "lo": 0.0012135237088387878,
     "noise": "qccd-noise@1",
-    "per_round": 0.0004627140712887279,
-    "shots": 80000
+    "per_round": 0.0004907169542166523,
+    "shots": 70000
    },
    "metrics": {
-    "T_jones": 47.515,
-    "T_transport": 50.819,
+    "T_jones": 79.275,
+    "T_transport": 64.079,
     "dacs": 56,
     "instructions": 627,
     "ions_per_instruction": 1.1292372881355932,
     "transport_instructions": 472
    },
    "reason": "",
-   "seconds": 50.617,
+   "seconds": 25.025,
    "status": "valid"
   },
   "surface3_r3_z@ring144_24v": {
@@ -1999,39 +1999,39 @@
     "transport_instructions": 210
    },
    "reason": "",
-   "seconds": 3.572,
+   "seconds": 3.524,
    "status": "valid"
   },
   "surface3_r3_z@stationary_chain": {
    "ler": {
     "budget": {
      "gate_1q": 0.00780000000001646,
-     "idle": 9.243749060339201e-05,
+     "idle": 0.0004607707551658735,
      "measure": 0.05280000000000151,
      "ms_base": 0.1324799999999966,
-     "ms_chain": 0.04879529755640244,
-     "ms_heating": 0.049374499999999814,
+     "ms_chain": 0.029050904340481246,
+     "ms_heating": 4.6499999999999883e-05,
      "reset": 0.07999999999999999,
-     "total": 0.3713422350470202
+     "total": 0.30263817509566165
     },
-    "errors": 108,
-    "hi": 0.0043442137085154585,
-    "ler": 0.0036,
-    "lo": 0.0029828966924116845,
+    "errors": 109,
+    "hi": 0.0021907728616312695,
+    "ler": 0.0018166666666666667,
+    "lo": 0.001506348079749442,
     "noise": "qccd-noise@1",
-    "per_round": 0.0012014428869303595,
-    "shots": 30000
+    "per_round": 0.0006059226236281301,
+    "shots": 60000
    },
    "metrics": {
-    "T_jones": 6.405,
-    "T_transport": 7.07,
+    "T_jones": 32.405,
+    "T_transport": 23.57,
     "dacs": 48,
-    "instructions": 370,
+    "instructions": 406,
     "ions_per_instruction": 1.0,
     "transport_instructions": 95
    },
    "reason": "",
-   "seconds": 2.273,
+   "seconds": 2.582,
    "status": "valid"
   }
  }
