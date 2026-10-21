@@ -3586,7 +3586,8 @@ function geometryViolations(st) {
     for (i = 0; i < segs.length; i++) {
       for (j = i + 1; j < segs.length; j++) {
         var ang = _railAngleDeg(dev, nid, segs[i], segs[j]);
-        if (ang < minAng - 1e-9) {
+        // R20_TOL_DEG in rules.py: a corner drawn at the limit is stored a hair under it
+        if (ang < minAng - 1e-3) {
           out.push({ rule: 'R20', node: nid,
                      message: 'rails ' + segs[i] + ' and ' + segs[j] + ' meet at ' + nid +
                               ' at ' + ang.toFixed(1) + ' degrees, less than the ' +

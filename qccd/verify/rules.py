@@ -809,6 +809,11 @@ DEFAULT_MIN_RAIL_ANGLE_DEG = 60.0
 #: Coincidence tolerance for R21, in lattice units.  Positions are declared numbers, so
 #: a rail is "through" a node when the node is within this distance of the rail's axis.
 RAIL_EPS = 1e-6
+#: Slack on R20's angle, in degrees.  Generators store COMPUTED positions, so a corner drawn
+#: at exactly the limit comes back a hair under it: a surface17 design whose rails meet at
+#: 60 degrees reads 59.99998, and a tolerance of 1e-9 failed it.  A thousandth of a degree is
+#: far below anything a drawing or a fabricated trap can mean, and far above float noise.
+R20_TOL_DEG = 1e-3
 
 
 def geometry_limits(arch: Architecture) -> tuple[int, float]:
@@ -888,7 +893,7 @@ def geometry_violations(arch: Architecture) -> list[Violation]:
         for i in range(len(segs)):
             for j in range(i + 1, len(segs)):
                 ang = rail_angle_deg(dev, nid, segs[i], segs[j])
-                if ang < min_ang - 1e-9:
+                if ang < min_ang - R20_TOL_DEG:
                     out.append(Violation(
                         "R20", -1,
                         f"rails {segs[i]} and {segs[j]} meet at {nid} at {ang:.1f} degrees, "

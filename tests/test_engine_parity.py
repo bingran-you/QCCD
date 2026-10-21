@@ -2677,9 +2677,9 @@ _RULE_MUTATIONS_JS = [
     ("    if (d > maxDeg) {",
      "    if (d > maxDeg + 1) {",
      "R19's degree comparison -- a mirror one rail more permissive than Python"),
-    ("        if (ang < minAng - 1e-9) {",
+    ("        if (ang < minAng - 1e-3) {",
      "        if (ang < minAng - 1.0) {",
-     "R20's angle tolerance, 1e-9 for a whole degree"),
+     "R20's angle tolerance, R20_TOL_DEG's thousandth of a degree for a whole degree"),
     ("  if (Math.abs(cross) > RAIL_EPS * Math.sqrt(l2)) return false;",
      "  if (Math.abs(cross) > 0.5 * Math.sqrt(l2)) return false;",
      "R21's coincidence tolerance -- 1e-6 of a lattice unit for half of one, which turns "
