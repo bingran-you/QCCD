@@ -2451,16 +2451,30 @@ function applyFrame(st, f) {
         st.q[ion]=(st.q[ion]||0)+shuttleQ+junctionQ((nodeById[moved[ion]]||{deg:0}).deg);}
     }
   } else if (f.moves){
-    const ent=f.entails||[];
+    // what each move splits and merges is the ENGINE's answer (`QCCD.moveEntails`, the twin
+    // of `replay.move_entails`), read off the whole cycle against the occupancy before it:
+    // the class's list alone left a shuttle out of a chain uncharged here while the verifier
+    // charged it, and the ion's n-bar on the stage disagreed with the numbers (#16)
+    const ent=f.entails||[], occ={};
+    for(const ion in st.pos) occ[st.pos[ion]]=(occ[st.pos[ion]]||0)+1;
+    const parts=[], routes=[];
     for(const [ion,path] of f.moves){
+      parts.push([ion, path[0], path[path.length-1]]);
+      const r=[]; for(let i=1;i<path.length;i++){ const s=SPUR_CTX.pair[path[i-1]+'>'+path[i]]; if(s!==undefined) r.push(s); }
+      routes.push(r);
+    }
+    const per=globalThis.QCCD.moveEntails(ent, parts, occ, routes, SPUR_CTX.segs, SPUR_CTX.onLoop, SPUR_CTX.rails);
+    let mi=0;
+    for(const [ion,path] of f.moves){
+      const entM=per[mi++][0];
       st.pos[ion]=path[path.length-1];
       // A node the programme names may not exist on the device CURRENTLY on the stage --
       // that is precisely the state `PROGRAM_STALE` freezes the animation on, and the
       // freeze happens after this table is built.  Charging zero for a hop across a node
       // that is gone is not a claim about anything: the frame it feeds is never drawn.
       let dq=0; for(let i=1;i<path.length;i++) dq+=shuttleQ+junctionQ((nodeById[path[i]]||{deg:0}).deg);
-      if(ent.includes('split')) dq+=splitQ;
-      if(ent.includes('merge')) dq+=mergeQ;
+      if(entM.includes('split')) dq+=splitQ;
+      if(entM.includes('merge')) dq+=mergeQ;
       st.q[ion]=(st.q[ion]||0)+dq;
     }
   }
@@ -2490,7 +2504,21 @@ function cumAt(i){
   }
   return CUMA[i]||{cost:0,steps:0};
 }
+// the device as `QCCD.moveEntails` reads it, built once per derivation: rails by id, the
+// node pair -> rail index, the nodes on a named path, and each off-path node's rails to one
+let SPUR_CTX = null;
+function spurContext(){
+  const segs={}, pair={}, onLoop={}, rails={};
+  for(const s of A.segments){ segs[s.id]=s; pair[s.a+'>'+s.b]=s.id; pair[s.b+'>'+s.a]=s.id; }
+  for(const lid in A.loops) for(const n of A.loops[lid]) onLoop[n]=true;
+  for(const s of A.segments){
+    const ia=!!onLoop[s.a], ib=!!onLoop[s.b];
+    if(ia&&!ib) rails[s.b]=(rails[s.b]||0)+1; else if(ib&&!ia) rails[s.a]=(rails[s.a]||0)+1;
+  }
+  return {segs, pair, onLoop, rails};
+}
 function deriveStage(frames){
+  SPUR_CTX = spurContext();
   const st={pos:{},q:{}}, running={cost:0,steps:0};
   states=[]; before=[]; cum=[]; SLOTS=[];
   for(const f of frames){

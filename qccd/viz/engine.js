@@ -5459,7 +5459,7 @@ var API = {
   framesToInstructions: framesToInstructions,
   renderProgramStmt: renderProgramStmt, renderProgramSource: renderProgramSource,
   // pricing
-  pickPoint: pickPoint, makeModel: makeModel, priceFrames: priceFrames,
+  pickPoint: pickPoint, makeModel: makeModel, priceFrames: priceFrames, moveEntails: _moveEntails,
   pairIndex: pairIndex, validateProgram: validateProgram, loopLengths: loopLengths,
   // lint
   lint: lint, architectureViolations: architectureViolations,
