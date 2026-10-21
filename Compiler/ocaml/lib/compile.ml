@@ -268,16 +268,21 @@ let run_once ?(policy = default_policy) ?(record : Yojson.Safe.t list ref option
     if policy.horizon > 0 then policy.horizon
     else
       (* generous: the router may need to detour around parked ions, and a horizon that
-         is merely "the diameter" makes a solvable instance look unroutable *)
-      let ecc =
-        match t.sites with
-        | [] -> 1
-        | s0 :: _ -> (
-          match Hashtbl.find_opt d s0 with
-          | None -> 1
-          | Some row -> Hashtbl.fold (fun _ v acc -> max acc v) row 1)
+         is merely "the diameter" makes a solvable instance look unroutable.
+
+         Twice the trap graph's DIAMETER, plus slack.  It used to be twice the eccentricity
+         of the first trap in the file -- the diameter on a ring, as little as half of it
+         elsewhere -- so the file's order sized the search, and after `Arch.of_json` put
+         the device in canonical order, its node NAMES did.  The diameter is the graph's
+         own: no order and no renaming changes it, and it is at least what any first trap
+         ever gave, so no device is searched less than it could have been.  A plan still
+         fails where no route exists: `Route.plan_one` gives up at once on a goal in
+         another component, A* gives up at the horizon, and `Route.plan_layer` doubles the
+         horizon on demand before it does. *)
+      let diameter =
+        Hashtbl.fold (fun _ row acc -> Hashtbl.fold (fun _ v acc -> max acc v) row acc) d 1
       in
-      (2 * ecc) + 8
+      (2 * diameter) + 8
   in
 
   let prog = ref (Tsir.
@@ -1220,7 +1225,7 @@ let run_once ?(policy = default_policy) ?(record : Yojson.Safe.t list ref option
    compiled compiles identically; but the state they leave can make a LATER layer
    unroutable, and a compile that used to end with a (refused) partial programme must not
    end with nothing.  So the new paths can only add a programme, never take one away. *)
-let run ?(policy = default_policy) ?(record : Yojson.Safe.t list ref option) ?init
+let run_in_order ?(policy = default_policy) ?(record : Yojson.Safe.t list ref option) ?init
     (a : Arch.t) (c : Circuit.t) ~(arch_path : string) ~(qasm_path : string) : result =
   (* a placement given from outside has no runner-up: it either routes or it does not *)
   let last_variant = if init = None then 2 else 0 in
@@ -1276,3 +1281,70 @@ let run ?(policy = default_policy) ?(record : Yojson.Safe.t list ref option) ?in
     | _ -> None
   in
   attempts ?rest ()
+
+(* {1 When nothing routes: the same device, its traps taken in another order}
+
+   Every choice the passes make between equals -- the trap a qubit starts in, where two
+   ions meet, which zone is nearest -- goes to the first trap in the device's order, and
+   whether a layer can be routed at all can hang on those choices.  Prioritised planning
+   cannot ask a parked ion to step aside, so a placement that fills the wrong trap leaves a
+   layer with no route at any horizon.  On the surface17 hillclimb designs (five traps,
+   seventeen ions) the published compiler compiled only 6, 11 and 15 of 30 random file
+   orders of three of them; they compiled because a search over file order had found one
+   that worked, and the canonical order (`Arch.of_json`) is one that does not (2026-10-20).
+
+   So when no placement routes in the canonical order, the trap order is ROTATED -- the
+   sites taken from the k-th on, then the first k -- for three k spread over the sites,
+   and the first that compiles completely is the answer.  Every one of those orders is
+   the device's, so the search is the same for every file that describes it: the order
+   search the hillclimb ran by hand, run by the compiler, for every device alike, and only
+   where it would otherwise refuse.  A device that compiles in the canonical order compiles
+   exactly as before, and one that compiles in none of them is refused with the canonical
+   order's own answer, as before -- after up to three more tries, which is what a refusal
+   now costs. *)
+let rotations (a : Arch.t) : (int * Arch.t) list =
+  let is_site id = match Arch.node a id with Some n -> n.kind = "site" | None -> false in
+  let sites, others = List.partition is_site a.node_order in
+  let n = List.length sites in
+  let k = min n 4 in
+  List.init (max 0 (k - 1)) (fun j -> (j + 1) * n / k)
+  |> List.sort_uniq compare
+  |> List.filter (fun r -> r > 0 && r < n)
+  |> List.map (fun r ->
+         let front = List.filteri (fun i _ -> i < r) sites
+         and back = List.filteri (fun i _ -> i >= r) sites in
+         (r, { a with node_order = back @ front @ others }))
+
+let run ?(policy = default_policy) ?(record : Yojson.Safe.t list ref option) ?init
+    (a : Arch.t) (c : Circuit.t) ~(arch_path : string) ~(qasm_path : string) : result =
+  let once a = run_in_order ~policy ?record ?init a c ~arch_path ~qasm_path in
+  let complete (r : result) = r.cert.unrealised = [] in
+  let first = match once a with r -> Ok r | exception (Route.Unroutable _ as e) -> Error e in
+  match first with
+  | Ok r when complete r -> r
+  | _ ->
+    (* the canonical order's answer, and what it recorded, stand if no other order does
+       better *)
+    let kept = match record with Some acc -> Some !acc | None -> None in
+    let rec next = function
+      | [] -> (
+        (match (record, kept) with Some acc, Some l -> acc := l | _ -> ());
+        match first with Ok r -> r | Error e -> raise e)
+      | (k, rotated) :: rest -> (
+        match once rotated with
+        | r when complete r ->
+          {
+            r with
+            notes =
+              r.notes
+              @ [
+                  Printf.sprintf
+                    "no placement routed with the traps in canonical order; with that order \
+                     rotated by %d trap%s, one did"
+                    k (if k = 1 then "" else "s");
+                ];
+          }
+        | _ -> next rest
+        | exception Route.Unroutable _ -> next rest)
+    in
+    next (rotations a)
