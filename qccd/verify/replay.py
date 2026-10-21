@@ -29,7 +29,7 @@ from typing import Callable, Mapping, Sequence
 from ..arch import Architecture
 from ..cost.models import QUANTA_COMPONENTS, Charge, CostModel
 from ..ir.tsir import TSIR, Instruction, Participant, iter_operands, iter_pairs
-from .rules import CycleView, ResolvedMove, RuleReport, check_cycle, loop_node_set
+from .rules import CycleView, ResolvedMove, RuleReport, check_cycle, loop_node_set, rails_to_loop
 
 __all__ = ["ReplayResult", "CycleRecord", "replay", "ReplayError"]
 
@@ -181,7 +181,8 @@ _ENTAIL_ORDER = ("split", "merge")
 
 
 def move_entails(declared: Sequence[str], sub: Sequence[Participant], occ: Mapping[str, int],
-                 routes: Sequence[Sequence], on_loop) -> list[tuple[tuple[str, ...], tuple[str, ...]]]:
+                 routes: Sequence[Sequence], on_loop,
+                 rails: Mapping[str, int]) -> list[tuple[tuple[str, ...], tuple[str, ...]]]:
     """What each move of one cycle splits and merges -- from what it DOES, not what its class
     is called (#16, #17).
 
@@ -192,8 +193,10 @@ def move_entails(declared: Sequence[str], sub: Sequence[Participant], occ: Mappi
     move pays each primitive at most once:
 
     - the class, as before: a declared dock still costs what it always has;
-    - the path: a hop across a spur (a rail on no named path with exactly one end on one)
-      lifts an ion out of a conveyor's potential into a separate trap, which is a dock --
+    - the path: a hop across a spur -- a rail on no named path from a path node to a dead end,
+      a node with exactly one rail to the path (`rails`, R22's `rails_to_loop`, so a chord is
+      a translation here as it is there, #18) -- lifts an ion out of a conveyor's potential
+      into a separate trap, which is a dock --
       split and merge -- whatever the class is called (`Architecture.entails` explains why
       that is a property of the motion, even for a lone ion);
     - the chains: an ion leaves a site where ions stay behind or go elsewhere (a split), or
@@ -230,7 +233,8 @@ def move_entails(declared: Sequence[str], sub: Sequence[Participant], occ: Mappi
                 need.add("merge")
             for s in route:
                 a, b = s.ends
-                if s.loop is None and (a in on_loop) != (b in on_loop):
+                if s.loop is None and (a in on_loop) != (b in on_loop) \
+                        and rails.get(b if a in on_loop else a, 0) == 1:
                     dock.update(_ENTAIL_ORDER)
                     need.update(_ENTAIL_ORDER)
                     break
@@ -358,6 +362,8 @@ def replay(
     lifetime: dict[str, dict[str, float]] = {}
     occ: Counter[str] = Counter()
     on_loop = loop_node_set(arch.device)
+    # how many rails join each off-path node to a path: 1 is a dead end, a spur (`move_entails`)
+    rails = {n: rails_to_loop(arch.device, on_loop, n) for n in arch.device.nodes if n not in on_loop}
     t = 0.0
     anomalous_per_us = model.anomalous_per_us(arch)
     rule_config = dict(rule_config or {})
@@ -446,7 +452,7 @@ def replay(
                             f"but is at {pos.get(p.ion)}"
                         )
                 routes = [_segments_for(arch, p) for p in sub]
-                implied = move_entails(declared, sub, occ, routes, on_loop)
+                implied = move_entails(declared, sub, occ, routes, on_loop, rails)
                 for p, segs, (entails, docked) in zip(sub, routes, implied):
                     charge = Charge()
                     node = p.src

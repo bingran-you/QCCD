@@ -2573,6 +2573,13 @@ function priceFrames(frames, loops, model, classes, opts) {
   for (var lid0 in loops) if (own(loops, lid0)) {
     for (var li0 = 0; li0 < loops[lid0].length; li0++) onLoop[loops[lid0][li0]] = true;
   }
+  // `rails_to_loop` for every off-path node: 1 is a dead end, a spur (`_moveEntails`)
+  var loopRails = {};
+  for (var sid0 in model._segs) if (own(model._segs, sid0)) {
+    var sg0 = model._segs[sid0], ia0 = own(onLoop, sg0.a), ib0 = own(onLoop, sg0.b);
+    if (ia0 && !ib0) loopRails[sg0.b] = (loopRails[sg0.b] || 0) + 1;
+    else if (ib0 && !ia0) loopRails[sg0.a] = (loopRails[sg0.a] || 0) + 1;
+  }
 
   // Overwrite pool slot `i`, growing the pool only when a cycle is wider than any before.
   function _pool(win, i, ion, src, dst, seg, ent) {
@@ -2701,7 +2708,7 @@ function priceFrames(frames, loops, model, classes, opts) {
               sParts.push([ionIds[ij], pos[ionIds[ij]], d1]);
               sRoutes.push([_between(model, pos[ionIds[ij]], d1)]);
             }
-            var sEnt = _moveEntails(ent, sParts, occ, sRoutes, model._segs, onLoop);
+            var sEnt = _moveEntails(ent, sParts, occ, sRoutes, model._segs, onLoop, loopRails);
             for (var ii = 0; ii < sParts.length; ii++) {
               var ion = sParts[ii][0], dstNode = sParts[ii][2], segId = sRoutes[ii][0];
               var entI = sEnt[ii][0], dockI = sEnt[ii][1];
@@ -2762,7 +2769,7 @@ function priceFrames(frames, loops, model, classes, opts) {
           mParts.push([f.moves[mj][0], pth[0], pth[pth.length - 1]]);
           mRoutes.push(rt);
         }
-        var mEnt = _moveEntails(ent, mParts, occ, mRoutes, model._segs, onLoop);
+        var mEnt = _moveEntails(ent, mParts, occ, mRoutes, model._segs, onLoop, loopRails);
         for (var mi = 0; mi < f.moves.length; mi++) {
           var ionb = f.moves[mi][0], path = f.moves[mi][1], entM = mEnt[mi][0], dockM = mEnt[mi][1];
           // TWO LEVELS OF COMPOSITION, and getting them the wrong way round is invisible
@@ -2890,7 +2897,7 @@ function _between(model, a, b) {
 // `[ion, src, dst]`, `routes[k]` its segment ids, `occ` the occupancy BEFORE the cycle and
 // `onLoop` the set of nodes on a named loop or path.  Returns `[priced, docked]` per move:
 // what it is charged, and the dock part of it, which is all R14 judges (see Python).
-function _moveEntails(declared, parts, occ, routes, segs, onLoop) {
+function _moveEntails(declared, parts, occ, routes, segs, onLoop, rails) {
   var leaving = {}, arriving = {}, together = {}, out = [], k, i;
   function ordered(need) {
     var e = declared.slice();
@@ -2913,7 +2920,10 @@ function _moveEntails(declared, parts, occ, routes, segs, onLoop) {
       var r = routes[k];
       for (i = 0; i < r.length; i++) {
         var sg = segs[r[i]];
-        if (sg.loop == null && own(onLoop, sg.a) !== own(onLoop, sg.b)) {
+        // a SPUR: the off-path end is a dead end, one rail to the path (R22's `_loopRails`);
+        // a chord across two path nodes is a translation, not a dock (#18)
+        if (sg.loop == null && own(onLoop, sg.a) !== own(onLoop, sg.b) &&
+            (rails[own(onLoop, sg.a) ? sg.b : sg.a] || 0) === 1) {
           need.split = need.merge = dock.split = dock.merge = true;
           break;
         }

@@ -83,3 +83,35 @@ def test_deleting_the_dock_classes_buys_nothing():
     r1, _ = _replay(stripped, prog)
     assert r0.quanta_components["split_merge"] > 0
     assert (r1.total_us, r1.quanta_components["split_merge"]) == (r0.total_us, r0.quanta_components["split_merge"])
+
+
+def _chords() -> Machine:
+    """A closed loop round a square, a chord across it (J1-T1-J2, on no loop) and a dock D off
+    M: `tests/test_control_plane.py::_chords`, trimmed."""
+    from qccd.arch.builder import DeviceBuilder
+
+    b = DeviceBuilder("explicit")
+    ring = [("C1", 0, 0), ("J1", 0, 1), ("C2", 0, 4), ("M", 2, 4), ("C3", 4, 4), ("J2", 4, 1), ("C4", 4, 0)]
+    for nid, x, y in ring + [("T1", 2, 1), ("D", 2, 5)]:
+        b.site(nid, float(x), float(y), zone="trap")
+    for i, (nid, _, _) in enumerate(ring):
+        b.segment(f"L{i}", nid, ring[(i + 1) % len(ring)][0], loop="L0")
+    b.loop("L0", [nid for nid, _, _ in ring], closed=True)
+    for sid, u, v in (("c1a", "J1", "T1"), ("c1b", "T1", "J2"), ("dk", "M", "D")):
+        b.segment(sid, u, v)
+    return Machine.from_device(b.build(), name="chords")
+
+
+def test_a_chord_is_a_translation_and_a_spur_is_a_dock():
+    # R22 (#18) and the price agree on what a spur is: a dead end, one rail to the loop
+    m = _chords()
+    chord = m.program("chord", provenance="off")
+    chord.init({"a": "J1"})
+    chord.simd("shuttle", [["a", "J1", "T1", ["c1a"]]])
+    dock = m.program("dock", provenance="off")
+    dock.init({"a": "M"})
+    dock.simd("shuttle", [["a", "M", "D", ["dk"]]])
+    r0, _ = _replay(m.arch, chord.build())
+    r1, _ = _replay(m.arch, dock.build())
+    assert r0.quanta_components.get("split_merge", 0.0) == 0.0
+    assert r1.quanta_components["split_merge"] == _point(m.arch, "split").quanta + _point(m.arch, "merge").quanta
