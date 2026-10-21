@@ -18,6 +18,14 @@
         "url": "https://qccd.academy/downloads/toolchain/qccdc/c774b87b677f/qccdc_cli-linux-x86_64",
         "bytes": 5030936,
         "sha256": "ed8838c6a2ea36369157916d7e011e1dc858b613f9a8462e1bae7d55c8a8440a"
+      },
+      "macos-arm64": {
+        "url": "https://qccd.academy/downloads/toolchain/qccdc/c774b87b677f/qccdc_cli-macos-arm64.gz",
+        "encoding": "gzip",
+        "bytes": 982819,
+        "sha256": "120404b708d1d0e188ee44e81d351d85a6ae7dd51fe0b057528a8baf9f186032",
+        "unpacked_bytes": 2855040,
+        "unpacked_sha256": "bc9df35c8fcb542a4f0cdec5c4664c60d4f048f8b651d0eaca4737ec7470048b"
       }
     }
   },
