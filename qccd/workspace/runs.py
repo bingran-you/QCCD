@@ -229,7 +229,8 @@ class RunsMixin:
                                + _compiler_reason(log), "log": log[-6000:]}
         self._progress(jid, "cooling", "inserting cooling (R7)")
         co = run_limited([tc.python, tc.bridge / "insert_cooling.py", work / "prog.tsir.json", "--arch",
-                          work / "device.arch.json", "-o", work / "prog.cooled.tsir.json"],
+                          work / "device.arch.json", "-o", work / "prog.cooled.tsir.json", "--table",
+                          self.release.manifest["physics"].get("rank_table", "qccdsim_jones")],
                          cwd=work, timeout=900, cancel=cancel)
         if not (work / "prog.cooled.tsir.json").exists():
             return {"_status": "cancelled" if co.status == "cancelled" else "failed",

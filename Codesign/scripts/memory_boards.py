@@ -126,7 +126,8 @@ def grade_point(out: Path, release, exp, dev: dict) -> dict:
     row["arch"] = str(arch_p)
     t0 = time.time()
     try:
-        cooled, cert_p = compile_with_qccdc(release.circuit_text(), arch_p, work, timeout=900)
+        cooled, cert_p = compile_with_qccdc(release.circuit_text(), arch_p, work, timeout=900,
+                                            table=release.manifest["physics"].get("rank_table", "qccdsim_jones"))
     except CompileFailed as exc:
         return {**row, "status": "refused", "reason": f"{exc}"[:300]}
     except Exception as exc:  # noqa: BLE001 -- a device the tools cannot load is a refusal too

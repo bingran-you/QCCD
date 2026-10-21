@@ -294,7 +294,8 @@ class ResultsMixin:
                     + _compiler_reason(log), "log": log, "refusal": _compiler_reason(log)}
         self._progress(jid, "cooling", "inserting cooling (R7)")
         co = run_limited([tc.python, tc.bridge / "insert_cooling.py", work / "prog.tsir.json", "--arch",
-                          work / "device.arch.json", "-o", work / "prog.cooled.tsir.json"],
+                          work / "device.arch.json", "-o", work / "prog.cooled.tsir.json", "--table",
+                          (rel.manifest.get("physics") or {}).get("rank_table", "qccdsim_jones")],
                          cwd=work, timeout=600, cancel=cancel)
         if not (work / "prog.cooled.tsir.json").exists():
             return {"_status": "cancelled" if co.status == "cancelled" else "failed",

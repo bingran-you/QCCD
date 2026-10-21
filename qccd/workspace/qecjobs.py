@@ -77,6 +77,7 @@ class QecMixin:
 
     def _job_ler(self, jid, params, actor, origin_prompt_id, cancel) -> dict:
         from ..qec import CompileFailed, compile_with_qccdc, evaluate_memory
+        from ..qec.noise import get as get_noise
         from .core import WorkspaceError
         branch, rev = params["branch"], params["revision"]
         r = self.replayed(branch, rev)
@@ -88,7 +89,8 @@ class QecMixin:
         self._progress(jid, "compile", f"compiling {label} onto the design with the reference compiler")
         try:
             prog, cert = compile_with_qccdc(exp.qasm, r.arch_doc, work, cool=True,
-                                            timeout=float(params.get("timeout_s", 900)))
+                                            timeout=float(params.get("timeout_s", 900)),
+                                            table=get_noise(params.get("noise") or noise).table)
         except CompileFailed as exc:
             return {"_status": "failed", "summary": f"the reference compiler could not compile {label} onto this "
                     f"design: {exc}", "refusal": str(exc), "log": exc.log[-2000:]}
