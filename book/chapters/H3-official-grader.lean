@@ -337,7 +337,7 @@ returns, stored as it was. The GHZ report above, shortened:
   "task": {"id": "ghz4@1", "digest": "sha256:be83e5f5..."},
   "bundle": {"digest": "sha256:...", "files": {"certificate": "sha256:...", ...}},
   "evaluator": {"name": "qccd-reference-evaluator", "version": "1.0.0", "source_digest": "sha256:...",
-                "toolchain": {"qccdc": "sha256:398cfad9...", "qcheck": "sha256:...", ...}},
+                "toolchain": {"qccdc": "sha256:ba265b7f...", "qcheck": "sha256:...", ...}},
   "profile": "reference",
   "stages": [
     {"id": "bundle", "required": true, "status": "passed",
@@ -353,7 +353,7 @@ returns, stored as it was. The GHZ report above, shortened:
     {"id": "metrics", ...}],
   "eligibility": {"eligible": true, "policy": "every required check passed under the reference
                   profile", "required": ["bundle", ..., "metrics"], "reasons": []},
-  "metrics": {"T_jones": {"value": 0.83, "unit": "ms", "better": "low", "ranked": true}, ...},
+  "metrics": {"T_jones": {"value": 2.13, "unit": "ms", "better": "low", "ranked": true}, ...},
   "rank_by": "T_jones", "diagnostics": [], ... }
 ```
 
