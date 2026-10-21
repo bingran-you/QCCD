@@ -97,7 +97,9 @@ def devices(release) -> list[dict]:
     if st.get("generator"):
         m = getattr(Machine, st["generator"])(**st.get("params", {}), name=st.get("name") or "starter")
         p = ", ".join(f"{k} {v}" for k, v in sorted(st.get("params", {}).items()))
-        out.append({"key": st.get("name") or "starter", "family": "ring + docks",
+        family = {"ring": "ring + docks", "grid": "lattice", "ladder": "rails + highways", "chain": "line",
+                  "racetrack": "junction-free loop", "dual_loop": "two loops"}.get(st["generator"], st["generator"])
+        out.append({"key": st.get("name") or "starter", "family": family,
                     "title": f"{st.get('name') or 'starter'} — the board's starter ({st['generator']}: {p})",
                     "claim": "the design a new workspace starts from on this board",
                     "doc": m.arch.to_json()})
