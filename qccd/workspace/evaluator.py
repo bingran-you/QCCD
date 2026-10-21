@@ -253,8 +253,25 @@ def grade(release: TaskRelease, bundle_dir: Path, profile: str = "reference", *,
             st.done("failed", "size limit")
             return finish()
         ctx["arch"] = arch
-        st.done("passed", "architecture schema, structure, declared zones", nodes=n_nodes,
-                segments=len(arch.device.segments), loops=len(arch.device.loops))
+        # THE BUDGET IS PART OF THE TASK (#15).  `hardware_report` always computed
+        # `over_budget`, and nothing here read it: a direct-wired device at 1,600 DACs was
+        # eligible against a budget of 128.  It is judged against the RELEASE's budget, with
+        # every number the device declares about its own wiring counted at no less than the
+        # physics (WIRING_FLOORS), so that declaring one electrode per trap buys nothing.
+        # Grading continues: an over-budget device is a disqualified entry with numbers,
+        # which the boards list apart, not an unreadable one.
+        from ..cost.hardware import WIRING_FLOORS, hardware_report
+        hw = hardware_report(arch, floors=WIRING_FLOORS, budget=release.physics().get("budget") or {})
+        ctx["hardware"] = hw
+        for o in hw.over_budget:
+            st.diag("DEVICE.OVER_BUDGET", f"the device needs {o}; the task's budget is fixed",
+                    pointer="/device/budget")
+        st.done("failed" if hw.over_budget else "passed",
+                "architecture schema, structure, declared zones, hardware budget", nodes=n_nodes,
+                segments=len(arch.device.segments), loops=len(arch.device.loops), dacs=hw.dacs,
+                junctions=hw.n_junctions, budget={k: hw.budget[k] for k in ("max_dacs", "max_junctions")
+                                                  if k in hw.budget},
+                wiring_notes=[n for n in hw.notes if "counted at" in n or "count as" in n])
     except (ValueError, KeyError, TypeError) as exc:
         st.diag("DEVICE.INVALID", f"the device does not load: {exc}", pointer="/device")
         st.done("failed", "architecture schema and structure")
