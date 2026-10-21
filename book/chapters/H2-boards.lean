@@ -66,7 +66,7 @@ The repetition-code board's first entry is the round on `stationary_chain`: two 
 (9 data, 8 ancillas): for each ancilla, two CNOTs and a measurement. Below is that entry's
 checker input as the board's build made it, as a Lean value -- in the order `Input.ofJson` reads
 it, which sorts the qubit map and the starting positions by their keys as text (`"10"` before
-`"2"`). The board's row matches it: 93 instructions after cooling, round time 1.99 ms, `r10`
+`"2"`). The board's row matches it: 95 instructions after cooling, round time 2.91 ms, `r10`
 true. The board's own studio page plays this programme:
 [the repetition board's stationary_chain entry](../board/rep9/01_stationary_chain.html).
 -/
@@ -288,7 +288,7 @@ build makes none, built from each entry's certificate and device with `mk_qcheck
 | Steane, `stationary_chain` | 9.9 KB | 36 | 30 | 24 | 0 |
 | repetition memory, `ring16` | 19 KB | 76 | 40 | 80 | 39 |
 | Steane, `ring144_24v` | 65 KB | 36 | 30 | 582 | 0 |
-| BB, `ring144_24v` code-aware layout | 332 KB | 1296 | 1008 | 1728 | 54 |
+| BB, `ring144_24v` code-aware layout | 333 KB | 1296 | 1008 | 1728 | 54 |
 | BB, ring(143, 3, 36), the study's answer | 463 KB | 1296 | 1008 | 3312 | 46 |
 
 On the machine this lesson was written on, proving the Steane round on `ring144_24v` by
