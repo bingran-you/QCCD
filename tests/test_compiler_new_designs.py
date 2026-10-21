@@ -501,3 +501,26 @@ def test_a_barrier_on_the_race_track_is_a_fence(tmp_path):
     exp = tmp_path / "h2.expanded.json"
     cert = json.loads((tmp_path / "prog.qcert.json").read_text(encoding="utf-8"))
     _fenced_right(raw, cert, qasm, _r10(tmp_path / "prog", tmp_path / "c.qasm", H2_ARCH, exp))
+
+
+# ------------------------------------------------------------------ a crowded layer is split
+#
+# Two surface-5 patches side by side (98 ions; the X and the Z memory of `qccd.qec`) put about
+# 50 movers into each CNOT layer of grid9x9.  Prioritised planning parks the first ions it
+# routes, and they wall in the last: every placement and every trap order was refused, on every
+# shipped device (2026-10-21).  The split rung runs such a round with half its ops and defers
+# the rest, which is what a round already does for an op that finds no free trap.
+
+def test_a_crowded_layer_is_split_not_refused(tmp_path):
+    from qccd.qec.experiments import rotated_surface_xz
+
+    exp = rotated_surface_xz(5)
+    (tmp_path / "c.qasm").write_text(exp.qasm, encoding="utf-8")
+    doc = json.loads((REPO / "arch" / "grid9x9.arch.json").read_text(encoding="utf-8"))
+    _, _, bad = _compile(doc, None, tmp_path, mode="compile", qasm=tmp_path / "c.qasm")
+    assert not bad, f"{dict(Counter(v.rule for v in bad))}; first: {bad[0]}"
+    cp = subprocess.run([sys.executable, str(BRIDGE / "check_cert.py"), str(tmp_path / "prog"),
+                         "--qasm", str(tmp_path / "c.qasm"), "--arch", str(tmp_path / "device.arch.json"),
+                         "--json"], capture_output=True, text=True, timeout=600)
+    verdict = json.loads(cp.stdout)
+    assert verdict["order"] == "ok" and verdict["o2_semantics"] == "ok" and verdict["o1_transport"] == "ok"

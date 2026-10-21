@@ -52,8 +52,14 @@ let usage () =
   qccdc racetrack <in.qasm> --arch <expanded.json> -o <out-prefix> [--init-placement <json>]
       compile on a race track -- one closed loop with its gate zones ON it and no docks
       (Quantinuum H2): rigid shifts of the whole loop, swaps in the capacity-2 zones, and
-      up to one gate per gate zone per round.  Also `compile`'s last fallback, after the
-      general router and rigid rotation have both declined (not under --no-rotate).
+      up to one gate per gate zone per round.  Also `compile`'s fallback after the general
+      router and rigid rotation have both declined (not under --no-rotate).
+
+  qccdc compile ... (split rounds)
+      `compile`'s very last fallback, after the race track too: the general router again,
+      each round it cannot route run with half its gates and the rest deferred to the next
+      round, and a path cleared for an operand walled off by full traps.  Each qubit keeps
+      its gate order; a circuit that compiled before compiles to the same program.
 
   qccdc compile|rotate|racetrack ... --rules <ruleset.rules>
       plan with this rule set instead of the standard one: R13's max_chain bounds a gate
@@ -451,6 +457,46 @@ let try_racetrack ?init inp arch_path out (k : unit -> 'a) : 'a =
       (Printexc.to_string e);
     k ()
 
+(* The split rung (`Compile.run_split`): `compile`'s very last resort, once the general
+   router, rigid rotation and the race track have all declined, so it adds programs and
+   changes none.  Nothing is written unless it completes with a certificate that passes its
+   own self-check, so a decline leaves the caller's answer on disk. *)
+let cmd_compile_split ?init inp arch_path out : int option =
+  let a = Qccdc.Arch.load arch_path in
+  let prog = Qccdc.Qasm.parse_file inp in
+  let name = Filename.remove_extension (Filename.basename inp) in
+  let c = Qccdc.Circuit.build ~name prog in
+  match
+    Qccdc.Compile.run_split ?init a c ~arch_path:("arch/" ^ a.name ^ ".arch.json")
+      ~qasm_path:inp
+  with
+  | None -> None
+  | Some r when Qccdc.Tsir.validate r.prog <> [] || Qccdc.Cert.check r.cert <> [] -> None
+  | Some r ->
+    Printf.printf "%s -> %s (%s regime, split rounds)\n" (Qccdc.Circuit.summary c) a.name
+      (Qccdc.Arch.regime_name (Qccdc.Arch.regime a));
+    Printf.printf
+      "  %d layers, %d transport cycles, %d beams, %d MS, %d virtual-Z, %d instructions\n"
+      r.stats.layers r.stats.transport_cycles r.stats.beams r.stats.ms_gates r.stats.frames
+      r.stats.instructions;
+    List.iter (fun n -> Printf.printf "  - %s\n" n) r.notes;
+    Printf.printf "  certificate: %d gate witnesses, self-check OK\n" (List.length r.cert.gates);
+    Qccdc.Tsir.save (out ^ ".tsir.json") r.prog;
+    Qccdc.Cert.save (out ^ ".qcert.json") r.cert;
+    Printf.printf "  -> %s.tsir.json  %s.qcert.json\n" out out;
+    Some 0
+
+let try_split ?init inp arch_path out (k : unit -> 'a) : 'a =
+  prerr_endline "  trying split rounds: an unroutable round runs in halves, the rest deferred";
+  match cmd_compile_split ?init inp arch_path out with
+  | Some code -> exit code
+  | None ->
+    prerr_endline "  split rounds do not complete either";
+    k ()
+  | exception e ->
+    Printf.eprintf "  split rounds failed (%s); the answer above stands\n" (Printexc.to_string e);
+    k ()
+
 let () =
   let argv = Array.to_list Sys.argv |> List.tl in
   (match arg_after "--rules" argv with
@@ -525,10 +571,12 @@ let () =
             Printf.eprintf "  rotation does not apply either: %s
 " r;
             try_racetrack ?init:(init_placement_arg rest) inp arch_path out (fun () ->
-                (* the partial program from the compile above is still on disk, and this is
-                   now the final answer, so publish the verdict the caller greps for *)
-                report_unrealised unrealised;
-                exit code)
+                try_split ?init:(init_placement_arg rest) inp arch_path out (fun () ->
+                    (* the partial program from the compile above is still on disk, and
+                       this is now the final answer, so publish the verdict the caller
+                       greps for *)
+                    report_unrealised unrealised;
+                    exit code))
         end;
         report_unrealised unrealised;
         exit code
@@ -555,7 +603,8 @@ let () =
         | Qccdc.Rotate_pipeline.Not_applicable r ->
           Printf.eprintf "  rotation does not apply either: %s
 " r;
-          try_racetrack ?init:(init_placement_arg rest) inp arch_path out (fun () -> exit 4))
+          try_racetrack ?init:(init_placement_arg rest) inp arch_path out (fun () ->
+              try_split ?init:(init_placement_arg rest) inp arch_path out (fun () -> exit 4)))
       | Qccdc.Place.Too_many_qubits m ->
         Printf.eprintf "%s: %s
 " inp m; exit 4)

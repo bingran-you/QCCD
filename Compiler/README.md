@@ -182,6 +182,24 @@ add programs that compile but never change one that already did. `--no-rotate` r
 fallback, which is what [`bridge/c7_occupancy.py`](bridge/c7_occupancy.py) needs in order to
 measure the individual-ion router rather than the pair of them.
 
+The last fallback, after the race track, is **split rounds** (`Compile.run_split`, 2026-10-21).
+Two surface-5 patches side by side put 98 ions and about 50 movers per CNOT layer on grid9x9.
+Prioritised planning parks the first ions it routes, and they wall in the last, so every
+placement and trap order was refused on every shipped device. Split rounds change three things:
+
+* a round that cannot be routed runs again with half its gates; the rest wait for the next
+  round, as a gate with no free trap already does;
+* an operand walled off from its meeting trap by full traps has one idle ion moved out of each
+  full trap on its path;
+* the router's tolerant last rung is off, so a plan the verifier would reject is split again
+  rather than emitted.
+
+A round holds only gates on disjoint qubits, so each qubit keeps its gate order. Results:
+
+* the 98-ion circuit compiles on grid9x9, deck_unit_cell and cyclone_base;
+* every rule passes, and R10 passes with the proved checker on grid9x9;
+* outputs the general router, rotation or the race track produced before are byte-identical.
+
 Two of those results are ones the checker found rather than testing: the first rotation
 compiler emitted the ancilla Hadamards as pulses but never *witnessed* them (invisible to a
 tableau, which composes from what was emitted), and its scheduler reordered commuting `cx`

@@ -900,8 +900,9 @@ let plan_orders (a : Arch.t) (t : Traps.t) (d : Traps.dists) ~(pos : (string, st
    The horizon is raised ON DEMAND rather than set high to begin with: the A* state space
    is (traps x horizon), so a horizon sized for the worst layer would be paid by every
    easy one. *)
-let plan_layer (a : Arch.t) (t : Traps.t) (d : Traps.dists) ~(pos : (string, string) Hashtbl.t)
-    ~(targets : (string * string) list) ~(horizon : int) : layer_plan =
+let plan_layer ?(tolerate = true) (a : Arch.t) (t : Traps.t) (d : Traps.dists)
+    ~(pos : (string, string) Hashtbl.t) ~(targets : (string * string) list) ~(horizon : int) :
+    layer_plan =
   let try_rung ~uniform ~strict ~doublings =
     let rec go h tries =
       match plan_orders a t d ~pos ~targets ~horizon:h ~uniform ~strict with
@@ -927,5 +928,8 @@ let plan_layer (a : Arch.t) (t : Traps.t) (d : Traps.dists) ~(pos : (string, str
       match try_rung ~uniform:false ~strict:true ~doublings:1 with
       | p -> p
       | exception Unroutable m2 ->
+        (* `~tolerate:false` (the compiler's split rung): a caller that can route fewer ions
+           instead would rather be told than handed a plan the verifier rejects *)
+        if not tolerate then raise (Unroutable m2);
         fell_back 3 m2;
         try_rung ~uniform:false ~strict:false ~doublings:0)
