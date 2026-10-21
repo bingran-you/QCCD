@@ -26,8 +26,10 @@ from .model import Master, Transfer
 
 __all__ = ["LeafLibrary", "LEAF_VERSION"]
 
-#: bump when any leaf builder or `characterize` changes what it produces
-LEAF_VERSION = 13
+#: bump when any leaf builder or `characterize` changes what it produces -- or when the
+#: pricing they read does: 14 is #16/#17 (split and merge charged for what a move does),
+#: which `qccd/cost` and `qccd/verify` changed and the source hash does not cover
+LEAF_VERSION = 14
 
 
 #: the modules every place builder shares: a change in one of them changes every place

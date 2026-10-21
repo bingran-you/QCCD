@@ -29,7 +29,7 @@ from typing import Callable, Mapping, Sequence
 from ..arch import Architecture
 from ..cost.models import QUANTA_COMPONENTS, Charge, CostModel
 from ..ir.tsir import TSIR, Instruction, Participant, iter_operands, iter_pairs
-from .rules import CycleView, ResolvedMove, RuleReport, check_cycle
+from .rules import CycleView, ResolvedMove, RuleReport, check_cycle, loop_node_set
 
 __all__ = ["ReplayResult", "CycleRecord", "replay", "ReplayError"]
 
@@ -176,6 +176,68 @@ def _segments_for(arch: Architecture, p: Participant) -> list:
         raise ReplayError(f"ion {p.ion}: {exc}") from None
 
 
+#: the order the derived primitives are charged in, whatever produced them
+_ENTAIL_ORDER = ("split", "merge")
+
+
+def move_entails(declared: Sequence[str], sub: Sequence[Participant], occ: Mapping[str, int],
+                 routes: Sequence[Sequence], on_loop) -> list[tuple[tuple[str, ...], tuple[str, ...]]]:
+    """What each move of one cycle splits and merges -- from what it DOES, not what its class
+    is called (#16, #17).
+
+    The class's `entails` was the only source, so a move the class did not declare paid for
+    nothing: the router's `shuttle` took an ion out of a chain and into another and charged
+    neither, and a device that deleted its `dock`/`undock` classes docked through `shuttle`
+    and dropped the split, the merge and the cooling they force.  Three sources now, and a
+    move pays each primitive at most once:
+
+    - the class, as before: a declared dock still costs what it always has;
+    - the path: a hop across a spur (a rail on no named path with exactly one end on one)
+      lifts an ion out of a conveyor's potential into a separate trap, which is a dock --
+      split and merge -- whatever the class is called (`Architecture.entails` explains why
+      that is a property of the motion, even for a lone ion);
+    - the chains: an ion leaves a site where ions stay behind or go elsewhere (a split), or
+      arrives where ions stay or others arrive from elsewhere (a merge).  Ions that leave
+      one site for one destination together are one chain moving whole, which is why a
+      rotation -- every slot moving with the potential into a slot vacated in the same
+      cycle -- still costs neither.
+
+    `occ` is the occupancy BEFORE the cycle; `routes[k]` is the route of `sub[k]`.  Returns,
+    aligned with `sub`, `(priced, docked)`: what the move is charged, and the part of it that
+    is a DOCK (declared by the class, or a hop across a spur) -- which is what R14 judges.
+    R14 asks whether the ion was at the end of its chain, and the replay does not track chain
+    order: its test is "a chain of more than two", safe only where every split is a dock into
+    a trap of capacity <= 2.  A split read off occupancy is charged, but judging it by that
+    test would refuse an ion leaving from the end of a long chain, which is legal.
+    """
+    leaving = Counter(p.src for p in sub)
+    arriving = Counter(p.dst for p in sub)
+    together = Counter((p.src, p.dst) for p in sub)
+    out: list[tuple[tuple[str, ...], tuple[str, ...]]] = []
+
+    def ordered(need: set) -> tuple[str, ...]:
+        return tuple(w for w in declared if w in need) + tuple(
+            w for w in _ENTAIL_ORDER if w in need and w not in declared)
+
+    for p, route in zip(sub, routes):
+        dock = set(declared)
+        need = set(declared)
+        if p.src != p.dst:
+            n = together[(p.src, p.dst)]
+            if occ.get(p.src, 0) > n:
+                need.add("split")
+            if occ.get(p.dst, 0) - leaving.get(p.dst, 0) > 0 or arriving[p.dst] > n:
+                need.add("merge")
+            for s in route:
+                a, b = s.ends
+                if s.loop is None and (a in on_loop) != (b in on_loop):
+                    dock.update(_ENTAIL_ORDER)
+                    need.update(_ENTAIL_ORDER)
+                    break
+        out.append((ordered(need), ordered(dock)))
+    return out
+
+
 def _accepts_chain(fn) -> bool:
     """Does this cost-model method take G1's `n_chain` argument?
 
@@ -295,6 +357,7 @@ def replay(
     current: dict[str, float] = {}
     lifetime: dict[str, dict[str, float]] = {}
     occ: Counter[str] = Counter()
+    on_loop = loop_node_set(arch.device)
     t = 0.0
     anomalous_per_us = model.anomalous_per_us(arch)
     rule_config = dict(rule_config or {})
@@ -366,7 +429,7 @@ def replay(
 
         # ---------------------------------------------------------- transport
         if instr.type == "simd":
-            entails = arch.entails(instr.cls) if instr.cls else ()
+            declared = arch.entails(instr.cls) if instr.cls else ()
             for sub in _resolve_participants(arch, instr, pos):
                 pos_before = dict(pos)
                 occ_before = Counter(occ)
@@ -382,13 +445,15 @@ def replay(
                             f"instruction {instr.id}: ion {p.ion} declared at {p.src} "
                             f"but is at {pos.get(p.ion)}"
                         )
-                    segs = _segments_for(arch, p)
+                routes = [_segments_for(arch, p) for p in sub]
+                implied = move_entails(declared, sub, occ, routes, on_loop)
+                for p, segs, (entails, docked) in zip(sub, routes, implied):
                     charge = Charge()
                     node = p.src
-                    # `entails` (split at the source, merge at the destination) belongs
-                    # to the movement class, not to each segment of the route: one dock
-                    # is one split plus one merge however long the spur is.  Charge it
-                    # once, on the first segment.
+                    # `entails` (split at the source, merge at the destination; see
+                    # `move_entails` for where they come from) belongs to the MOVE, not to
+                    # each segment of the route: one dock is one split plus one merge
+                    # however long the spur is.  Charge it once, on the first segment.
                     for i, seg in enumerate(segs):
                         nxt = seg.other(node)
                         charge = charge.then(
@@ -398,7 +463,7 @@ def replay(
                             )
                         )
                         moves.append(
-                            ResolvedMove(p.ion, node, nxt, seg, tuple(entails))
+                            ResolvedMove(p.ion, node, nxt, seg, docked)
                         )
                         if arch.device.degree(nxt) >= 3:
                             res.junction_transits[p.ion] += 1

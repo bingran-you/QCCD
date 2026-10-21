@@ -2484,6 +2484,7 @@ function makeModel(prims, deg, ce, segs, opts) {
   return {
     kind: kind,
     _deg: deg,
+    _segs: segs,          // `_moveEntails` reads each route's rails off it
     _anomalousPerUs: (opts.include_anomalous === false || kind === 'deck')
       ? 0 : (opts.anomalous_per_ms || 0) / 1000.0,
     nonTransport: nonTransport,
@@ -2567,6 +2568,11 @@ function priceFrames(frames, loops, model, classes, opts) {
   var warnings = [];
   var work = 0, workCap = opts.workCap || 0;
   var EMPTY = {};      // shared, never written: the transit map of a cycle with none
+  // `loop_node_set`: every node on a named loop or path, for `_moveEntails`' spur test
+  var onLoop = {};
+  for (var lid0 in loops) if (own(loops, lid0)) {
+    for (var li0 = 0; li0 < loops[lid0].length; li0++) onLoop[loops[lid0][li0]] = true;
+  }
 
   // Overwrite pool slot `i`, growing the pool only when a cycle is wider than any before.
   function _pool(win, i, ion, src, dst, seg, ent) {
@@ -2685,18 +2691,27 @@ function priceFrames(frames, loops, model, classes, opts) {
             var subC = 0, subD = 0, subUs = 0;
             var ionIds = Object.keys(pos).sort(_cmpStr);   // participants sorted by ion id
             var moved = {}, wParts = [], pb = {}, ob = {}, nmv = 0;
-            for (var ii = 0; ii < ionIds.length; ii++) {
-              var ion = ionIds[ii], i0 = idx[pos[ion]];
-              if (i0 === undefined) continue;
-              var dstNode = seq[((i0 + step) % kk + kk) % kk];
+            // the cycle's participants first, so what each one splits and merges can be
+            // read off all of them (`move_entails`), then priced in the same order
+            var sParts = [], sRoutes = [];
+            for (var ij = 0; ij < ionIds.length; ij++) {
+              var i1 = idx[pos[ionIds[ij]]];
+              if (i1 === undefined) continue;
+              var d1 = seq[((i1 + step) % kk + kk) % kk];
+              sParts.push([ionIds[ij], pos[ionIds[ij]], d1]);
+              sRoutes.push([_between(model, pos[ionIds[ij]], d1)]);
+            }
+            var sEnt = _moveEntails(ent, sParts, occ, sRoutes, model._segs, onLoop);
+            for (var ii = 0; ii < sParts.length; ii++) {
+              var ion = sParts[ii][0], dstNode = sParts[ii][2], segId = sRoutes[ii][0];
+              var entI = sEnt[ii][0], dockI = sEnt[ii][1];
               moved[ion] = dstNode;
-              var segId = _between(model, pos[ion], dstNode);
-              var ch = model.move(segId, pos[ion], dstNode, ent);
+              var ch = model.move(segId, pos[ion], dstNode, entI);
               subC += ch.cost; subD = Math.max(subD, ch.depth); subUs = Math.max(subUs, ch.us);
               _deposit(q, life, comp, ion, ch.q, peak);
               if (deg(model, dstNode) >= 3) transits++;
               if (onCycle) {
-                _pool(w, nmv++, ion, pos[ion], dstNode, segId, ent);
+                _pool(w, nmv++, ion, pos[ion], dstNode, segId, dockI);
                 wParts.push(ion);
                 pb[ion] = pos[ion];
                 if (ob[pos[ion]] === undefined) ob[pos[ion]] = occ[pos[ion]] || 0;
@@ -2738,8 +2753,18 @@ function priceFrames(frames, loops, model, classes, opts) {
             }
           }
         }
+        // what each move splits and merges is read off the whole cycle before any is priced
+        // (`move_entails`), against the occupancy before anything moved
+        var mParts = [], mRoutes = [];
+        for (var mj = 0; mj < f.moves.length; mj++) {
+          var pth = f.moves[mj][1], rt = [];
+          for (var pj = 1; pj < pth.length; pj++) rt.push(_between(model, pth[pj - 1], pth[pj]));
+          mParts.push([f.moves[mj][0], pth[0], pth[pth.length - 1]]);
+          mRoutes.push(rt);
+        }
+        var mEnt = _moveEntails(ent, mParts, occ, mRoutes, model._segs, onLoop);
         for (var mi = 0; mi < f.moves.length; mi++) {
-          var ionb = f.moves[mi][0], path = f.moves[mi][1];
+          var ionb = f.moves[mi][0], path = f.moves[mi][1], entM = mEnt[mi][0], dockM = mEnt[mi][1];
           // TWO LEVELS OF COMPOSITION, and getting them the wrong way round is invisible
           // in the cost and wrong in the steps.  ALONG one ion's route the charges compose
           // SEQUENTIALLY (`then`: cost, depth and us all add -- the ion really does
@@ -2755,12 +2780,12 @@ function priceFrames(frames, loops, model, classes, opts) {
             // entails once per MOVE, on the FIRST segment of a multi-segment route: one
             // dock is one split plus one merge however long the spur is.
             charge = _then(charge, model.move(sid, path[pi - 1], path[pi],
-                                              pi === 1 ? ent : []));
+                                              pi === 1 ? entM : []));
             // a junction TRANSIT is ENTERING a node of degree >= 3, not traversing a
             // segment; the two differ by a factor of three on the shipped ring.
             if (deg(model, path[pi]) >= 3) transits++;
             if (onCycle) {
-              _pool(w, nmv2++, ionb, path[pi - 1], path[pi], sid, ent);
+              _pool(w, nmv2++, ionb, path[pi - 1], path[pi], sid, dockM);
               // every node the path ENTERED except the last is passed THROUGH, and a site
               // with no room to spare there is a roadblock (R1)
               if (pi < path.length - 1) tr2[path[pi]] = (tr2[path[pi]] || 0) + 1;
@@ -2855,6 +2880,48 @@ function _between(model, a, b) {
     throw new EngineError('no segment between ' + pyRepr(a) + ' and ' + pyRepr(b));
   }
   return s;
+}
+
+// `replay.py::move_entails`, line for line: what each move of one cycle splits and merges,
+// from what it DOES (#16, #17) -- the class's own list, then a hop across a spur (a dock,
+// whatever the class is called), then the chains: ions left behind or going elsewhere are a
+// split, ions staying or arriving from elsewhere at the destination are a merge.  Ions that
+// leave one site for one destination together are a chain moving whole.  `parts[k]` is
+// `[ion, src, dst]`, `routes[k]` its segment ids, `occ` the occupancy BEFORE the cycle and
+// `onLoop` the set of nodes on a named loop or path.  Returns `[priced, docked]` per move:
+// what it is charged, and the dock part of it, which is all R14 judges (see Python).
+function _moveEntails(declared, parts, occ, routes, segs, onLoop) {
+  var leaving = {}, arriving = {}, together = {}, out = [], k, i;
+  function ordered(need) {
+    var e = declared.slice();
+    if (need.split && declared.indexOf('split') < 0) e.push('split');
+    if (need.merge && declared.indexOf('merge') < 0) e.push('merge');
+    return e;
+  }
+  for (k = 0; k < parts.length; k++) {
+    var s0 = parts[k][1], d0 = parts[k][2], key0 = s0 + '>' + d0;
+    leaving[s0] = (leaving[s0] || 0) + 1;
+    arriving[d0] = (arriving[d0] || 0) + 1;
+    together[key0] = (together[key0] || 0) + 1;
+  }
+  for (k = 0; k < parts.length; k++) {
+    var src = parts[k][1], dst = parts[k][2], need = {}, dock = {};
+    if (src !== dst) {
+      var n = together[src + '>' + dst];
+      if ((occ[src] || 0) > n) need.split = true;
+      if ((occ[dst] || 0) - (leaving[dst] || 0) > 0 || arriving[dst] > n) need.merge = true;
+      var r = routes[k];
+      for (i = 0; i < r.length; i++) {
+        var sg = segs[r[i]];
+        if (sg.loop == null && own(onLoop, sg.a) !== own(onLoop, sg.b)) {
+          need.split = need.merge = dock.split = dock.merge = true;
+          break;
+        }
+      }
+    }
+    out.push([ordered(need), ordered(dock)]);
+  }
+  return out;
 }
 
 function pairIndex(dev) {
