@@ -152,6 +152,25 @@ def test_two_bundles_on_one_road_at_once_fail_g13(runs, lib, leaves):
     assert ours(g, lib, leaves)["G13"] == "fails"
 
 
+def test_g14_counts_the_ions_on_a_road_not_whether_one_stopped(runs, lib, leaves):
+    """A whole bundle held at the far end of a street breaks G14: nine ions on a few sites.
+    One ion stopping there briefly, while the rest are still on their way, does not -- the
+    street never holds more than a couple of the bundle at once (the old G14 refused that
+    too, on the theory that any stop is the whole bundle stopping)."""
+    _, par, _ = runs["bell_cnot"]
+    i = next(k for k, c in enumerate(par["carries"]) if "street" in str(c[1]) and len(c[7]) == 9)
+    held = copy.deepcopy(par)
+    c = held["carries"][i]
+    last = max(c[5]) + c[6] + 1000.0             # every ion taken only after the last has arrived
+    c[12] = [last + k for k in range(len(c[12]))]
+    c[11] = c[4] + max(c[12])
+    assert ours(held, lib, leaves)["G14"] == "fails"
+    brief = copy.deepcopy(par)
+    c = brief["carries"][i]
+    c[12] = [c[12][0] + 50.0] + list(c[12][1:])   # the first ion waits 50 us
+    assert ours(brief, lib, leaves)["G14"] == "holds"
+
+
 # ------------------------------------------------------------------------- floorplans
 
 def test_the_town_is_a_floorplan(lib, leaves):

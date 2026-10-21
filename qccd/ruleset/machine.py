@@ -1232,6 +1232,22 @@ def _waits(ctx: Ctx, c):
     return any(take - (dep + tau) > 1e-6 for dep, take in zip(o.facts["deps"], o.facts["takes"]))
 
 
+@term("crowd(c)", "ions", "The most ions of carry c on its road at one moment: each is on "
+      "it from when it leaves until it is taken in at the far end, travelling or stopped.",
+      GROUP_M, kinds=K)
+def _crowd(ctx: Ctx, c):
+    o = _activity(c, "crowd")
+    if o.kind != "carry":
+        raise EvalError(f"{o.label()} is not a carry")
+    # an ion taken in at t is off the road before one that leaves at t is on it
+    edges = sorted([(dep, 1) for dep in o.facts["deps"]] + [(take, -1) for take in o.facts["takes"]])
+    n = most = 0
+    for _, d in edges:
+        n += d
+        most = max(most, n)
+    return most
+
+
 @term("wait(c)", "microseconds", "How long the last ion of carry c waits at the far end of its "
       "road before it is taken in.", GROUP_M, kinds=K)
 def _wait(ctx: Ctx, c):

@@ -118,6 +118,6 @@ rule G13 "A road carries one bundle at a time" core
   about "A road is leased to one bundle from the moment its first ion enters until its last is taken off the far end; two bundles never share a road at once, so neither can block or overtake the other, whatever runs in parallel."
   for all c1, c2 in carries where c1 != c2 and road(c1) = road(c2): not simultaneous(c1, c2)
 
-rule G14 "A bundle waits only where it fits"
-  about "A bundle may stop and wait on a road only if the whole bundle fits on it: on the road in front of a door, never on a short street between junctions."
-  for all c in carries where waits(c): length(road(c)) >= size(ions(c))
+rule G14 "A road holds the ions on it"
+  about "At no moment are more of a bundle's ions on a road -- travelling, or stopped at the far end until they are taken in -- than the road has sites. A whole bundle can stop only on a road as long as the bundle, the one in front of a door; a short street between junctions holds the few ions crossing it at once."
+  for all c in carries: crowd(c) <= length(road(c))
