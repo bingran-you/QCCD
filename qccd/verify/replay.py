@@ -206,12 +206,13 @@ def move_entails(declared: Sequence[str], sub: Sequence[Participant], occ: Mappi
       cycle -- still costs neither.
 
     `occ` is the occupancy BEFORE the cycle; `routes[k]` is the route of `sub[k]`.  Returns,
-    aligned with `sub`, `(priced, docked)`: what the move is charged, and the part of it that
-    is a DOCK (declared by the class, or a hop across a spur) -- which is what R14 judges.
-    R14 asks whether the ion was at the end of its chain, and the replay does not track chain
-    order: its test is "a chain of more than two", safe only where every split is a dock into
-    a trap of capacity <= 2.  A split read off occupancy is charged, but judging it by that
-    test would refuse an ion leaving from the end of a long chain, which is legal.
+    aligned with `sub`, `(priced, judged)`: what the move is charged, and what R14 judges --
+    the CLASS's declaration alone, exactly as before #16.  R14 asks whether the ion was at the
+    end of its chain, and the replay does not track chain order: its test is "a chain of more
+    than two", sound only where the declared docks go into traps of capacity <= 2.  A split
+    read off the path or the chains is charged, but judged by that test it refuses legal
+    moves: a gadget door holds a bundle of nine and feeds the ring one ion at a time from the
+    end facing it.  Judging every split honestly needs chain order (#22).
     """
     leaving = Counter(p.src for p in sub)
     arriving = Counter(p.dst for p in sub)
@@ -222,8 +223,8 @@ def move_entails(declared: Sequence[str], sub: Sequence[Participant], occ: Mappi
         return tuple(w for w in declared if w in need) + tuple(
             w for w in _ENTAIL_ORDER if w in need and w not in declared)
 
+    judged = tuple(declared)
     for p, route in zip(sub, routes):
-        dock = set(declared)
         need = set(declared)
         if p.src != p.dst:
             n = together[(p.src, p.dst)]
@@ -235,10 +236,9 @@ def move_entails(declared: Sequence[str], sub: Sequence[Participant], occ: Mappi
                 a, b = s.ends
                 if s.loop is None and (a in on_loop) != (b in on_loop) \
                         and rails.get(b if a in on_loop else a, 0) == 1:
-                    dock.update(_ENTAIL_ORDER)
                     need.update(_ENTAIL_ORDER)
                     break
-        out.append((ordered(need), ordered(dock)))
+        out.append((ordered(need), judged))
     return out
 
 
@@ -453,7 +453,7 @@ def replay(
                         )
                 routes = [_segments_for(arch, p) for p in sub]
                 implied = move_entails(declared, sub, occ, routes, on_loop, rails)
-                for p, segs, (entails, docked) in zip(sub, routes, implied):
+                for p, segs, (entails, judged) in zip(sub, routes, implied):
                     charge = Charge()
                     node = p.src
                     # `entails` (split at the source, merge at the destination; see
@@ -469,7 +469,7 @@ def replay(
                             )
                         )
                         moves.append(
-                            ResolvedMove(p.ion, node, nxt, seg, docked)
+                            ResolvedMove(p.ion, node, nxt, seg, judged)
                         )
                         if arch.device.degree(nxt) >= 3:
                             res.junction_transits[p.ion] += 1

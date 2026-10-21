@@ -2711,14 +2711,14 @@ function priceFrames(frames, loops, model, classes, opts) {
             var sEnt = _moveEntails(ent, sParts, occ, sRoutes, model._segs, onLoop, loopRails);
             for (var ii = 0; ii < sParts.length; ii++) {
               var ion = sParts[ii][0], dstNode = sParts[ii][2], segId = sRoutes[ii][0];
-              var entI = sEnt[ii][0], dockI = sEnt[ii][1];
+              var entI = sEnt[ii][0], judgedI = sEnt[ii][1];
               moved[ion] = dstNode;
               var ch = model.move(segId, pos[ion], dstNode, entI);
               subC += ch.cost; subD = Math.max(subD, ch.depth); subUs = Math.max(subUs, ch.us);
               _deposit(q, life, comp, ion, ch.q, peak);
               if (deg(model, dstNode) >= 3) transits++;
               if (onCycle) {
-                _pool(w, nmv++, ion, pos[ion], dstNode, segId, dockI);
+                _pool(w, nmv++, ion, pos[ion], dstNode, segId, judgedI);
                 wParts.push(ion);
                 pb[ion] = pos[ion];
                 if (ob[pos[ion]] === undefined) ob[pos[ion]] = occ[pos[ion]] || 0;
@@ -2771,7 +2771,7 @@ function priceFrames(frames, loops, model, classes, opts) {
         }
         var mEnt = _moveEntails(ent, mParts, occ, mRoutes, model._segs, onLoop, loopRails);
         for (var mi = 0; mi < f.moves.length; mi++) {
-          var ionb = f.moves[mi][0], path = f.moves[mi][1], entM = mEnt[mi][0], dockM = mEnt[mi][1];
+          var ionb = f.moves[mi][0], path = f.moves[mi][1], entM = mEnt[mi][0], judgedM = mEnt[mi][1];
           // TWO LEVELS OF COMPOSITION, and getting them the wrong way round is invisible
           // in the cost and wrong in the steps.  ALONG one ion's route the charges compose
           // SEQUENTIALLY (`then`: cost, depth and us all add -- the ion really does
@@ -2792,7 +2792,7 @@ function priceFrames(frames, loops, model, classes, opts) {
             // segment; the two differ by a factor of three on the shipped ring.
             if (deg(model, path[pi]) >= 3) transits++;
             if (onCycle) {
-              _pool(w, nmv2++, ionb, path[pi - 1], path[pi], sid, dockM);
+              _pool(w, nmv2++, ionb, path[pi - 1], path[pi], sid, judgedM);
               // every node the path ENTERED except the last is passed THROUGH, and a site
               // with no room to spare there is a roadblock (R1)
               if (pi < path.length - 1) tr2[path[pi]] = (tr2[path[pi]] || 0) + 1;
@@ -2895,8 +2895,8 @@ function _between(model, a, b) {
 // split, ions staying or arriving from elsewhere at the destination are a merge.  Ions that
 // leave one site for one destination together are a chain moving whole.  `parts[k]` is
 // `[ion, src, dst]`, `routes[k]` its segment ids, `occ` the occupancy BEFORE the cycle and
-// `onLoop` the set of nodes on a named loop or path.  Returns `[priced, docked]` per move:
-// what it is charged, and the dock part of it, which is all R14 judges (see Python).
+// `onLoop` the set of nodes on a named loop or path.  Returns `[priced, judged]` per move:
+// what it is charged, and what R14 judges -- the class's own list, as before #16 (#22).
 function _moveEntails(declared, parts, occ, routes, segs, onLoop, rails) {
   var leaving = {}, arriving = {}, together = {}, out = [], k, i;
   function ordered(need) {
@@ -2912,7 +2912,7 @@ function _moveEntails(declared, parts, occ, routes, segs, onLoop, rails) {
     together[key0] = (together[key0] || 0) + 1;
   }
   for (k = 0; k < parts.length; k++) {
-    var src = parts[k][1], dst = parts[k][2], need = {}, dock = {};
+    var src = parts[k][1], dst = parts[k][2], need = {};
     if (src !== dst) {
       var n = together[src + '>' + dst];
       if ((occ[src] || 0) > n) need.split = true;
@@ -2924,12 +2924,12 @@ function _moveEntails(declared, parts, occ, routes, segs, onLoop, rails) {
         // a chord across two path nodes is a translation, not a dock (#18)
         if (sg.loop == null && own(onLoop, sg.a) !== own(onLoop, sg.b) &&
             (rails[own(onLoop, sg.a) ? sg.b : sg.a] || 0) === 1) {
-          need.split = need.merge = dock.split = dock.merge = true;
+          need.split = need.merge = true;
           break;
         }
       }
     }
-    out.push([ordered(need), ordered(dock)]);
+    out.push([ordered(need), declared.slice()]);
   }
   return out;
 }
