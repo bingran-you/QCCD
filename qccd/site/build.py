@@ -583,8 +583,10 @@ def tasks() -> list[dict]:
         # a design that fails any rule is disqualified: not ranked and not searchable; its
         # task page lists it apart, with the rules it breaks (the user's decision of
         # 2026-10-20 -- before, it was not published at all)
-        t["disqualified"] = [r for r in rows if r.get("rules_failed")]
-        t["rows"] = [r for r in rows if not r.get("rules_failed")]
+        # a device over the task's hardware budget is disqualified the same way: the board
+        # scripts record the official grader's own verdict (DEVICE.OVER_BUDGET, #15)
+        t["disqualified"] = [r for r in rows if r.get("rules_failed") or r.get("over_budget")]
+        t["rows"] = [r for r in rows if not (r.get("rules_failed") or r.get("over_budget"))]
         t["seed_dir"] = seed
         out.append(t)
     out.sort(key=lambda t: t.get("order", 99))
@@ -862,8 +864,8 @@ def board_index(ts: list[dict]) -> str:
             "replayed and judged by every rule of the <a href=\"../rules/#set-standard\">standard rule set</a> "
             "and, where it passed, checked for R10 by the proved checker on its certificate and by the tableau "
             "of its pulses. "
-            "A design that fails any rule is disqualified: it is not ranked, and its task's page lists it apart "
-            "with the rules it breaks. Each row shows the three fastest verified designs of its task; open a task for the full ranking of "
+            "A design that fails any rule, or needs more hardware than its task's budget allows, is "
+            "disqualified: it is not ranked, and its task's page lists it apart with what it breaks. Each row shows the three fastest verified designs of its task; open a task for the full ranking of "
             "every listed design, where you can rank by anything and click a dot to step the programme in the studio. "
             "A round is only half of a QEC cycle, so every board also carries "
             "<a href=\"#cycle\">the classical loop</a> around it, and the <a href=\"#memory\">memory boards</a> "
