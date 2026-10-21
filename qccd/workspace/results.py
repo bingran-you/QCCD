@@ -37,9 +37,15 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Mapping
 
+from .bundle import _FILE_LIMITS as PROGRAM_LIMITS
 from .bundle import BundleError, archive_bundle, read_bundle, write_bundle
 from .jsonsafe import canonical_bytes, digest, strict_loads
 from .store import dumps, loads
+
+# The compiler's programmes are read with the limits a submitted bundle's files get
+# (`bundle._FILE_LIMITS`), not the general default: a canonicalised bb144 round is 15,223
+# instructions, 504,193 JSON members, and the default's 500,000 refused at the workspace a
+# programme the grader accepts.
 
 __all__ = ["ResultsMixin", "JOB_KINDS", "JOB_RUNNERS"]
 
@@ -301,10 +307,10 @@ class ResultsMixin:
         raw = (work / "prog.tsir.json").read_bytes()
         cooled = (work / "prog.cooled.tsir.json").read_bytes()
         certb = (work / "prog.qcert.json").read_bytes()
-        d_raw = self.put_artifact(canonical_bytes(strict_loads(raw)), "application/json", "certified program")
-        d_cool = self.put_artifact(canonical_bytes(strict_loads(cooled)), "application/json", "final program (cooled)")
-        d_cert = self.put_artifact(canonical_bytes(strict_loads(certb)), "application/json", "certificate")
-        n_instr = len(strict_loads(cooled).get("instructions", []))
+        d_raw = self.put_artifact(canonical_bytes(strict_loads(raw, PROGRAM_LIMITS)), "application/json", "certified program")
+        d_cool = self.put_artifact(canonical_bytes(strict_loads(cooled, PROGRAM_LIMITS)), "application/json", "final program (cooled)")
+        d_cert = self.put_artifact(canonical_bytes(strict_loads(certb, PROGRAM_LIMITS)), "application/json", "certificate")
+        n_instr = len(strict_loads(cooled, PROGRAM_LIMITS).get("instructions", []))
         final_ref = {"artifact": d_cool, "certified": d_raw, "certificate": d_cert,
                      "compiled_for": r.arch_digest(), "compiler": mode,
                      "board": rel.id, "circuit_digest": rel.manifest["circuit"]["digest"],
@@ -334,9 +340,9 @@ class ResultsMixin:
             raise WorkspaceError("program_for_another_board",
                                  f"the design's program was compiled for another board, not {rel.title}: "
                                  f"compile it for {rel.title} first (submit_design does that)", status=409)
-        prog = strict_loads(self.get_artifact(fp["artifact"]))
-        certified = strict_loads(self.get_artifact(fp["certified"])) if fp.get("certified") else None
-        cert = strict_loads(self.get_artifact(fp["certificate"])) if fp.get("certificate") else None
+        prog = strict_loads(self.get_artifact(fp["artifact"]), PROGRAM_LIMITS)
+        certified = strict_loads(self.get_artifact(fp["certified"]), PROGRAM_LIMITS) if fp.get("certified") else None
+        cert = strict_loads(self.get_artifact(fp["certificate"]), PROGRAM_LIMITS) if fp.get("certificate") else None
         sid = new_id("snap")
         d = self.snapshots_dir / sid
         d.mkdir(parents=True)
@@ -554,7 +560,7 @@ class ResultsMixin:
             try:
                 if self.get_artifact(arts["circuit"]).decode("utf-8").replace("\r\n", "\n") != want:
                     continue
-                n_instr = len(strict_loads(self.get_artifact(arts["program"])).get("instructions", []))
+                n_instr = len(strict_loads(self.get_artifact(arts["program"]), PROGRAM_LIMITS).get("instructions", []))
             except Exception:
                 continue
             ref = {"artifact": arts["program"], "certified": arts["certified"], "certificate": arts["certificate"],
