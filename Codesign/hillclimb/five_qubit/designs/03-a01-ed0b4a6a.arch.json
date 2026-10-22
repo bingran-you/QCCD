@@ -19,44 +19,43 @@
    "generator": "x_junction_grid"
   },
   "max_simd_classes_per_cycle": 1,
-  "model": "simd_classes",
+  "model": "direct",
   "optical": {
    "addressing": "steerable_raman",
    "per_zone_switch": false
   },
   "wiring": {
-   "compensation_electrodes_per_trap": 8,
-   "dacs_dynamic": 3,
+   "dacs_dynamic": 0,
    "electrodes_per_junction": 0,
    "electrodes_per_trap": 24,
-   "scheme": "broadcast_groups",
-   "shim_per_dac": 1
+   "scheme": "direct"
   }
  },
- "description": "a02: 6-trap closed named loop L0 (hexagon), broadcast_groups 51 DACs, climbed caps/flags/order; gates 725, 26 moves",
+ "description": "A floor-proof probe: a 9-ion gate-and-measure trap beside a 1-ion one on one rail, direct control, 48 DACs; the compiler moves ions between them and every later MS of a moved ion pays a cool.",
  "geometry": {
   "generator": "explicit",
-  "loops": [
-   {
-    "closed": true,
-    "id": "L0",
-    "kind": "ring",
-    "nodes": [
-     "T1",
-     "T3",
-     "T5",
-     "T4",
-     "T2",
-     "T0"
-    ]
-   }
-  ],
   "nodes": [
    {
-    "capacity": 6,
+    "capacity": 9,
     "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
+    "corner": false,
+    "degree": 1,
+    "id": "T0",
+    "kind": "site",
+    "labels": [
+     "rail"
+    ],
+    "pos": [
+     0,
+     0
+    ],
+    "zone_type": "G"
+   },
+   {
+    "capacity": 1,
+    "capacity_explicit": true,
+    "corner": false,
+    "degree": 1,
     "id": "T1",
     "kind": "site",
     "labels": [
@@ -66,96 +65,16 @@
      1,
      0
     ],
-    "zone_type": "z0"
-   },
-   {
-    "capacity": 14,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "T3",
-    "kind": "site",
-    "labels": [
-     "rail"
-    ],
-    "pos": [
-     0.5,
-     0.86603
-    ],
-    "zone_type": "z1"
-   },
-   {
-    "capacity": 13,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "T5",
-    "kind": "site",
-    "labels": [
-     "rail"
-    ],
-    "pos": [
-     -0.5,
-     0.86603
-    ],
-    "zone_type": "z2"
-   },
-   {
-    "capacity": 1,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "T4",
-    "kind": "site",
-    "labels": [
-     "rail"
-    ],
-    "pos": [
-     -1,
-     0
-    ],
-    "zone_type": "z3"
-   },
-   {
-    "capacity": 13,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "T2",
-    "kind": "site",
-    "labels": [
-     "rail"
-    ],
-    "pos": [
-     -0.5,
-     -0.86603
-    ],
-    "zone_type": "z4"
-   },
-   {
-    "capacity": 11,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "T0",
-    "kind": "site",
-    "labels": [
-     "rail"
-    ],
-    "pos": [
-     0.5,
-     -0.86603
-    ],
-    "zone_type": "z5"
+    "zone_type": "G"
    }
   ],
   "params": {},
   "segments": [
    {
-    "capacity": 4,
-    "corner_endpoints": 2,
+    "capacity": 2,
+    "corner_endpoints": 0,
     "ends": [
-     "T3",
+     "T0",
      "T1"
     ],
     "id": "E0",
@@ -163,77 +82,7 @@
      "rail"
     ],
     "length": 1,
-    "loop": "L0"
-   },
-   {
-    "capacity": 3,
-    "corner_endpoints": 2,
-    "ends": [
-     "T3",
-     "T5"
-    ],
-    "id": "E1",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": "L0"
-   },
-   {
-    "capacity": 3,
-    "corner_endpoints": 2,
-    "ends": [
-     "T4",
-     "T5"
-    ],
-    "id": "E2",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": "L0"
-   },
-   {
-    "capacity": 4,
-    "corner_endpoints": 2,
-    "ends": [
-     "T2",
-     "T4"
-    ],
-    "id": "E3",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": "L0"
-   },
-   {
-    "capacity": 2,
-    "corner_endpoints": 2,
-    "ends": [
-     "T2",
-     "T0"
-    ],
-    "id": "E4",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": "L0"
-   },
-   {
-    "capacity": 4,
-    "corner_endpoints": 2,
-    "ends": [
-     "T1",
-     "T0"
-    ],
-    "id": "E5",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": "L0"
+    "loop": null
    }
   ]
  },
@@ -242,7 +91,7 @@
   "note": "R17: ndot = S_E(w) e^2 / 4 m hbar w, accruing whether or not the ion moves. Device-specific and unmeasured for the target trap -- q_heating_rate_measurement",
   "source": "2605.25118"
  },
- "name": "hillclimb_five_qubit_05-a02-1024ff5a",
+ "name": "hillclimb_five_qubit_03-a01-ed0b4a6a",
  "primitives": {
   "1q_gate": {
    "fidelity": 0.999975,
@@ -453,41 +302,61 @@
   "sympathetic": true
  },
  "zone_types": {
-  "z0": {
-   "capacity": 6,
+  "G": {
+   "capacity": 8,
    "cool": true,
    "gate": true,
    "spam": true
   },
-  "z1": {
-   "capacity": 14,
+  "Go": {
+   "capacity": 8,
+   "cool": true,
+   "gate": true,
+   "spam": false
+  },
+  "Mo": {
+   "capacity": 8,
+   "cool": true,
+   "gate": false,
+   "spam": true
+  },
+  "S": {
+   "capacity": 8,
+   "cool": true,
+   "gate": false,
+   "spam": false
+  },
+  "ancilla": {
+   "capacity": 8,
    "cool": true,
    "gate": true,
    "spam": true
   },
-  "z2": {
-   "capacity": 13,
+  "data": {
+   "capacity": 8,
    "cool": true,
-   "gate": true,
+   "gate": false,
    "spam": false
   },
-  "z3": {
-   "capacity": 1,
+  "load": {
+   "capacity": 8,
    "cool": true,
-   "gate": true,
-   "spam": false
+   "gate": false,
+   "photoionization": true,
+   "spam": true
   },
-  "z4": {
-   "capacity": 13,
+  "tfactory": {
+   "capacity": 4,
    "cool": true,
    "gate": true,
-   "spam": false
+   "spam": true
   },
-  "z5": {
-   "capacity": 11,
+  "trap": {
+   "capacity": 8,
    "cool": true,
    "gate": true,
-   "spam": false
+   "note": "general-purpose trap: gate, measure and cool all available",
+   "spam": true
   }
  }
 }

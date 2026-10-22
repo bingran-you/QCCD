@@ -6,51 +6,9 @@
   "max_junctions": 200
  },
  "control": {
-  "channels": {
-   "differential": 2,
-   "grouping": "broadcast",
-   "roles": {
-    "junction": 4,
-    "linear_h": 6,
-    "linear_v": 6
-   },
-   "switch_per_site": true
-  },
   "classes": {
    "count": 18,
    "extra": [
-    {
-     "delta": 1,
-     "id": "rotate_cw",
-     "orbit": "L0",
-     "type": "shift"
-    },
-    {
-     "delta": -1,
-     "id": "rotate_ccw",
-     "orbit": "L0",
-     "type": "shift"
-    },
-    {
-     "delta": -1,
-     "entails": [
-      "merge"
-     ],
-     "id": "sort_merge",
-     "note": "one ion of the pair joins the neighbouring chain",
-     "orbit": "L0",
-     "type": "shift"
-    },
-    {
-     "delta": 1,
-     "entails": [
-      "split"
-     ],
-     "id": "sort_split",
-     "note": "the other splits back out; which one realizes the transposition",
-     "orbit": "L0",
-     "type": "shift"
-    },
     {
      "id": "shuttle",
      "note": "one ion, one trap to the next; the lowest common denominator move",
@@ -58,175 +16,72 @@
      "type": "shift"
     }
    ],
-   "generator": "x_junction_grid",
-   "note": "12 directional shifts + 6 directional swaps (JT-SIMD, 2504.17886)"
+   "generator": "x_junction_grid"
   },
-  "intra_inter_exclusive": true,
   "max_simd_classes_per_cycle": 1,
-  "model": "simd_classes",
+  "model": "direct",
   "optical": {
-   "addressing": "global_beam",
-   "per_zone_switch": true
+   "addressing": "steerable_raman",
+   "per_zone_switch": false
   },
   "wiring": {
-   "compensation_electrodes_per_trap": 8,
-   "dacs_dynamic": 3,
-   "electrodes_per_junction": 48,
+   "dacs_dynamic": 0,
+   "electrodes_per_junction": 0,
    "electrodes_per_trap": 24,
-   "note": "O(1) DACs: Cyclone's headline wiring claim",
-   "scheme": "broadcast_groups",
-   "shim_per_dac": 100
+   "scheme": "direct"
   }
  },
- "description": "a03: a01's 6-trap broadcast cycle (1792365795-a01-ceea5d90) with caps/flags re-chosen (S0/S5 cap 3, S1/S2 gate-only); 23 moves, same 1.62 plateau",
+ "description": "A 9-ion gate-and-measure trap (zone G) beside a 4-ion measure-only trap (zone Mo) on one rail, direct control, 48 DACs; the compiler never moves an ion into the second trap.",
  "geometry": {
   "generator": "explicit",
   "nodes": [
    {
-    "capacity": 6,
+    "capacity": 9,
     "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "S3",
+    "corner": false,
+    "degree": 1,
+    "id": "T0",
     "kind": "site",
+    "labels": [
+     "rail"
+    ],
     "pos": [
-     -0.09393555692998834,
-     0.8984320978030188
+     0,
+     0
     ],
     "zone_type": "G"
    },
    {
-    "capacity": 8,
+    "capacity": 4,
     "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "S4",
+    "corner": false,
+    "degree": 1,
+    "id": "T1",
     "kind": "site",
-    "pos": [
-     -0.5978979713799412,
-     -0.06016565490831116
+    "labels": [
+     "rail"
     ],
-    "zone_type": "G"
-   },
-   {
-    "capacity": 7,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "S1",
-    "kind": "site",
-    "pos": [
-     2.462910762877105,
-     1.3846689118682385
-    ],
-    "zone_type": "Go"
-   },
-   {
-    "capacity": 3,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "S5",
-    "kind": "site",
-    "pos": [
-     1.7545859882612813,
-     0.8995076872375144
-    ],
-    "zone_type": "G"
-   },
-   {
-    "capacity": 6,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "S2",
-    "kind": "site",
-    "pos": [
-     1.5049742072779568,
-     0.393654933454742
-    ],
-    "zone_type": "Go"
-   },
-   {
-    "capacity": 3,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "S0",
-    "kind": "site",
     "pos": [
      1,
      0
     ],
-    "zone_type": "G"
+    "zone_type": "Mo"
    }
   ],
   "params": {},
   "segments": [
    {
-    "capacity": 3,
+    "capacity": 2,
     "corner_endpoints": 0,
     "ends": [
-     "S2",
-     "S0"
-    ],
-    "id": "E1",
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 3,
-    "corner_endpoints": 0,
-    "ends": [
-     "S5",
-     "S2"
-    ],
-    "id": "E2",
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 3,
-    "corner_endpoints": 0,
-    "ends": [
-     "S5",
-     "S1"
-    ],
-    "id": "E3",
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 3,
-    "corner_endpoints": 0,
-    "ends": [
-     "S0",
-     "S4"
+     "T0",
+     "T1"
     ],
     "id": "E0",
-    "length": 2,
-    "loop": null
-   },
-   {
-    "capacity": 4,
-    "corner_endpoints": 0,
-    "ends": [
-     "S3",
-     "S4"
+    "labels": [
+     "rail"
     ],
-    "id": "E5",
-    "length": 2,
-    "loop": null
-   },
-   {
-    "capacity": 4,
-    "corner_endpoints": 0,
-    "ends": [
-     "S3",
-     "S1"
-    ],
-    "id": "E4",
-    "length": 0.5,
+    "length": 1,
     "loop": null
    }
   ]
@@ -236,7 +91,7 @@
   "note": "R17: ndot = S_E(w) e^2 / 4 m hbar w, accruing whether or not the ion moves. Device-specific and unmeasured for the target trap -- q_heating_rate_measurement",
   "source": "2605.25118"
  },
- "name": "hillclimb_five_qubit_04-a03-69e96537",
+ "name": "hillclimb_five_qubit_02-a01-d9a20575",
  "primitives": {
   "1q_gate": {
    "fidelity": 0.999975,
@@ -501,12 +356,6 @@
    "cool": true,
    "gate": true,
    "note": "general-purpose trap: gate, measure and cool all available",
-   "spam": true
-  },
-  "trap4": {
-   "capacity": 4,
-   "cool": true,
-   "gate": true,
    "spam": true
   }
  }
