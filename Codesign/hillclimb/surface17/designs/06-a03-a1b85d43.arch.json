@@ -31,113 +31,99 @@
    "scheme": "direct"
   }
  },
- "description": "a05: SA (local qccdc) from my 1.590 5-cycle: ring S0-S1-S4-S2-S3, caps 9/2/5/3/3, all gate+spam, segcaps 1-4, direct control, no named loop",
+ "description": "Straight path of 5 traps T0..T4 (capacities 3/1/1/15/2, zones S/G/G/G/S, rails of capacity 2/2/2/4, direct control and wiring, 120 DACs) on which q8 and q12 wait alone in T1 and T2, every CX runs in the 15-ion trap T3, and the finished q0 and q1 are evicted to the storage trap T4 so that q12 and q8 can enter; the placement, and so the score, depends on which trap gets which id.",
  "geometry": {
   "generator": "explicit",
   "nodes": [
    {
     "capacity": 3,
     "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "S2",
+    "corner": false,
+    "degree": 1,
+    "id": "T0",
     "kind": "site",
     "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
-     0.927,
-     -2.853
+     0,
+     0
     ],
-    "zone_type": "register"
+    "zone_type": "S"
    },
    {
-    "capacity": 2,
+    "capacity": 1,
     "capacity_explicit": true,
-    "corner": true,
+    "corner": false,
     "degree": 2,
-    "id": "S1",
+    "id": "T1",
     "kind": "site",
     "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
-     -2.427,
-     1.763
+     1,
+     0
     ],
-    "zone_type": "register"
+    "zone_type": "G"
    },
    {
-    "capacity": 9,
+    "capacity": 1,
     "capacity_explicit": true,
-    "corner": true,
+    "corner": false,
     "degree": 2,
-    "id": "S0",
+    "id": "T2",
     "kind": "site",
     "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
-     0.927,
-     2.853
+     2,
+     0
     ],
-    "zone_type": "register"
+    "zone_type": "G"
    },
    {
-    "capacity": 3,
+    "capacity": 15,
     "capacity_explicit": true,
-    "corner": true,
+    "corner": false,
     "degree": 2,
-    "id": "S3",
+    "id": "T3",
     "kind": "site",
     "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
      3,
      0
     ],
-    "zone_type": "register"
+    "zone_type": "G"
    },
    {
-    "capacity": 5,
+    "capacity": 2,
     "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "S4",
+    "corner": false,
+    "degree": 1,
+    "id": "T4",
     "kind": "site",
     "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
-     -2.427,
-     -1.763
+     4,
+     0
     ],
-    "zone_type": "register"
+    "zone_type": "S"
    }
   ],
   "params": {},
   "segments": [
    {
-    "capacity": 3,
+    "capacity": 2,
     "corner_endpoints": 0,
     "ends": [
-     "S4",
-     "S2"
-    ],
-    "id": "E3",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 3,
-    "corner_endpoints": 0,
-    "ends": [
-     "S0",
-     "S3"
+     "T0",
+     "T1"
     ],
     "id": "E0",
     "labels": [
@@ -147,11 +133,11 @@
     "loop": null
    },
    {
-    "capacity": 1,
+    "capacity": 2,
     "corner_endpoints": 0,
     "ends": [
-     "S0",
-     "S1"
+     "T1",
+     "T2"
     ],
     "id": "E1",
     "labels": [
@@ -161,13 +147,13 @@
     "loop": null
    },
    {
-    "capacity": 4,
+    "capacity": 2,
     "corner_endpoints": 0,
     "ends": [
-     "S3",
-     "S2"
+     "T2",
+     "T3"
     ],
-    "id": "E4",
+    "id": "E2",
     "labels": [
      "rail"
     ],
@@ -178,10 +164,10 @@
     "capacity": 4,
     "corner_endpoints": 0,
     "ends": [
-     "S4",
-     "S1"
+     "T3",
+     "T4"
     ],
-    "id": "E2",
+    "id": "E3",
     "labels": [
      "rail"
     ],
@@ -195,7 +181,7 @@
   "note": "R17: ndot = S_E(w) e^2 / 4 m hbar w, accruing whether or not the ion moves. Device-specific and unmeasured for the target trap -- q_heating_rate_measurement",
   "source": "2605.25118"
  },
- "name": "hillclimb_surface17_07-a05-314e4fe0",
+ "name": "hillclimb_surface17_06-a03-a1b85d43",
  "primitives": {
   "1q_gate": {
    "fidelity": 0.999975,
@@ -406,22 +392,40 @@
   "sympathetic": true
  },
  "zone_types": {
+  "G": {
+   "capacity": 8,
+   "cool": true,
+   "gate": true,
+   "spam": true
+  },
+  "Go": {
+   "capacity": 8,
+   "cool": true,
+   "gate": true,
+   "spam": false
+  },
+  "Mo": {
+   "capacity": 8,
+   "cool": true,
+   "gate": false,
+   "spam": true
+  },
+  "S": {
+   "capacity": 8,
+   "cool": true,
+   "gate": false,
+   "spam": false
+  },
   "ancilla": {
-   "capacity": 2,
+   "capacity": 8,
    "cool": true,
    "gate": true,
    "spam": true
   },
   "data": {
-   "capacity": 2,
-   "cool": true,
-   "gate": false,
-   "spam": false
-  },
-  "gonly": {
    "capacity": 8,
    "cool": true,
-   "gate": true,
+   "gate": false,
    "spam": false
   },
   "load": {
@@ -431,25 +435,6 @@
    "photoionization": true,
    "spam": true
   },
-  "register": {
-   "capacity": 8,
-   "cool": true,
-   "gate": true,
-   "note": "one long chain; gate time degrades sharply above ~15 ions (R13)",
-   "spam": true
-  },
-  "sonly": {
-   "capacity": 8,
-   "cool": true,
-   "gate": false,
-   "spam": true
-  },
-  "store": {
-   "capacity": 8,
-   "cool": true,
-   "gate": false,
-   "spam": false
-  },
   "tfactory": {
    "capacity": 4,
    "cool": true,
@@ -457,7 +442,7 @@
    "spam": true
   },
   "trap": {
-   "capacity": 2,
+   "capacity": 8,
    "cool": true,
    "gate": true,
    "note": "general-purpose trap: gate, measure and cool all available",

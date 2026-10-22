@@ -6,6 +6,16 @@
   "max_junctions": 200
  },
  "control": {
+  "channels": {
+   "differential": 2,
+   "grouping": "broadcast",
+   "roles": {
+    "junction": 4,
+    "linear_h": 6,
+    "linear_v": 6
+   },
+   "switch_per_site": true
+  },
   "classes": {
    "count": 18,
    "extra": [
@@ -16,104 +26,109 @@
      "type": "shift"
     }
    ],
-   "generator": "x_junction_grid"
+   "generator": "x_junction_grid",
+   "note": "12 directional shifts + 6 directional swaps (JT-SIMD, 2504.17886)"
   },
+  "intra_inter_exclusive": true,
   "max_simd_classes_per_cycle": 1,
-  "model": "direct",
+  "model": "simd_classes",
   "optical": {
-   "addressing": "steerable_raman",
-   "per_zone_switch": false
+   "addressing": "global_beam",
+   "per_zone_switch": true
   },
   "wiring": {
-   "dacs_dynamic": 0,
-   "electrodes_per_junction": 0,
+   "compensation_electrodes_per_trap": 8,
+   "dacs_dynamic": 3,
+   "electrodes_per_junction": 48,
    "electrodes_per_trap": 24,
-   "scheme": "direct"
+   "note": "O(1) DACs: Cyclone's headline wiring claim",
+   "scheme": "broadcast_groups",
+   "shim_per_dac": 100
   }
  },
- "description": "a08: 5-trap cycle TA5-TJ2-TI11-TE3-TF3, all general-purpose traps, direct control, no named loop; found from random restarts of device annealing (x_fast5), independent of a06's",
+ "description": "Straight path of 5 traps T0..T4 (capacities 1/1/1/15/2, zones G/G/G/G/S, rails of capacity 2, shared control with broadcast_groups wiring, 33 DACs) that runs the same program as the direct-control version of this path: q8 and q12 wait alone in T1 and T2, every CX runs in the 15-ion trap T3, and the finished q0 and q1 are evicted to the storage trap T4; the placement, and so the score, depends on which trap gets which id.",
  "geometry": {
   "generator": "explicit",
   "nodes": [
    {
-    "capacity": 3,
+    "capacity": 1,
     "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "TF",
+    "corner": false,
+    "degree": 1,
+    "id": "T0",
     "kind": "site",
     "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
-     0.309017,
-     -0.951057
+     0,
+     0
     ],
-    "zone_type": "register"
+    "zone_type": "G"
    },
    {
-    "capacity": 3,
+    "capacity": 1,
     "capacity_explicit": true,
-    "corner": true,
+    "corner": false,
     "degree": 2,
-    "id": "TE",
+    "id": "T1",
     "kind": "site",
     "labels": [
-     "trap"
-    ],
-    "pos": [
-     -0.809017,
-     -0.587785
-    ],
-    "zone_type": "register"
-   },
-   {
-    "capacity": 11,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "TI",
-    "kind": "site",
-    "labels": [
-     "trap"
-    ],
-    "pos": [
-     -0.809017,
-     0.587785
-    ],
-    "zone_type": "register"
-   },
-   {
-    "capacity": 2,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "TJ",
-    "kind": "site",
-    "labels": [
-     "trap"
-    ],
-    "pos": [
-     0.309017,
-     0.951057
-    ],
-    "zone_type": "register"
-   },
-   {
-    "capacity": 5,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "TA",
-    "kind": "site",
-    "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
      1,
      0
     ],
-    "zone_type": "register"
+    "zone_type": "G"
+   },
+   {
+    "capacity": 1,
+    "capacity_explicit": true,
+    "corner": false,
+    "degree": 2,
+    "id": "T2",
+    "kind": "site",
+    "labels": [
+     "rail"
+    ],
+    "pos": [
+     2,
+     0
+    ],
+    "zone_type": "G"
+   },
+   {
+    "capacity": 15,
+    "capacity_explicit": true,
+    "corner": false,
+    "degree": 2,
+    "id": "T3",
+    "kind": "site",
+    "labels": [
+     "rail"
+    ],
+    "pos": [
+     3,
+     0
+    ],
+    "zone_type": "G"
+   },
+   {
+    "capacity": 2,
+    "capacity_explicit": true,
+    "corner": false,
+    "degree": 1,
+    "id": "T4",
+    "kind": "site",
+    "labels": [
+     "rail"
+    ],
+    "pos": [
+     4,
+     0
+    ],
+    "zone_type": "S"
    }
   ],
   "params": {},
@@ -122,8 +137,8 @@
     "capacity": 2,
     "corner_endpoints": 0,
     "ends": [
-     "TA",
-     "TJ"
+     "T0",
+     "T1"
     ],
     "id": "E0",
     "labels": [
@@ -136,38 +151,10 @@
     "capacity": 2,
     "corner_endpoints": 0,
     "ends": [
-     "TJ",
-     "TI"
+     "T1",
+     "T2"
     ],
     "id": "E1",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 3,
-    "corner_endpoints": 0,
-    "ends": [
-     "TI",
-     "TE"
-    ],
-    "id": "E2",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 3,
-    "corner_endpoints": 0,
-    "ends": [
-     "TE",
-     "TF"
-    ],
-    "id": "E3",
     "labels": [
      "rail"
     ],
@@ -178,10 +165,24 @@
     "capacity": 2,
     "corner_endpoints": 0,
     "ends": [
-     "TF",
-     "TA"
+     "T2",
+     "T3"
     ],
-    "id": "E4",
+    "id": "E2",
+    "labels": [
+     "rail"
+    ],
+    "length": 1,
+    "loop": null
+   },
+   {
+    "capacity": 2,
+    "corner_endpoints": 0,
+    "ends": [
+     "T3",
+     "T4"
+    ],
+    "id": "E3",
     "labels": [
      "rail"
     ],
@@ -195,7 +196,7 @@
   "note": "R17: ndot = S_E(w) e^2 / 4 m hbar w, accruing whether or not the ion moves. Device-specific and unmeasured for the target trap -- q_heating_rate_measurement",
   "source": "2605.25118"
  },
- "name": "hillclimb_surface17_08-a08-514dae97",
+ "name": "hillclimb_surface17_07-a04-ad9eb3a1",
  "primitives": {
   "1q_gate": {
    "fidelity": 0.999975,
@@ -406,61 +407,17 @@
   "sympathetic": true
  },
  "zone_types": {
-  "ancilla": {
-   "capacity": 2,
+  "G": {
+   "capacity": 8,
    "cool": true,
    "gate": true,
    "spam": true
   },
-  "data": {
-   "capacity": 2,
-   "cool": true,
-   "gate": false,
-   "spam": false
-  },
-  "gonly": {
-   "capacity": 15,
-   "cool": true,
-   "gate": true,
-   "spam": false
-  },
-  "load": {
+  "S": {
    "capacity": 8,
    "cool": true,
    "gate": false,
-   "photoionization": true,
-   "spam": true
-  },
-  "monly": {
-   "capacity": 15,
-   "cool": true,
-   "gate": false,
-   "spam": true
-  },
-  "register": {
-   "capacity": 15,
-   "cool": true,
-   "gate": true,
-   "spam": true
-  },
-  "store": {
-   "capacity": 15,
-   "cool": true,
-   "gate": false,
    "spam": false
-  },
-  "tfactory": {
-   "capacity": 4,
-   "cool": true,
-   "gate": true,
-   "spam": true
-  },
-  "trap": {
-   "capacity": 2,
-   "cool": true,
-   "gate": true,
-   "note": "general-purpose trap: gate, measure and cool all available",
-   "spam": true
   }
  }
 }

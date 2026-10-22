@@ -20,60 +20,6 @@
    "count": 18,
    "extra": [
     {
-     "delta": 1,
-     "id": "rotate_cw",
-     "note": "the single movement template rigid rotation needs (PLAN \u00a71)",
-     "orbit": "L0",
-     "type": "shift"
-    },
-    {
-     "delta": -1,
-     "id": "rotate_ccw",
-     "orbit": "L0",
-     "type": "shift"
-    },
-    {
-     "direction": "inward",
-     "entails": [
-      "split",
-      "merge"
-     ],
-     "id": "dock",
-     "note": "lifts one ion out of the rail's potential and inserts it into the ancilla trap: split at the source, merge at the destination. A conveyor-belt rotation entails neither -- the whole chain moves with the potential (2305.03828)",
-     "orbit": "spurs",
-     "type": "shift"
-    },
-    {
-     "direction": "outward",
-     "entails": [
-      "split",
-      "merge"
-     ],
-     "id": "undock",
-     "orbit": "spurs",
-     "type": "shift"
-    },
-    {
-     "delta": -1,
-     "entails": [
-      "merge"
-     ],
-     "id": "sort_merge",
-     "note": "one ion of the pair joins the neighbouring chain",
-     "orbit": "L0",
-     "type": "shift"
-    },
-    {
-     "delta": 1,
-     "entails": [
-      "split"
-     ],
-     "id": "sort_split",
-     "note": "the other splits back out; which one realizes the transposition",
-     "orbit": "L0",
-     "type": "shift"
-    },
-    {
      "id": "shuttle",
      "note": "one ion, one trap to the next; the lowest common denominator move",
      "orbit": "any",
@@ -92,361 +38,305 @@
   },
   "wiring": {
    "compensation_electrodes_per_trap": 8,
-   "dacs_dynamic": 100,
+   "dacs_dynamic": 3,
    "electrodes_per_junction": 48,
    "electrodes_per_trap": 24,
-   "scheme": "wise",
+   "note": "O(1) DACs: Cyclone's headline wiring claim",
+   "scheme": "broadcast_groups",
    "shim_per_dac": 100
   }
  },
+ "description": "Straight path of 10 traps T0..T9 (capacities 1/1/1/1/1/1/15/2/2/2, zones S/S/Mo/G/G/Mo/G/Mo/Mo/S, shared control with broadcast_groups wiring, 33 DACs) on which q8 and q12 wait alone in T3 and T4, every CX runs in the 15-ion trap T6, and the finished q0 and q1 walk three hops to the storage trap T9; the empty traps make T4 the unique most central trap, so no id tie decides the placement, and the score was the same under every id labeling tried.",
  "geometry": {
-  "generator": "grid",
+  "generator": "explicit",
   "nodes": [
    {
-    "corner": true,
-    "degree": 2,
-    "id": "J0_0",
-    "kind": "junction",
+    "capacity": 1,
+    "capacity_explicit": true,
+    "corner": false,
+    "degree": 1,
+    "id": "T0",
+    "kind": "site",
     "labels": [
-     "lattice"
+     "rail"
     ],
     "pos": [
      0,
      0
-    ]
+    ],
+    "zone_type": "S"
    },
    {
+    "capacity": 1,
+    "capacity_explicit": true,
     "corner": false,
-    "degree": 3,
-    "id": "J0_1",
-    "kind": "junction",
-    "labels": [
-     "lattice"
-    ],
-    "pos": [
-     0,
-     1
-    ]
-   },
-   {
-    "corner": true,
     "degree": 2,
-    "id": "J0_2",
-    "kind": "junction",
+    "id": "T1",
+    "kind": "site",
     "labels": [
-     "lattice"
-    ],
-    "pos": [
-     0,
-     2
-    ]
-   },
-   {
-    "corner": true,
-    "degree": 2,
-    "id": "J1_0",
-    "kind": "junction",
-    "labels": [
-     "lattice"
+     "rail"
     ],
     "pos": [
      1,
      0
-    ]
-   },
-   {
-    "corner": false,
-    "degree": 3,
-    "id": "J1_1",
-    "kind": "junction",
-    "labels": [
-     "lattice"
     ],
-    "pos": [
-     1,
-     1
-    ]
+    "zone_type": "S"
    },
    {
-    "corner": true,
-    "degree": 2,
-    "id": "J1_2",
-    "kind": "junction",
-    "labels": [
-     "lattice"
-    ],
-    "pos": [
-     1,
-     2
-    ]
-   },
-   {
-    "capacity": 4,
+    "capacity": 1,
+    "capacity_explicit": true,
     "corner": false,
     "degree": 2,
-    "id": "T0_0h",
+    "id": "T2",
     "kind": "site",
     "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
-     0.5,
+     2,
      0
     ],
-    "zone_type": "trap"
+    "zone_type": "Mo"
    },
    {
-    "capacity": 4,
+    "capacity": 1,
+    "capacity_explicit": true,
     "corner": false,
     "degree": 2,
-    "id": "T0_1h",
+    "id": "T3",
     "kind": "site",
     "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
-     0.5,
-     1
+     3,
+     0
     ],
-    "zone_type": "trap"
+    "zone_type": "G"
    },
    {
-    "capacity": 4,
+    "capacity": 1,
+    "capacity_explicit": true,
     "corner": false,
     "degree": 2,
-    "id": "T0_2h",
+    "id": "T4",
     "kind": "site",
     "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
-     0.5,
-     2
+     4,
+     0
     ],
-    "zone_type": "trap"
+    "zone_type": "G"
    },
    {
-    "capacity": 4,
+    "capacity": 1,
+    "capacity_explicit": true,
     "corner": false,
     "degree": 2,
-    "id": "T0_0v",
+    "id": "T5",
     "kind": "site",
     "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
-     0,
-     0.5
+     5,
+     0
     ],
-    "zone_type": "trap"
+    "zone_type": "Mo"
    },
    {
-    "capacity": 4,
+    "capacity": 15,
+    "capacity_explicit": true,
     "corner": false,
     "degree": 2,
-    "id": "T0_1v",
+    "id": "T6",
     "kind": "site",
     "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
-     0,
-     1.5
+     6,
+     0
     ],
-    "zone_type": "trap"
+    "zone_type": "G"
    },
    {
-    "capacity": 4,
+    "capacity": 2,
+    "capacity_explicit": true,
     "corner": false,
     "degree": 2,
-    "id": "T1_0v",
+    "id": "T7",
     "kind": "site",
     "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
-     1,
-     0.5
+     7,
+     0
     ],
-    "zone_type": "trap"
+    "zone_type": "Mo"
    },
    {
-    "capacity": 4,
+    "capacity": 2,
+    "capacity_explicit": true,
     "corner": false,
     "degree": 2,
-    "id": "T1_1v",
+    "id": "T8",
     "kind": "site",
     "labels": [
-     "trap"
+     "rail"
     ],
     "pos": [
-     1,
-     1.5
+     8,
+     0
     ],
-    "zone_type": "trap"
+    "zone_type": "Mo"
+   },
+   {
+    "capacity": 2,
+    "capacity_explicit": true,
+    "corner": false,
+    "degree": 1,
+    "id": "T9",
+    "kind": "site",
+    "labels": [
+     "rail"
+    ],
+    "pos": [
+     9,
+     0
+    ],
+    "zone_type": "S"
    }
   ],
-  "params": {
-   "a": 2,
-   "b": 3,
-   "periodic": false,
-   "segment_capacity": 1,
-   "site_zone": "trap",
-   "spacing": 1
-  },
+  "params": {},
   "segments": [
    {
     "capacity": 1,
     "corner_endpoints": 0,
     "ends": [
-     "J0_0",
-     "T0_0h"
+     "T0",
+     "T1"
     ],
-    "id": "T0_0h.a",
-    "length": 0.5,
+    "id": "E0",
+    "labels": [
+     "rail"
+    ],
+    "length": 1,
+    "loop": null
+   },
+   {
+    "capacity": 2,
+    "corner_endpoints": 0,
+    "ends": [
+     "T1",
+     "T2"
+    ],
+    "id": "E1",
+    "labels": [
+     "rail"
+    ],
+    "length": 1,
+    "loop": null
+   },
+   {
+    "capacity": 2,
+    "corner_endpoints": 0,
+    "ends": [
+     "T2",
+     "T3"
+    ],
+    "id": "E2",
+    "labels": [
+     "rail"
+    ],
+    "length": 1,
+    "loop": null
+   },
+   {
+    "capacity": 2,
+    "corner_endpoints": 0,
+    "ends": [
+     "T3",
+     "T4"
+    ],
+    "id": "E3",
+    "labels": [
+     "rail"
+    ],
+    "length": 1,
+    "loop": null
+   },
+   {
+    "capacity": 2,
+    "corner_endpoints": 0,
+    "ends": [
+     "T4",
+     "T5"
+    ],
+    "id": "E4",
+    "labels": [
+     "rail"
+    ],
+    "length": 1,
     "loop": null
    },
    {
     "capacity": 1,
     "corner_endpoints": 0,
     "ends": [
-     "T0_0h",
-     "J1_0"
+     "T5",
+     "T6"
     ],
-    "id": "T0_0h.b",
-    "length": 0.5,
+    "id": "E5",
+    "labels": [
+     "rail"
+    ],
+    "length": 1,
     "loop": null
    },
    {
     "capacity": 1,
     "corner_endpoints": 0,
     "ends": [
-     "J0_1",
-     "T0_1h"
+     "T6",
+     "T7"
     ],
-    "id": "T0_1h.a",
-    "length": 0.5,
+    "id": "E6",
+    "labels": [
+     "rail"
+    ],
+    "length": 1,
+    "loop": null
+   },
+   {
+    "capacity": 2,
+    "corner_endpoints": 0,
+    "ends": [
+     "T7",
+     "T8"
+    ],
+    "id": "E7",
+    "labels": [
+     "rail"
+    ],
+    "length": 1,
     "loop": null
    },
    {
     "capacity": 1,
     "corner_endpoints": 0,
     "ends": [
-     "T0_1h",
-     "J1_1"
+     "T8",
+     "T9"
     ],
-    "id": "T0_1h.b",
-    "length": 0.5,
-    "loop": null
-   },
-   {
-    "capacity": 1,
-    "corner_endpoints": 0,
-    "ends": [
-     "J0_2",
-     "T0_2h"
+    "id": "E8",
+    "labels": [
+     "rail"
     ],
-    "id": "T0_2h.a",
-    "length": 0.5,
-    "loop": null
-   },
-   {
-    "capacity": 1,
-    "corner_endpoints": 0,
-    "ends": [
-     "T0_2h",
-     "J1_2"
-    ],
-    "id": "T0_2h.b",
-    "length": 0.5,
-    "loop": null
-   },
-   {
-    "capacity": 1,
-    "corner_endpoints": 0,
-    "ends": [
-     "J0_0",
-     "T0_0v"
-    ],
-    "id": "T0_0v.a",
-    "length": 0.5,
-    "loop": null
-   },
-   {
-    "capacity": 1,
-    "corner_endpoints": 0,
-    "ends": [
-     "T0_0v",
-     "J0_1"
-    ],
-    "id": "T0_0v.b",
-    "length": 0.5,
-    "loop": null
-   },
-   {
-    "capacity": 1,
-    "corner_endpoints": 0,
-    "ends": [
-     "J0_1",
-     "T0_1v"
-    ],
-    "id": "T0_1v.a",
-    "length": 0.5,
-    "loop": null
-   },
-   {
-    "capacity": 1,
-    "corner_endpoints": 0,
-    "ends": [
-     "T0_1v",
-     "J0_2"
-    ],
-    "id": "T0_1v.b",
-    "length": 0.5,
-    "loop": null
-   },
-   {
-    "capacity": 1,
-    "corner_endpoints": 0,
-    "ends": [
-     "J1_0",
-     "T1_0v"
-    ],
-    "id": "T1_0v.a",
-    "length": 0.5,
-    "loop": null
-   },
-   {
-    "capacity": 1,
-    "corner_endpoints": 0,
-    "ends": [
-     "T1_0v",
-     "J1_1"
-    ],
-    "id": "T1_0v.b",
-    "length": 0.5,
-    "loop": null
-   },
-   {
-    "capacity": 1,
-    "corner_endpoints": 0,
-    "ends": [
-     "J1_1",
-     "T1_1v"
-    ],
-    "id": "T1_1v.a",
-    "length": 0.5,
-    "loop": null
-   },
-   {
-    "capacity": 1,
-    "corner_endpoints": 0,
-    "ends": [
-     "T1_1v",
-     "J1_2"
-    ],
-    "id": "T1_1v.b",
-    "length": 0.5,
+    "length": 1,
     "loop": null
    }
   ]
@@ -456,7 +346,7 @@
   "note": "R17: ndot = S_E(w) e^2 / 4 m hbar w, accruing whether or not the ion moves. Device-specific and unmeasured for the target trap -- q_heating_rate_measurement",
   "source": "2605.25118"
  },
- "name": "hillclimb_surface17_62-a06-a4fba55e",
+ "name": "hillclimb_surface17_08-a01-cbd1eaa8",
  "primitives": {
   "1q_gate": {
    "fidelity": 0.999975,
@@ -667,14 +557,38 @@
   "sympathetic": true
  },
  "zone_types": {
+  "G": {
+   "capacity": 8,
+   "cool": true,
+   "gate": true,
+   "spam": true
+  },
+  "Go": {
+   "capacity": 8,
+   "cool": true,
+   "gate": true,
+   "spam": false
+  },
+  "Mo": {
+   "capacity": 8,
+   "cool": true,
+   "gate": false,
+   "spam": true
+  },
+  "S": {
+   "capacity": 8,
+   "cool": true,
+   "gate": false,
+   "spam": false
+  },
   "ancilla": {
-   "capacity": 4,
+   "capacity": 8,
    "cool": true,
    "gate": true,
    "spam": true
   },
   "data": {
-   "capacity": 4,
+   "capacity": 8,
    "cool": true,
    "gate": false,
    "spam": false
@@ -693,12 +607,11 @@
    "spam": true
   },
   "trap": {
-   "capacity": 4,
+   "capacity": 8,
    "cool": true,
    "gate": true,
    "note": "general-purpose trap: gate, measure and cool all available",
    "spam": true
   }
- },
- "description": "a06 grid(2,3) cap4"
+ }
 }

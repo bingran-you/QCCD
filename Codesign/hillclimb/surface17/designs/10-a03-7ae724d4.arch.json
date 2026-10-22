@@ -31,78 +31,67 @@
    "scheme": "direct"
   }
  },
+ "description": "Straight path of 3 traps T0..T2 (capacities 15/2/1, all zones G, rails of capacity 4, direct control and wiring, 72 DACs) on which 15 ions start in T0 and q8 and q12 in T1, and the router makes 6 one-ion moves in 4 transport instructions with 4 cools after the state-prep cool; the score depends on which trap gets which id.",
  "geometry": {
   "generator": "explicit",
   "nodes": [
    {
-    "capacity": 3,
-    "corner": true,
-    "degree": 2,
-    "id": "S2",
+    "capacity": 15,
+    "capacity_explicit": true,
+    "corner": false,
+    "degree": 1,
+    "id": "T0",
     "kind": "site",
-    "pos": [
-     0.309017,
-     -0.951057
+    "labels": [
+     "rail"
     ],
-    "zone_type": "trap3"
+    "pos": [
+     0,
+     0
+    ],
+    "zone_type": "G"
    },
    {
     "capacity": 2,
-    "corner": true,
+    "capacity_explicit": true,
+    "corner": false,
     "degree": 2,
-    "id": "S3",
+    "id": "T1",
     "kind": "site",
-    "pos": [
-     -0.809017,
-     0.587785
+    "labels": [
+     "rail"
     ],
-    "zone_type": "trap2"
-   },
-   {
-    "capacity": 3,
-    "corner": true,
-    "degree": 2,
-    "id": "S4",
-    "kind": "site",
     "pos": [
      1,
      0
     ],
-    "zone_type": "trap3"
+    "zone_type": "G"
    },
    {
-    "capacity": 12,
-    "corner": true,
-    "degree": 2,
-    "id": "S1",
+    "capacity": 1,
+    "capacity_explicit": true,
+    "corner": false,
+    "degree": 1,
+    "id": "T2",
     "kind": "site",
-    "pos": [
-     0.309017,
-     0.951057
+    "labels": [
+     "rail"
     ],
-    "zone_type": "trap12"
-   },
-   {
-    "capacity": 5,
-    "corner": true,
-    "degree": 2,
-    "id": "S0",
-    "kind": "site",
     "pos": [
-     -0.809017,
-     -0.587785
+     2,
+     0
     ],
-    "zone_type": "trap5"
+    "zone_type": "G"
    }
   ],
   "params": {},
   "segments": [
    {
-    "capacity": 3,
+    "capacity": 4,
     "corner_endpoints": 0,
     "ends": [
-     "S4",
-     "S1"
+     "T0",
+     "T1"
     ],
     "id": "E0",
     "labels": [
@@ -112,55 +101,13 @@
     "loop": null
    },
    {
-    "capacity": 3,
+    "capacity": 4,
     "corner_endpoints": 0,
     "ends": [
-     "S1",
-     "S3"
+     "T1",
+     "T2"
     ],
     "id": "E1",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 1,
-    "corner_endpoints": 0,
-    "ends": [
-     "S3",
-     "S0"
-    ],
-    "id": "E2",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 2,
-    "corner_endpoints": 0,
-    "ends": [
-     "S0",
-     "S2"
-    ],
-    "id": "E3",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 3,
-    "corner_endpoints": 0,
-    "ends": [
-     "S2",
-     "S4"
-    ],
-    "id": "E4",
     "labels": [
      "rail"
     ],
@@ -174,7 +121,7 @@
   "note": "R17: ndot = S_E(w) e^2 / 4 m hbar w, accruing whether or not the ion moves. Device-specific and unmeasured for the target trap -- q_heating_rate_measurement",
   "source": "2605.25118"
  },
- "name": "hillclimb_surface17_06-a09-b7294b0b",
+ "name": "hillclimb_surface17_10-a03-7ae724d4",
  "primitives": {
   "1q_gate": {
    "fidelity": 0.999975,
@@ -385,22 +332,40 @@
   "sympathetic": true
  },
  "zone_types": {
+  "G": {
+   "capacity": 8,
+   "cool": true,
+   "gate": true,
+   "spam": true
+  },
+  "Go": {
+   "capacity": 8,
+   "cool": true,
+   "gate": true,
+   "spam": false
+  },
+  "Mo": {
+   "capacity": 8,
+   "cool": true,
+   "gate": false,
+   "spam": true
+  },
+  "S": {
+   "capacity": 8,
+   "cool": true,
+   "gate": false,
+   "spam": false
+  },
   "ancilla": {
-   "capacity": 2,
+   "capacity": 8,
    "cool": true,
    "gate": true,
    "spam": true
   },
   "data": {
-   "capacity": 2,
-   "cool": true,
-   "gate": false,
-   "spam": false
-  },
-  "gateonly": {
    "capacity": 8,
    "cool": true,
-   "gate": true,
+   "gate": false,
    "spam": false
   },
   "load": {
@@ -409,18 +374,6 @@
    "gate": false,
    "photoionization": true,
    "spam": true
-  },
-  "spamonly": {
-   "capacity": 8,
-   "cool": true,
-   "gate": false,
-   "spam": true
-  },
-  "store": {
-   "capacity": 8,
-   "cool": true,
-   "gate": false,
-   "spam": false
   },
   "tfactory": {
    "capacity": 4,
@@ -434,37 +387,6 @@
    "gate": true,
    "note": "general-purpose trap: gate, measure and cool all available",
    "spam": true
-  },
-  "trap12": {
-   "capacity": 12,
-   "cool": true,
-   "gate": true,
-   "spam": true
-  },
-  "trap2": {
-   "capacity": 2,
-   "cool": true,
-   "gate": true,
-   "spam": true
-  },
-  "trap3": {
-   "capacity": 3,
-   "cool": true,
-   "gate": true,
-   "spam": true
-  },
-  "trap5": {
-   "capacity": 5,
-   "cool": true,
-   "gate": true,
-   "spam": true
-  },
-  "trap6": {
-   "capacity": 6,
-   "cool": true,
-   "gate": true,
-   "spam": true
   }
- },
- "description": "a09: 5-trap cycle caps [3,12,2,5,3] (one zone type per cap), all gate+spam, direct control, no loop, segcaps [3,3,1,2,3], node order/ids from simulated annealing on an exact 40ms qccdc proxy (tools/ufast.py)"
+ }
 }
