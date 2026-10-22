@@ -31,171 +31,36 @@
    "scheme": "direct"
   }
  },
- "description": "a01: cyc5 climb from frontier (caps/zones/seg caps/order/ids), 15 moves",
+ "description": "One trap that can gate, read out and cool, holding all 13 ions (capacity 13), direct wiring with 24 DACs; nothing moves, so no cool is inserted.",
  "geometry": {
   "generator": "explicit",
   "nodes": [
    {
-    "capacity": 4,
+    "capacity": 13,
     "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "T3",
-    "kind": "site",
-    "labels": [
-     "rail"
-    ],
-    "pos": [
-     0.30902,
-     -0.95106
-    ],
-    "zone_type": "Go"
-   },
-   {
-    "capacity": 4,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
+    "corner": false,
+    "degree": 0,
     "id": "T0",
     "kind": "site",
     "labels": [
      "rail"
     ],
     "pos": [
-     -0.80902,
-     -0.58779
-    ],
-    "zone_type": "G"
-   },
-   {
-    "capacity": 9,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "T2",
-    "kind": "site",
-    "labels": [
-     "rail"
-    ],
-    "pos": [
-     -0.80902,
-     0.58779
-    ],
-    "zone_type": "G"
-   },
-   {
-    "capacity": 6,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "T1",
-    "kind": "site",
-    "labels": [
-     "rail"
-    ],
-    "pos": [
-     0.30902,
-     0.95106
-    ],
-    "zone_type": "G"
-   },
-   {
-    "capacity": 3,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "T4",
-    "kind": "site",
-    "labels": [
-     "rail"
-    ],
-    "pos": [
-     1,
+     0,
      0
     ],
     "zone_type": "G"
    }
   ],
   "params": {},
-  "segments": [
-   {
-    "capacity": 2,
-    "corner_endpoints": 0,
-    "ends": [
-     "T3",
-     "T4"
-    ],
-    "id": "E4",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 4,
-    "corner_endpoints": 0,
-    "ends": [
-     "T2",
-     "T0"
-    ],
-    "id": "E2",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 1,
-    "corner_endpoints": 0,
-    "ends": [
-     "T0",
-     "T3"
-    ],
-    "id": "E3",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 1,
-    "corner_endpoints": 0,
-    "ends": [
-     "T4",
-     "T1"
-    ],
-    "id": "E0",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 4,
-    "corner_endpoints": 0,
-    "ends": [
-     "T1",
-     "T2"
-    ],
-    "id": "E1",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": null
-   }
-  ]
+  "segments": []
  },
  "heating": {
   "anomalous_rate_quanta_per_ms": 0.05,
   "note": "R17: ndot = S_E(w) e^2 / 4 m hbar w, accruing whether or not the ion moves. Device-specific and unmeasured for the target trap -- q_heating_rate_measurement",
   "source": "2605.25118"
  },
- "name": "hillclimb_steane_04-a01-5e40df96",
+ "name": "hillclimb_steane_01-a01-88922e3c",
  "primitives": {
   "1q_gate": {
    "fidelity": 0.999975,

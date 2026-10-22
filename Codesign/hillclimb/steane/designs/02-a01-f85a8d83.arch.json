@@ -18,47 +18,28 @@
    ],
    "generator": "x_junction_grid"
   },
-  "intra_inter_exclusive": true,
   "max_simd_classes_per_cycle": 1,
-  "model": "simd_classes",
+  "model": "direct",
   "optical": {
    "addressing": "steerable_raman",
    "per_zone_switch": false
   },
   "wiring": {
-   "compensation_electrodes_per_trap": 8,
-   "dacs_dynamic": 100,
-   "electrodes_per_junction": 48,
+   "dacs_dynamic": 0,
+   "electrodes_per_junction": 0,
    "electrodes_per_trap": 24,
-   "scheme": "wise",
-   "shim_per_dac": 100
+   "scheme": "direct"
   }
  },
- "description": "a03: a01's 1792361502 5-cycle re-laid as a lens (all hops +x+y/-x-y) with broadcast wiring, 101 DACs, 18 moves",
+ "description": "A gate-only trap of capacity 13 between two read-out-only traps of capacity 1 on one rail, direct wiring with 72 DACs; ancillas leave the big trap after their last MS to be measured.",
  "geometry": {
   "generator": "explicit",
   "nodes": [
    {
-    "capacity": 4,
+    "capacity": 1,
     "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "T4",
-    "kind": "site",
-    "labels": [
-     "rail"
-    ],
-    "pos": [
-     1.1111111111111112,
-     5.773502691896257
-    ],
-    "zone_type": "G"
-   },
-   {
-    "capacity": 4,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
+    "corner": false,
+    "degree": 1,
     "id": "T0",
     "kind": "site",
     "labels": [
@@ -68,44 +49,12 @@
      0,
      0
     ],
-    "zone_type": "G"
+    "zone_type": "Mo"
    },
    {
-    "capacity": 5,
+    "capacity": 13,
     "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "T3",
-    "kind": "site",
-    "labels": [
-     "rail"
-    ],
-    "pos": [
-     7.0710678118654755,
-     2.5
-    ],
-    "zone_type": "G"
-   },
-   {
-    "capacity": 2,
-    "capacity_explicit": true,
-    "corner": true,
-    "degree": 2,
-    "id": "T2",
-    "kind": "site",
-    "labels": [
-     "rail"
-    ],
-    "pos": [
-     10,
-     10
-    ],
-    "zone_type": "G"
-   },
-   {
-    "capacity": 6,
-    "capacity_explicit": true,
-    "corner": true,
+    "corner": false,
     "degree": 2,
     "id": "T1",
     "kind": "site",
@@ -113,82 +62,56 @@
      "rail"
     ],
     "pos": [
-     4.444444444444445,
-     8.16496580927726
+     10,
+     0
     ],
     "zone_type": "Go"
+   },
+   {
+    "capacity": 1,
+    "capacity_explicit": true,
+    "corner": false,
+    "degree": 1,
+    "id": "T2",
+    "kind": "site",
+    "labels": [
+     "rail"
+    ],
+    "pos": [
+     20,
+     0
+    ],
+    "zone_type": "Mo"
    }
   ],
   "params": {},
   "segments": [
    {
-    "capacity": 4,
+    "capacity": 1,
     "corner_endpoints": 0,
     "ends": [
-     "T2",
-     "T3"
-    ],
-    "id": "E1",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 2,
-    "corner_endpoints": 0,
-    "ends": [
-     "T4",
+     "T0",
      "T1"
-    ],
-    "id": "E4",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 4,
-    "corner_endpoints": 0,
-    "ends": [
-     "T1",
-     "T2"
     ],
     "id": "E0",
     "labels": [
      "rail"
     ],
-    "length": 1,
+    "length": 10,
     "loop": null
    },
    {
-    "capacity": 2,
+    "capacity": 1,
     "corner_endpoints": 0,
     "ends": [
-     "T3",
-     "T0"
+     "T1",
+     "T2"
     ],
-    "id": "E2",
+    "id": "E1",
     "labels": [
      "rail"
     ],
-    "length": 1,
-    "loop": null
-   },
-   {
-    "capacity": 3,
-    "corner_endpoints": 0,
-    "ends": [
-     "T0",
-     "T4"
-    ],
-    "id": "E3",
-    "labels": [
-     "rail"
-    ],
-    "length": 1,
+    "length": 10,
     "loop": null
    }
   ]
@@ -198,7 +121,7 @@
   "note": "R17: ndot = S_E(w) e^2 / 4 m hbar w, accruing whether or not the ion moves. Device-specific and unmeasured for the target trap -- q_heating_rate_measurement",
   "source": "2605.25118"
  },
- "name": "hillclimb_steane_07-a03-77114b1f",
+ "name": "hillclimb_steane_02-a01-f85a8d83",
  "primitives": {
   "1q_gate": {
    "fidelity": 0.999975,
