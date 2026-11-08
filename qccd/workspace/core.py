@@ -204,7 +204,7 @@ class WorkspaceCore:
         """After a crash or restart: the mirror is rewritten from the database (the
         authoritative copy), deliveries caught mid-send become `uncertain`, and jobs that
         were running under a process that is gone are marked failed rather than left
-        running forever."""
+        running forever (and the reviews they ran with them)."""
         with self.store.tx() as db:
             rows = db.execute("SELECT id FROM deliveries WHERE state='sending'").fetchall()
             for r in rows:
@@ -217,6 +217,11 @@ class WorkspaceCore:
                 db.execute("UPDATE jobs SET status='internal_error', finished_at=?, "
                            "error='the job process ended while the service was down; it was not rerun' "
                            "WHERE id=?", (_now(), j["id"]))
+            # a review whose job did not survive (reviews.py) ends `failed`; a decision it made stands
+            db.execute("UPDATE reviews SET status='failed', finished_at=?, error='the workspace service stopped while "
+                       "it reviewed: review it again for the written review' WHERE status IN "
+                       "('queued','checking','reviewing') AND (job_id IS NULL OR job_id IN "
+                       "(SELECT id FROM jobs WHERE status NOT IN ('running','queued')))", (_now(),))
             # nothing is connected to a service that just started; adapters re-announce
             # themselves on their next request (pull/channel) or reconnect (app server)
             db.execute("UPDATE sessions SET status='disconnected' WHERE status='connected'")

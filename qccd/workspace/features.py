@@ -194,6 +194,33 @@ def _submit_local(be, a: dict):
     return be.call("POST", "/api/submissions", body)
 
 
+def _review(be, a: dict) -> dict:
+    """Start a review here and, with wait_s, wait (bounded) for it: the decision, why, the review's
+    text and every rule that fails -- what the agent needs to fix the design."""
+    if a.get("review_id"):                      # one already started: wait for it, start nothing
+        r = be.call("GET", f"/api/reviews/{_enc(a['review_id'])}?brief=1")
+    else:
+        body = {k: a[k] for k in ("submission_id", "design", "board", "reviewer", "isolation", "request_id",
+                                  "origin_prompt_id") if k in a}
+        r = be.call("POST", "/api/reviews", body)
+    rid = r["review_id"]
+    deadline = _t.time() + max(0, min(int(a.get("wait_s", 0) or 0), 50))
+    while r.get("status") not in ("done", "failed") and _t.time() < deadline:
+        _t.sleep(2.0)
+        r = be.call("GET", f"/api/reviews/{_enc(rid)}?brief=1")
+    if r.get("status") not in ("done", "failed"):
+        return r
+    full = be.call("GET", f"/api/reviews/{_enc(rid)}")
+    out = {k: full.get(k) for k in ("review_id", "job_id", "submission_id", "design", "board_title", "reviewer",
+                                    "model", "isolation", "status", "decision", "decision_words", "reasons", "not_run",
+                                    "error", "page", "files", "stale")}
+    out["review_md"] = full.get("review_md")
+    out["failing_rules"] = [{k: x.get(k) for k in ("id", "title", "grader", "review", "evidence", "url")}
+                            for x in ((full.get("rule_check") or {}).get("rules") or [])
+                            if str(x.get("review") or "").startswith(("FAIL", "BLOCKS"))]
+    return out
+
+
 def _run_program(be, a: dict) -> dict:
     """Start a run and wait (bounded) for its report, so one call usually answers."""
     params = {"program": a["program"]}
@@ -538,6 +565,28 @@ FEATURES: tuple[Feature, ...] = (
               "request_id": _S, "origin_prompt_id": _S, "title": _S, "branch": _S, "revision": _I, "rules": _S}),
         _submit_local, ("POST /api/submissions",), cli=("submit",), job_kinds=("submit",), group="boards"),
     Feature(
+        "qccd_review",
+        "Review a design on THIS computer, before it is submitted: the person's own reviewer agent (Claude Code or "
+        "Codex, signed in with their own subscription, in its sandbox or in Docker) with the design-review skill. It "
+        "reads a graded local test: submission_id, or design (its name; default the main design) and board (its "
+        "title) for the newest current test of that design on that board -- test it first with qccd_submit_local. "
+        "The DECISION comes within seconds, from the grade and a check of every rule: accepted, not accepted (with "
+        "every reason), held for a maintainer, or not decided on this computer (a tool missing here) -- the decision "
+        "the official server makes again from its own grade. Then the reviewer writes the review: what fails, where "
+        "(instruction, site, rail) and how to fix it. reviewer and isolation: left out, the person's choices (none "
+        "chosen: the decision and every rule's verdict, no agent). wait_s (at most 50): wait, and get the decision, "
+        "the reasons, the review's text and every failing rule; a review still running then is waited for again "
+        "with qccd_review(review_id=<its id>, wait_s=50), which starts nothing new. A "
+        "reviewer that is not signed in is refused with what the person does (only the person signs a reviewer in). "
+        "Use it when a local test fails, to learn why and how to fix it, and before asking to publish: fix the "
+        "blocking findings first.",
+        _obj({"submission_id": _S, "design": _S, "board": _S, "review_id": _S,
+              "reviewer": {"type": "string", "enum": ["claude", "codex", "none"]},
+              "isolation": {"type": "string", "enum": ["sandbox", "docker"]},
+              "wait_s": _I, "request_id": _S, "origin_prompt_id": _S}),
+        _review, ("POST /api/reviews", "GET /api/reviews/{rid}"), cli=("review",), job_kinds=("review",),
+        group="boards"),
+    Feature(
         "qccd_submit_official",
         "Put a design on the OFFICIAL leaderboard at qccd.academy, where it is credited to the person signed in "
         "on this computer (qccd_get_context: account). design: its name (default the design on screen); board: its "
@@ -545,11 +594,12 @@ FEATURES: tuple[Feature, ...] = (
         "<design> to <board> as <name>?' that uploads when THEY press it (and offers the sign-in if nobody is "
         "signed in; only the person can sign in). A design must pass the test first: if it has no current passing "
         "local grade on that board, this starts one (qccd_submit_local's grade) and the card asks the person once "
-        "it passes; one that failed is refused with the reasons. The server then grades it again itself, and the "
-        "card follows it to its place on the board. display_name: the name shown on the leaderboard (default the "
-        "design's own name; the person may change it). rules: the rule set it is entered under, as for "
-        "qccd_submit_local (left out: whichever its newest test used). Returns the request; tell the person in "
-        "one line and stop.",
+        "it passes; one that failed is refused with the reasons. When the person has picked a reviewer, it is "
+        "reviewed on this computer first (qccd_review's review), and the card shows the decision and the review. "
+        "The server then grades it again itself, decides from its own grade, and the card follows it to its place "
+        "on the board. display_name: the name shown on the leaderboard (default the design's own name; the person "
+        "may change it). rules: the rule set it is entered under, as for qccd_submit_local (left out: whichever its "
+        "newest test used). Returns the request; tell the person in one line and stop.",
         _obj({"design": _S, "board": _S, "display_name": _S, "submission_id": _S,
               "visibility": {"type": "string", "enum": ["public", "private"]}, "origin_prompt_id": _S,
               "rules": _S}, ["board"]),
@@ -701,6 +751,11 @@ INTERNAL_ROUTES: dict[str, str] = {
     "GET /api/account": "the Studio's sign-in state; agents read it in qccd_get_context (account), and only a person signs in",
     "GET /api/board-view": "the Studio's Leaderboard panel; agents read the same through qccd_get_leaderboard and qccd_get_job",
     "GET /api/publications/{pid}": "the chat card of a request; an agent's own request comes back from qccd_submit_official",
+    "GET /api/reviewers": "the Studio's reviewer picker; an agent learns that a reviewer cannot run from qccd_review's refusal",
+    "GET /api/reviews": "the Studio's list of reviews; an agent follows its own by id (qccd_review)",
+    "POST /api/reviews/{rid}/cancel": "the Studio's Stop on a review; an agent cancels its job with qccd_cancel_job",
+    "GET /api/reviews/{rid}/files/{name}": "the review page's downloads (the re-cooled programme), for the person",
+    "GET /api/signins/{sid}": "the Studio follows a reviewer's sign-in, which only the person does",
 }
 
 #: CLI verbs with no tool behind them, and why: they run before a service exists, manage the

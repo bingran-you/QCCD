@@ -1,0 +1,59 @@
+# Agent review (qccd/review/, docs/agent-review.md): a design reviewed on the person's own computer
+# before it is submitted -- the decision from the grade and the rule check alone, then their own
+# reviewer's review, in its CLI's sandbox or in Docker behind the egress proxy -- and the official
+# server's own decision.  Run with a stand-in agent, so nothing here reaches a model or needs a sign-in.
+name: review
+on:
+  push:
+    paths:
+      - 'qccd/review/**'
+      - 'qccd/official/**'
+      - 'qccd/workspace/reviews.py'
+      - 'qccd/workspace/publications.py'
+      - 'qccd/workspace/service.py'
+      - 'qccd/workspace/store.py'
+      - 'qccd/workspace/collab.py'
+      - 'qccd/workspace/features.py'
+      - 'qccd/workspace/cli.py'
+      - 'qccd/workspace/web/cowork.js'
+      - 'deploy/review/**'
+      - '.claude/skills/**'
+      - 'tests/test_agent_review.py'
+      - 'tests/test_local_review.py'
+      - 'tests/test_feature_registry.py'
+      - '.github/workflows/review.yml'
+  pull_request:
+    paths:
+      - 'qccd/review/**'
+      - 'qccd/official/**'
+      - 'qccd/workspace/reviews.py'
+      - 'qccd/workspace/publications.py'
+      - 'qccd/workspace/service.py'
+      - 'qccd/workspace/store.py'
+      - 'qccd/workspace/collab.py'
+      - 'qccd/workspace/features.py'
+      - 'qccd/workspace/cli.py'
+      - 'qccd/workspace/web/cowork.js'
+      - 'deploy/review/**'
+      - '.claude/skills/**'
+      - 'tests/test_agent_review.py'
+      - 'tests/test_local_review.py'
+      - 'tests/test_feature_registry.py'
+      - '.github/workflows/review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  agent-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: the decision is the grade's and the rule check's; the agent only explains it
+        run: |
+          python -m pip install --quiet pytest numpy fastapi uvicorn httpx markdown-it-py
+          python -m pytest -q tests/test_agent_review.py tests/test_local_review.py tests/test_feature_registry.py
+      - name: the Studio's script parses
+        run: node --check qccd/workspace/web/cowork.js

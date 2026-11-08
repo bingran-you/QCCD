@@ -229,6 +229,11 @@ def summarize(name: str, out: Any) -> str:
         return f"run {out.get('run_id')} {out.get('status')}: {out.get('summary') or out.get('next') or ''}"
     if name == "qccd_compare_runs":
         return out.get("verdict", "")
+    if name == "qccd_review":
+        why = "; ".join((out.get("reasons") or [])[:2])
+        return (f"review {out.get('review_id')} {out.get('status')}: {out.get('decision_words') or 'deciding'}"
+                + (f" ({why})" if why else "")
+                + (f" -- {out['next']}" if out.get("next") and out.get("status") not in ("done", "failed") else ""))
     return json.dumps(out)[:200]
 
 

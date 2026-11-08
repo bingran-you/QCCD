@@ -201,12 +201,25 @@ a visible step at a time.
   there. It asks THEM: their chat shows "Submit <design> to <board> as <their name>?" and it uploads
   only when they press it. If the design has no current passing test on that board it tests it
   first (the same grade as `qccd_submit_local`) and asks once it passes; a design that failed is
-  refused with the reasons. `qccd_get_context` says who is signed in (`account`); only the person
+  refused with the reasons. When the person picked a reviewer, it is reviewed here first and the
+  card shows the decision and the review. `qccd_get_context` says who is signed in (`account`); only the person
   can sign in (Sign in, in the Studio's Leaderboard panel), and the card offers it. Say in one line
   that the card is waiting for them, and stop. `qccd_present(action="open_board", target={"board":
   <title>})` opens the Studio's Leaderboard panel on a board (its ranking, Test, Submit);
   `view.board` in the context is the board the person has open there ("Try your own design" on the
   website opens it).
+- **Review it here, before asking to publish.** `qccd_review(design=<name>, board=<title>,
+  wait_s=50)` reviews the newest test of the design on that board on this computer: the decision at
+  once, from the grade and a check of every rule (accepted, not accepted with every reason, held
+  for a maintainer, not decided here), then the person's own reviewer -- Claude Code or Codex,
+  signed in with their subscription, in its sandbox or in Docker -- writes the review: what fails,
+  where, and how to fix it. A review still running when it answers is waited for with
+  `qccd_review(review_id=<its id>, wait_s=50)`. Use it when a test fails (fix what the review
+  says, test again) and before `qccd_submit_official` (fix the blocking findings first). The
+  decision here is a preview: the official server decides again from its own grade. Who reviews
+  and where is the person's choice; a reviewer that is not signed in is refused with what THEY do
+  (Sign in, in the Leaderboard panel's "Review it here", or `qccd review login` at a terminal) --
+  tell them in one line, never ask for a code or a token.
 - A stage that is `skipped`, `unsupported`, `partial`, `timeout` or `cancelled` is NOT passed.
   Only `eligibility.eligible == true` means the board's policy accepted the entry.
 - **Rules.** A design is graded by the board's own rule set unless it is entered under another:

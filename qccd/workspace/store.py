@@ -12,7 +12,7 @@ Tables are grouped by the four state categories the design separates:
 * collaboration      -- `notes` (prompts, comments, replies, sketches, all versioned),
                         `context_snapshots`, `work`
 * browser/agent view -- `views`, `sessions`, `deliveries`
-* generated results  -- `jobs`, `snapshots`, `submissions`, `approvals`
+* generated results  -- `jobs`, `snapshots`, `submissions`, `approvals`, `reviews`
 
 and `events` is the ordered log the browser and agents replay from a cursor.
 """
@@ -27,7 +27,7 @@ from typing import Any, Iterable
 
 __all__ = ["Store", "SCHEMA_VERSION"]
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 5
 #: what each schema version adds to the one before (applied in order to an older database)
 _MIGRATIONS = {
     # 2: general workspaces (2026-09-24) -- a design has a title its person chose; a snapshot and a
@@ -37,6 +37,13 @@ _MIGRATIONS = {
     # 3: conversations (2026-10-23) -- an agent session is one conversation in the chat's list: the name
     # the person gave it, and when they deleted it (kept, hidden, so Undo can bring it back)
     3: [("sessions", "title", "TEXT"), ("sessions", "deleted_at", "REAL")],
+    # 4: agent reviews (2026-11-04) -- the agent a request to publish asks to review the design once
+    # the official server has graded it (qccd/official/review.py)
+    4: [("publications", "reviewer", "TEXT")],
+    # 5: reviews on this computer (2026-11-06) -- a request to publish waits for the review the person's
+    # reviewer writes before it is sent (review_id), and may carry it (attach_review); the `reviews`
+    # table itself is new, made by the DDL
+    5: [("publications", "review_id", "TEXT"), ("publications", "attach_review", "INTEGER")],
 }
 
 _DDL = """
@@ -156,8 +163,22 @@ CREATE TABLE IF NOT EXISTS publications (   -- a design on the OFFICIAL leaderbo
   state TEXT NOT NULL,                -- testing | test_failed | awaiting_person | uploading | uploaded | declined | failed
   requested_by TEXT NOT NULL, approved_by TEXT, approval_id TEXT,
   server TEXT, credit TEXT, official_id TEXT, official TEXT, error TEXT,
-  origin_prompt_id TEXT, created_at REAL NOT NULL, updated_at REAL NOT NULL
+  origin_prompt_id TEXT, created_at REAL NOT NULL, updated_at REAL NOT NULL,
+  reviewer TEXT,                      -- the agent that reviews it on this computer before it is sent
+  review_id TEXT,                     -- that review (reviews.py)
+  attach_review INTEGER               -- send the review with it (a Docker review only)
 );
+CREATE TABLE IF NOT EXISTS reviews (        -- a local submission reviewed on this computer (reviews.py)
+  id TEXT PRIMARY KEY, submission_id TEXT NOT NULL, job_id TEXT,
+  reviewer TEXT NOT NULL,             -- claude | codex | none
+  isolation TEXT NOT NULL,            -- sandbox | docker
+  model TEXT,
+  status TEXT NOT NULL,               -- queued | checking | reviewing | done | failed
+  decision TEXT, reasons TEXT, rule_check TEXT, review_md TEXT, progress TEXT, usage TEXT,
+  error TEXT, files TEXT, egress TEXT, actor TEXT NOT NULL, origin_prompt_id TEXT,
+  created_at REAL NOT NULL, started_at REAL, finished_at REAL
+);
+CREATE INDEX IF NOT EXISTS reviews_sub ON reviews(submission_id, created_at);
 CREATE TABLE IF NOT EXISTS events (
   seq INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL, type TEXT NOT NULL,
   branch TEXT, revision INTEGER, payload TEXT NOT NULL

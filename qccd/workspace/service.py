@@ -966,12 +966,72 @@ def create_app(state: ServiceState) -> FastAPI:
         from .debugging import debug_call
         return debug_call(ws, b)
 
+    # ------------------------------------------------------------------ reviews on this computer (reviews.py)
+
+    @route("GET", "/api/reviewers", write=False)
+    def reviewers_view(request, actor, _):
+        return ws.reviewers_view(fresh=q(request, "fresh") == "1")
+
+    @route("POST", "/api/reviews")
+    def review_start(request, actor, b):
+        return ws.start_review(actor, submission_id=b.get("submission_id"), design=b.get("design"),
+                               board=b.get("board"), reviewer=b.get("reviewer") or None,
+                               isolation=b.get("isolation") or None, request_id=b.get("request_id"),
+                               origin_prompt_id=b.get("origin_prompt_id"))
+
+    @route("GET", "/api/reviews", write=False)
+    def reviews_list(request, actor, _):
+        return {"reviews": ws.reviews(q(request, "submission"), q(request, "limit", 20, int))}
+
+    @route("GET", "/api/reviews/{rid}", write=False)
+    def review_one(request, actor, _):
+        return ws.review(request.path_params["rid"], brief=q(request, "brief") == "1")
+
+    @route("POST", "/api/reviews/{rid}/cancel")
+    def review_cancel(request, actor, b):
+        return ws.cancel_review(actor, request.path_params["rid"])
+
+    @route("GET", "/api/reviews/{rid}/files/{name}", write=False, raw=True)
+    def review_file(request, actor, _):
+        rid, name = request.path_params["rid"], request.path_params["name"]
+        return Response(ws.review_file(rid, name), media_type="application/json",
+                        headers={"Content-Disposition": f'attachment; filename="{rid}-{name}"',
+                                 "X-Content-Type-Options": "nosniff"})
+
+    @route("POST", "/api/reviewers/{reviewer}/signin", human_only=True)
+    def reviewer_signin(request, actor, b):
+        return ws.start_signin(actor, request.path_params["reviewer"], b.get("isolation") or None)
+
+    @route("GET", "/api/signins/{sid}", write=False)
+    def signin_view(request, actor, _):
+        return ws.signin_view(request.path_params["sid"])
+
+    @route("POST", "/api/signins/{sid}/code", human_only=True)
+    def signin_code(request, actor, b):
+        return ws.signin_send(actor, request.path_params["sid"], str(b.get("code") or ""))
+
+    @route("POST", "/api/signins/{sid}/cancel", human_only=True)
+    def signin_cancel(request, actor, b):
+        return ws.signin_cancel(actor, request.path_params["sid"])
+
+    @app.get("/reviewview/{rid}")
+    async def review_view(rid: str, request: Request):
+        from ..official.review_pages import page_headers, review_page
+        try:
+            principal(request, write=False)
+            data = await asyncio.to_thread(ws.review, rid)
+        except WorkspaceError as e:
+            return err(e)
+        nonce = secrets.token_urlsafe(16)
+        return HTMLResponse(review_page(data, nonce), headers=page_headers(nonce))
+
     @route("POST", "/api/publications")
     def publications_new(request, actor, b):
         return ws.request_publication(actor, board=b.get("board"), design=b.get("design"),
                                       submission_id=b.get("submission_id"), display_name=b.get("display_name"),
                                       visibility=str(b.get("visibility") or "public"),
-                                      origin_prompt_id=b.get("origin_prompt_id"), rules=b.get("rules"))
+                                      origin_prompt_id=b.get("origin_prompt_id"), rules=b.get("rules"),
+                                      reviewer=b.get("reviewer") or None, attach_review=bool(b.get("attach_review")))
 
     @route("GET", "/api/publications", write=False)
     def publications_list(request, actor, _):
@@ -984,7 +1044,8 @@ def create_app(state: ServiceState) -> FastAPI:
     @route("POST", "/api/publications/{pid}/confirm", human_only=True)
     def publication_confirm(request, actor, b):
         return ws.confirm_publication(actor, request.path_params["pid"], display_name=b.get("display_name"),
-                                      visibility=b.get("visibility"))
+                                      visibility=b.get("visibility"), reviewer=b.get("reviewer") or None,
+                                      attach_review=b.get("attach_review"))
 
     @route("POST", "/api/publications/{pid}/decline", human_only=True)
     def publication_decline(request, actor, b):

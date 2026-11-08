@@ -3,10 +3,13 @@
 A publication is one request to publish one graded local submission on one board:
 
     testing          the agent asked before the design was graded: the local grade is running
-    test_failed      that grade was not eligible, so there is nothing to publish
-    awaiting_person  graded eligible; the person's Studio shows "Submit ... as <name>?"
+    test_failed      that grade was not eligible (or the review here did not accept it): nothing to publish
+    reviewing        graded eligible, and the person's reviewer is reviewing it on this computer first
+                     (reviews.py): the decision in seconds, the written review in a few minutes
+    awaiting_person  graded (and reviewed); the person's Studio shows "Submit ... as <name>?"
     uploading        the person pressed it (or asked for it themselves): approved and being sent
-    uploaded         the server has it; its own grade and the leaderboard place follow (`official`)
+    uploaded         the server has it; its own grade, its own decision and the leaderboard place
+                     follow (`official`)
     declined | failed
 
 What makes it safe to let an agent ask:
@@ -19,8 +22,11 @@ What makes it safe to let an agent ask:
     board's, or one the request names: `rules`), which the upload carries as it was tested.
 
 The server regrades everything itself; the local grade is what lets the person see beforehand
-that it will pass.  The official status is read from the server when asked (cached a few
-seconds), never pushed, so a closed browser or a stopped service loses nothing.
+that it will pass, and the review on this computer what tells them why and how to do better.  The
+server decides again from its own grade (an upload asks it to, `X-QCCD-Reviewer: none`), never from
+the review here; a review written in Docker may go with the upload, marked as the submitter's.  The
+official status is read from the server when asked (cached a few seconds), never pushed, so a closed
+browser or a stopped service loses nothing.
 """
 
 from __future__ import annotations
@@ -34,8 +40,9 @@ from .store import dumps, loads
 
 __all__ = ["PublicationsMixin", "PUBLICATION_STATES"]
 
-PUBLICATION_STATES = ("testing", "test_failed", "awaiting_person", "uploading", "uploaded", "declined", "failed")
-ACTIVE = ("testing", "awaiting_person", "uploading", "uploaded")
+PUBLICATION_STATES = ("testing", "test_failed", "reviewing", "awaiting_person", "uploading", "uploaded", "declined",
+                      "failed")
+ACTIVE = ("testing", "reviewing", "awaiting_person", "uploading", "uploaded")
 _REFRESH_S = 5.0
 
 
@@ -68,6 +75,23 @@ class PublicationsMixin:
         for k in ("requested_by", "approved_by", "official"):
             d[k] = loads(d[k]) if d[k] else None
         return d
+
+    def _pub_move(self, pid: str, from_state: str, **fields) -> bool:
+        """`_pub_set`, only if the request is still in `from_state`: two readers that see a review
+        finish at once never both start the upload."""
+        fields["updated_at"] = _now()
+        for k in ("requested_by", "approved_by", "official"):
+            if k in fields and fields[k] is not None and not isinstance(fields[k], str):
+                fields[k] = dumps(fields[k])
+        cols = ", ".join(f"{k}=?" for k in fields)
+        with self.store.tx() as db:
+            cur = db.execute(f"UPDATE publications SET {cols} WHERE id=? AND state=?", (*fields.values(), pid, from_state))
+            if cur.rowcount != 1:
+                return False
+            row = db.execute("SELECT id, state, board, branch FROM publications WHERE id=?", (pid,)).fetchone()
+            self._emit(db, "publication.updated", {"publication_id": pid, "state": row["state"],
+                                                   "board": row["board"]}, row["branch"])
+        return True
 
     def _pub_set(self, pid: str, **fields) -> None:
         fields["updated_at"] = _now()
@@ -105,16 +129,23 @@ class PublicationsMixin:
     def request_publication(self, actor: Mapping, *, board: str | None, design: str | None = None,
                             submission_id: str | None = None, display_name: str | None = None,
                             visibility: str = "public", origin_prompt_id: str | None = None,
-                            rules=None) -> dict:
+                            rules=None, reviewer: str | None = None, attach_review: bool = False) -> dict:
         """Ask to put a design on the official leaderboard.  From a PERSON (the Studio's Submit button,
-        `qccd publish`) this is the approval and it uploads now; from an AGENT it waits for the person,
-        after testing the design first when it has no current passing grade on that board.  `rules`:
+        `qccd publish`) this is the approval and it uploads now -- after the review on this computer
+        when they have picked a reviewer; from an AGENT it waits for the person, after testing the
+        design first when it has no current passing grade on that board, and reviewing it.  `rules`:
         the rule set it is entered under ("board", a shipped set, a .rules file); left out, whichever
-        its newest current test used."""
+        its newest current test used.  `reviewer` ("claude", "codex", "none"; left out, the person's
+        choice): who reviews it here before it is sent (reviews.py).  `attach_review`: send that review
+        with it, marked as the submitter's (a Docker review with no credential in it, only)."""
+        from .collab import REVIEWER_CHOICES
         from .core import WorkspaceError, new_id
         if visibility not in ("public", "private"):
             raise WorkspaceError("bad_request", "visibility must be public (on the leaderboard, with your name) "
                                  "or private (only you see it)", status=422)
+        if reviewer is not None and reviewer not in REVIEWER_CHOICES:
+            raise WorkspaceError("bad_request", f"reviewer is one of {', '.join(REVIEWER_CHOICES)}", status=422)
+        who = reviewer or self.settings()["reviewer"]
         human = actor.get("kind") == "human"
         chosen = False
         if submission_id:
@@ -140,13 +171,14 @@ class PublicationsMixin:
         # one request per graded submission at a time: asking again returns it
         if s is not None:
             prior = self.store.one("SELECT id FROM publications WHERE submission_id=? AND state IN "
-                                   "('awaiting_person','uploading','uploaded') ORDER BY created_at DESC LIMIT 1",
+                                   "('reviewing','awaiting_person','uploading','uploaded') ORDER BY created_at DESC LIMIT 1",
                                    (s["id"],))
             if prior:
                 out = self.publication(prior["id"])
-                if human and out["state"] == "awaiting_person":
+                if human and out["state"] in ("awaiting_person", "reviewing"):
                     return self.confirm_publication(actor, prior["id"], display_name=display_name,
-                                                    visibility=visibility)
+                                                    visibility=visibility, reviewer=reviewer,
+                                                    attach_review=attach_review)
                 return {**out, "duplicate": True}
         state, sub_id, job = None, None, None
         status = s["status"] if s is not None else None
@@ -155,8 +187,9 @@ class PublicationsMixin:
             under = (s.get("rules") or {}).get("name")
             raise WorkspaceError("not_eligible", f"{title} did not pass on {rel.title}"
                                  + (f" under its rules ({under})" if under else "") + ": " + "; ".join(reasons[:3])
-                                 + ". Change the design, or the rules it is entered under, and test it again.",
-                                 status=409)
+                                 + ". Change the design, or the rules it is entered under, and test it again "
+                                 "(a review -- qccd_review, or Review in the Studio -- says where it fails and how "
+                                 "to fix it).", status=409)
         if status == "grading":
             state, sub_id = "testing", s["id"]
         elif status == "eligible":
@@ -170,15 +203,22 @@ class PublicationsMixin:
             job = self.submit_design(actor, design=branch, board=rel.id, origin_prompt_id=origin_prompt_id,
                                      rules=None if rules is None else chosen and chosen["text"])
             state = "testing"
+        # the review on this computer comes first, when the person picked a reviewer: a finished
+        # review of exactly this graded design is used as it is
+        review_id = None
+        if state in ("uploading", "awaiting_person") and who:
+            review_id, finished = self._review_for_publication(actor, s["id"], who)
+            if not finished:
+                state = "reviewing"
         pid = new_id("pb")
         now = _now()
         with self.store.tx() as db:
             db.execute("INSERT INTO publications(id, branch, board, submission_id, submit_job, display_name, visibility, "
-                       "state, requested_by, approved_by, server, origin_prompt_id, created_at, updated_at) "
-                       "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                       "state, requested_by, approved_by, server, origin_prompt_id, created_at, updated_at, reviewer, "
+                       "review_id, attach_review) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                        (pid, branch, rel.id, sub_id, (job or {}).get("job_id"), name, visibility, state,
                         dumps(dict(actor)), dumps(dict(actor)) if human else None, self._accounts().server,
-                        origin_prompt_id, now, now))
+                        origin_prompt_id, now, now, who, review_id, 1 if attach_review else 0))
             self._emit(db, "publication.updated", {"publication_id": pid, "state": state, "board": rel.id}, branch)
             prompt = origin_prompt_id or (self._working_prompt(db, actor) if not human else None)
             if prompt:
@@ -187,6 +227,8 @@ class PublicationsMixin:
             self._start_upload(pid)
         elif state == "testing":
             self._watch_test(pid)
+        elif state == "reviewing":
+            self._watch_review(pid)
         out = self.publication(pid)
         if not human:
             out["next"] = ("the person's Studio shows a card asking them to submit it as "
@@ -196,30 +238,58 @@ class PublicationsMixin:
             if state == "testing":
                 out["next"] = ("testing it on the board first (the local reference grade, usually under a minute); "
                                "then " + out["next"])
+            elif state == "reviewing":
+                out["next"] = (f"{self._reviewer_said(who)} is reviewing it on this computer first (the decision in "
+                               "seconds, the written review in a few minutes); then " + out["next"])
             out["next"] += ". Tell them in one line, and stop: the card follows it to the leaderboard."
         return out
 
     def confirm_publication(self, actor: Mapping, pid: str, *, display_name: str | None = None,
-                            visibility: str | None = None) -> dict:
-        """The person's Submit on a request an agent made."""
+                            visibility: str | None = None, reviewer: str | None = None,
+                            attach_review: bool | None = None) -> dict:
+        """The person's Submit on a request an agent made: it uploads now, or -- with a reviewer that
+        has not reviewed this graded design yet, or one still reviewing it -- once the review here is
+        done."""
+        from .collab import REVIEWER_CHOICES
         from .core import WorkspaceError
         if actor.get("kind") != "human":
             raise WorkspaceError("forbidden", "only the person submits to the official leaderboard", status=403)
-        p = self._refresh_test(self._pub_row(pid))
-        if p["state"] != "awaiting_person":
+        p = self._refresh_review(self._refresh_test(self._pub_row(pid)))
+        if p["state"] not in ("awaiting_person", "reviewing"):
             raise WorkspaceError("bad_state", f"this request is {p['state'].replace('_', ' ')}", status=409)
         if not self.account()["signed_in"]:
             raise WorkspaceError("not_signed_in", "sign in to qccd.academy first", status=409)
         s = self.submission(p["submission_id"])
         if s["stale"]:
             raise WorkspaceError("stale", "the design changed after it was tested: test it again", status=409)
-        fields: dict = {"state": "uploading", "approved_by": dict(actor), "error": None}
+        fields: dict = {"approved_by": dict(actor), "error": None}
         if display_name is not None and " ".join(str(display_name).split()):
             fields["display_name"] = " ".join(str(display_name).split())[:80]
         if visibility in ("public", "private"):
             fields["visibility"] = visibility
-        self._pub_set(pid, **fields)
-        self._start_upload(pid)
+        if attach_review is not None:
+            fields["attach_review"] = 1 if attach_review else 0
+        if reviewer is not None and reviewer not in REVIEWER_CHOICES:
+            raise WorkspaceError("bad_request", f"reviewer is one of {', '.join(REVIEWER_CHOICES)}", status=422)
+        who = reviewer or p.get("reviewer") or self.settings()["reviewer"]
+        if p["state"] == "reviewing":
+            # the person pressed Submit while the review runs: it goes when the review is done
+            self._pub_set(pid, **fields)
+            return self.publication(pid)
+        if who:
+            done = self.latest_review(s["id"], reviewer=who, isolation=self.settings()["review_isolation"], finished=True)
+            if done is None:
+                rid, finished = self._review_for_publication(actor, s["id"], who)
+                if not finished:
+                    if self._pub_move(pid, "awaiting_person", state="reviewing", reviewer=who, review_id=rid, **fields):
+                        self._watch_review(pid)
+                    return self.publication(pid)
+                fields["review_id"] = rid
+            else:
+                fields["review_id"] = done["review_id"]
+            fields["reviewer"] = who
+        if self._pub_move(pid, "awaiting_person", state="uploading", **fields):
+            self._start_upload(pid)
         return self.publication(pid)
 
     def decline_publication(self, actor: Mapping, pid: str) -> dict:
@@ -253,7 +323,19 @@ class PublicationsMixin:
         if s["status"] == "grading":
             return self._pub_row(p["id"])
         if s["status"] == "eligible":
-            self._pub_set(p["id"], state="awaiting_person")
+            who = p.get("reviewer")
+            if who:
+                try:
+                    rid, finished = self._review_for_publication(p["requested_by"] or {"kind": "system"}, s["id"], who)
+                except Exception as exc:          # a reviewer the person has not signed in: they still decide
+                    self._pub_move(p["id"], "testing", state="awaiting_person", error=f"not reviewed here: {exc}"[:300])
+                    return self._pub_row(p["id"])
+                if not finished and self._pub_move(p["id"], "testing", state="reviewing", review_id=rid):
+                    self._watch_review(p["id"])
+                    return self._pub_row(p["id"])
+                self._pub_move(p["id"], "testing", state="awaiting_person", review_id=rid)
+            else:
+                self._pub_move(p["id"], "testing", state="awaiting_person")
         else:
             reasons = ((s["report"] or {}).get("eligibility") or {}).get("reasons") or [s["status"]]
             self._pub_set(p["id"], state="test_failed", error="; ".join(reasons[:3])[:300])
@@ -270,6 +352,70 @@ class PublicationsMixin:
                     return
                 time.sleep(1.0)
         threading.Thread(target=loop, name=f"qccd-pub-test-{pid}", daemon=True).start()
+
+    # ------------------------------------------------------------------ the review here, before it is sent
+
+    def _reviewer_said(self, who: str | None) -> str:
+        from .reviews import _title
+        return _title(who) if who else "nobody"
+
+    def _review_for_publication(self, actor: Mapping, sub_id: str, who: str) -> tuple[str, bool]:
+        """(the review of this graded design by `who`, and whether it is finished): one already
+        finished is used as it is; otherwise one starts now (reviews.py -- a reviewer that is not
+        signed in is refused, with what to do)."""
+        iso = self.settings()["review_isolation"]
+        done = self.latest_review(sub_id, reviewer=who, isolation=iso, finished=True)
+        if done is not None:
+            return done["review_id"], True
+        rv = self.start_review(actor, submission_id=sub_id, reviewer=who, isolation=iso)
+        return rv["review_id"], rv["status"] in ("done", "failed") and rv.get("decision") is not None
+
+    def _refresh_review(self, p: dict) -> dict:
+        """A request that waits for the review here moves on when the review has its decision and
+        the agent is done: a person who already pressed Submit sends it now; otherwise they decide."""
+        if p["state"] != "reviewing" or not p.get("review_id"):
+            return p
+        r = self._review_row(p["review_id"])
+        if r["status"] in ("queued", "checking", "reviewing"):
+            return p
+        if r["decision"] == "not_accepted":
+            why = "; ".join(((r["reasons"] or {}).get("reasons") or [])[:3])
+            self._pub_move(p["id"], "reviewing", state="test_failed", error=f"not accepted on this computer: {why}"[:300])
+        elif p.get("approved_by"):
+            if self._pub_move(p["id"], "reviewing", state="uploading", error=None):
+                self._start_upload(p["id"])
+        else:
+            self._pub_move(p["id"], "reviewing", state="awaiting_person")
+        return self._pub_row(p["id"])
+
+    def _watch_review(self, pid: str) -> None:
+        def loop():
+            deadline = _now() + 3 * 3600
+            while not getattr(self, "_closed", False) and _now() < deadline:
+                try:
+                    if self._refresh_review(self._pub_row(pid))["state"] != "reviewing":
+                        return
+                except Exception:
+                    return
+                time.sleep(1.0)
+        threading.Thread(target=loop, name=f"qccd-pub-review-{pid}", daemon=True).start()
+
+    def _attachable(self, review_id: str | None) -> tuple[bool, str]:
+        """Whether the review here may go with the upload: written in Docker (where the agent saw
+        nothing of this computer but the review's own folder), finished, and with nothing in it that
+        looks like a credential."""
+        from ..review.engine import find_secrets
+        if not review_id:
+            return False, "there is no review to send"
+        r = self._review_row(review_id)
+        if r["isolation"] != "docker":
+            return False, "only a review written in Docker goes with a submission"
+        if r["status"] != "done" or not r["review_md"]:
+            return False, "the review did not finish"
+        hits = find_secrets(r["review_md"])
+        if hits:
+            return False, f"the review holds what looks like a credential ({hits[0]}): it stays on this computer"
+        return True, ""
 
     def _start_upload(self, pid: str) -> None:
         threading.Thread(target=self._upload, args=(pid,), name=f"qccd-pub-{pid}", daemon=True).start()
@@ -294,12 +440,18 @@ class PublicationsMixin:
                 if meta.get("display_name"):
                     # a header carries latin-1 only: the name goes percent-encoded, and the server decodes it
                     h["X-QCCD-Display-Name"] = urllib.parse.quote(meta["display_name"], safe=" ")
+                if self._server_decides(p["server"]):
+                    # the server's own decision from its own grade, no agent of its own (`none`): the
+                    # review that explains it was written here
+                    h["X-QCCD-Reviewer"] = "none"
                 return official_call("POST", "/v1/submissions", raw=archive, token=cred["token"],
                                      server=p["server"], headers=h, timeout=180)
             res = self.publish(appr["approval_id"], uploader)["server"]
+            official = {**res, "fetched_at": _now()}
+            if p.get("attach_review"):
+                official["attached"] = self._attach_review(p, res.get("submission_id"), cred["token"])
             self._pub_set(pid, state="uploaded", official_id=res.get("submission_id"),
-                          credit=res.get("by") or ((cred.get("account") or {}).get("name")),
-                          official={**res, "fetched_at": _now()})
+                          credit=res.get("by") or ((cred.get("account") or {}).get("name")), official=official)
         except OfficialHTTPError as e:
             msg = str(e)
             if e.status == 401:
@@ -309,6 +461,31 @@ class PublicationsMixin:
             self._pub_set(pid, state="failed", error=msg[:400])
         except Exception as e:                                  # say why on the card; never hang in 'uploading'
             self._pub_set(pid, state="failed", error=str(e)[:400])
+
+    def _server_decides(self, server: str) -> bool:
+        """The server makes its own decision when asked (it runs reviews); an older one does not."""
+        from .account import OfficialHTTPError, official_call
+        try:
+            return bool(official_call("GET", "/v1/reviewers", server=server, timeout=8).get("enabled"))
+        except OfficialHTTPError:
+            return False
+
+    def _attach_review(self, p: dict, official_id: str | None, token: str) -> dict:
+        """Send the review written here with the submission, marked as the submitter's (when it may go:
+        `_attachable`): {"sent": bool, "why"}."""
+        from .account import OfficialHTTPError, official_call
+        ok, why = self._attachable(p.get("review_id"))
+        if not ok or not official_id:
+            return {"sent": False, "why": why or "the server gave no submission id"}
+        r = self._review_row(p["review_id"])
+        try:
+            official_call("POST", f"/v1/submissions/{official_id}/submitter-review",
+                          {"reviewer": r["reviewer"], "model": r["model"], "isolation": r["isolation"],
+                           "decision": r["decision"], "review_md": r["review_md"], "written_at": r["finished_at"]},
+                          token=token, server=p["server"], timeout=30)
+            return {"sent": True, "why": None}
+        except OfficialHTTPError as e:
+            return {"sent": False, "why": f"the server did not take it: {e}"[:300]}
 
     # ------------------------------------------------------------------ reading it back
 
@@ -322,7 +499,10 @@ class PublicationsMixin:
         # while the server grades, every few seconds; once it has a verdict, a minute (others' entries
         # can still move its place)
         age = _now() - o.get("fetched_at", 0)
-        if not force and age < (60 if o.get("status") in ("eligible", "ineligible") else _REFRESH_S):
+        # an agent review still running (qccd/official/review.py) keeps the reads frequent too
+        settled = o.get("status") in ("eligible", "ineligible") and \
+            (o.get("review") or {}).get("status") in (None, "done", "failed")
+        if not force and age < (60 if settled else _REFRESH_S):
             return p
         if force:
             return self._fetch_official(p)
@@ -355,6 +535,13 @@ class PublicationsMixin:
             o["metrics"] = rep.get("metrics")
             o["reasons"] = ((rep.get("eligibility") or {}).get("reasons") or [])[:3]
             o["job"] = s.get("job")
+            # the server's own decision (and its agent's review, if it ran one), and where to read it
+            rvw = s.get("review") or None
+            if rvw:
+                o["review"] = {**{k: rvw.get(k) for k in ("id", "reviewer", "model", "status", "decision")},
+                               "page": f"{p['server']}{rvw.get('page') or ''}" if rvw.get("page") else None}
+            if (p["official"] or {}).get("attached"):
+                o["attached"] = p["official"]["attached"]
             # an entry that keeps the board's rules is ranked among those; one under rules of its own is
             # listed with every entry, behind the board's filter (`conformance`)
             o["conforms"] = (rep.get("conformance") or {}).get("board", True)
@@ -376,7 +563,7 @@ class PublicationsMixin:
     def publication(self, pid: str, refresh: bool = True) -> dict:
         p = self._pub_row(pid)
         if refresh:
-            p = self._refresh_official(self._refresh_test(p))
+            p = self._refresh_official(self._refresh_review(self._refresh_test(p)))
         return self._pub_json(p)
 
     def publications(self, board: str | None = None, limit: int = 30, refresh: bool = True) -> list:
@@ -422,6 +609,11 @@ class PublicationsMixin:
                    "on_server": b["id"] in on_server} for b in self.boards()]
         out: dict = {"boards": boards, "account": self.account(verify=True), "server": self._accounts().server,
                      "server_error": (tasks.get("error") or {}).get("message")}
+        # who reviews a design on this computer before it is sent, and whether the server makes its own
+        # decision when asked (an older server does not)
+        out["reviewers"] = self.reviewers_view()
+        rv = self._official_cached("/v1/reviewers", ttl=20.0).get("ok") or {}
+        out["server_decides"] = bool(rv.get("enabled"))
         if rel is None:
             return out
         m = rel.manifest
@@ -463,6 +655,9 @@ class PublicationsMixin:
                 jid = s.get("job_id")
                 if jid:
                     test["progress"] = ((self.job(jid).get("progress") or {}) or {}).get("message")
+        if test and test.get("submission_id"):
+            # the newest review of this very test, whoever wrote it
+            test["review"] = self.latest_review(test["submission_id"])
         out["test"] = test
         out["publications"] = self.publications(rel.id, limit=10)
         # the server has placed one of this computer's designs, but the (cached) ranking does not list it
@@ -476,7 +671,8 @@ class PublicationsMixin:
         # this very graded design, already sent (or waiting for the person): Submit has nothing new to send
         if test and test.get("submission_id"):
             for p in out["publications"]:
-                if p["submission_id"] == test["submission_id"] and p["state"] in ("awaiting_person", "uploading", "uploaded"):
+                if p["submission_id"] == test["submission_id"] and p["state"] in ("reviewing", "awaiting_person", "uploading",
+                                                                                  "uploaded"):
                     test["publication"] = {"publication_id": p["publication_id"], "state": p["state"]}
                     break
         # where this design's result would rank among the official ones (the server's grade decides);
@@ -512,9 +708,17 @@ class PublicationsMixin:
                 out["rules"] = self.submission(p["submission_id"]).get("rules")
             except Exception:
                 out["rules"] = None
+        out["reviewer"] = p.get("reviewer")
+        out["attach_review"] = bool(p.get("attach_review"))
+        if p.get("review_id"):
+            try:                                  # the review written here before it was sent
+                out["review"] = self.review(p["review_id"], brief=True)
+            except Exception:
+                out["review"] = None
         if p["state"] == "uploaded":
             out["official"] = {k: o.get(k) for k in ("submission_id", "status", "by", "eligible", "metrics", "reasons",
-                                                     "rank", "of", "rank_by", "rank_value", "unreachable", "conforms")}
+                                                     "rank", "of", "rank_by", "rank_value", "unreachable", "conforms",
+                                                     "review", "attached")}
             out["official"]["report_url"] = f"{p['server']}/v1/submissions/{p['official_id']}/report"
             try:
                 rel = self.board(p["board"])
@@ -523,7 +727,7 @@ class PublicationsMixin:
                                                 if x.get("name") == rk), None)
             except Exception:
                 pass
-        if p["submission_id"] and p["state"] in ("awaiting_person", "testing", "test_failed"):
+        if p["submission_id"] and p["state"] in ("awaiting_person", "testing", "test_failed", "reviewing"):
             try:
                 rep = self.report_for(p["submission_id"]) or {}
                 rank = rep.get("rank_by")

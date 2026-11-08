@@ -52,7 +52,7 @@ __all__ = ["main", "COMMANDS"]
 
 COMMANDS = ("init", "studio", "web", "toolchain", "serve", "status", "stop", "agent", "mcp", "validate", "compile", "submit",
             "publish", "import", "export", "releases", "boards", "leaderboard", "trace", "ler", "bench", "login",
-            "logout", "grade")
+            "logout", "grade", "review")
 
 
 def _root(args) -> Path:
@@ -456,8 +456,127 @@ def cmd_submit(a) -> int:
             print(f"  {k:24s} {v['value']} {v['unit']}")
         if a.json:
             print(json.dumps(rep, indent=1))
+        if a.review:
+            # the review of this very test, here: the decision, then the reviewer's written review
+            rc = _review_and_follow(info, {"submission_id": s["submission_id"],
+                                           **({"reviewer": a.review} if a.review != "yes" else {})}, a)
+            if rc == 2:
+                return 2
         return 0 if (rep.get("eligibility") or {}).get("eligible") else 1
     return 0
+
+
+def _review_and_follow(info, body: dict, a) -> int:
+    """Start a review here and follow it to the end at this terminal: its progress, the decision,
+    the review.  A reviewer that is not signed in is signed in now when the person says so.
+    0 accepted (or held, or not decided here), 1 not accepted, 2 refused."""
+    from ..review import agents
+    from .runtime import ServiceError, service_request
+    try:
+        r = service_request(info, "POST", "/api/reviews", body, token="owner", timeout=120)
+    except ServiceError as exc:
+        d = exc.detail.get("detail") or {}
+        print(f"refused: {exc.detail.get('message')}", file=sys.stderr)
+        if exc.detail.get("code") != "needs_signin" or not sys.stdin.isatty():
+            return 2
+        if input(f"Sign {agents.REVIEWERS[d['reviewer']]['title']} in for reviews now? [Y/n] ").strip().lower() not in ("", "y", "yes"):
+            return 2
+        if agents.login(d["reviewer"], d.get("isolation") or "sandbox") != 0:
+            return 2
+        r = _call(info, "POST", "/api/reviews", body)
+    who = r["reviewer_title"] + (f" ({r['model']})" if r.get("model") else "") + (" in Docker" if r["isolation"] == "docker" else "")
+    print(f"reviewing {r.get('design')} on {r.get('board_title')}: {who if r['reviewer'] != 'none' else 'the decision only'}")
+    if getattr(a, "no_wait", False):
+        print(f"review {r['review_id']}: follow it with `qccd review --show {r['review_id']}`")
+        return 0
+    seen, said = 0, False
+    while True:
+        r = _call(info, "GET", f"/api/reviews/{r['review_id']}?brief=1")
+        lines = r.get("progress") or []
+        for ln in lines[seen:] if len(lines) >= seen else lines:
+            print(f"  · {ln['text']}")
+        seen = len(lines)
+        if r.get("decision") and not said:
+            print(f"decision: {r['decision_words']}" + ("".join(f"\n  - {x}" for x in r.get("reasons") or [])))
+            said = True
+        if r["status"] in ("done", "failed"):
+            break
+        time.sleep(2.0)
+    return _show_review(info, r["review_id"], a)
+
+
+def _show_review(info, rid: str, a) -> int:
+    full = _call(info, "GET", f"/api/reviews/{rid}")
+    if getattr(a, "json", False):
+        print(json.dumps(full, indent=1))
+    else:
+        if full.get("not_run"):
+            print(f"not run on this computer: {', '.join(full['not_run'])} (the official server runs every stage)")
+        if full.get("review_md"):
+            print("\n" + full["review_md"].rstrip() + "\n")
+        elif full["reviewer"] != "none":
+            print(f"the review did not finish: {full.get('error')}" if full["status"] == "failed" else "")
+        for f in full.get("files") or []:
+            print(f"kept: {f['name']} -- {f['about']}")
+        print(f"kept in .qccd/reviews/{rid}/ (the Studio shows it: Leaderboard panel, the board, Open the review)")
+        eg = full.get("egress") or {}
+        if eg.get("refused"):
+            print(f"Docker refused the agent's requests to: {', '.join(eg['refused'])}")
+    return 1 if full.get("decision") == "not_accepted" else 0
+
+
+def cmd_review(a) -> int:
+    from ..review import agents, container
+    if a.action == "login":
+        if a.who not in agents.REVIEWERS:
+            print("qccd review login claude|codex [--device] [--token]", file=sys.stderr)
+            return 2
+        try:
+            token = sys.stdin.read() if a.token else None
+            if a.token and a.who != "claude":
+                raise RuntimeError("--token is Claude Code's (a token `claude setup-token` printed, on stdin)")
+            rc = agents.login(a.who, device=a.device, token=token)
+        except (RuntimeError, ValueError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        ok, who, why = agents.signed_in(a.who)
+        print(f"{agents.REVIEWERS[a.who]['title']}: " + (f"signed in for reviews ({who})" if ok else f"not signed in ({why})"))
+        return 0 if ok and rc == 0 else 1
+    if a.action == "status":
+        try:
+            info = _svc(a)
+            v = _call(info, "GET", "/api/reviewers?fresh=1")
+        except FileNotFoundError:
+            ok, why = container.ready(fresh=True)
+            v = {"reviewer": None, "isolation": "sandbox", "docker": {"ready": ok, "why": why or None},
+                 "reviewers": {i: agents.statuses(isolation=i, fresh=True) for i in agents.ISOLATIONS}}
+        if a.json:
+            print(json.dumps(v, indent=1))
+            return 0
+        print(f"chosen    {v.get('reviewer') or '(none yet)'}, {v.get('isolation')}   ·   Docker: "
+              + ("ready" if v["docker"]["ready"] else v["docker"]["why"]))
+        for iso, rows in v["reviewers"].items():
+            for r in rows:
+                state = f"ready ({r.get('account') or r.get('mode')})" if r["available"] else f"not ready: {r['why']}"
+                print(f"  {iso:8s} {r['title']:8s} {r.get('model') or '':16s} {state}")
+        return 0
+    info = _svc(a)
+    if a.action == "use":
+        body = {**({"reviewer": a.who} if a.who else {}), **({"review_isolation": a.isolation} if a.isolation else {})}
+        if not body:
+            print("qccd review use claude|codex|none [--isolation sandbox|docker]", file=sys.stderr)
+            return 2
+        st = _call(info, "POST", "/api/settings", body)
+        print(f"reviews here: {st['reviewer']}, {st['review_isolation']}")
+        return 0
+    if a.show:
+        return _show_review(info, a.show, a)
+    body = {k: v for k, v in (("submission_id", a.submission), ("design", a.design), ("board", a.board),
+                              ("reviewer", a.who or a.reviewer), ("isolation", a.isolation)) if v}
+    if not (a.submission or a.board):
+        print("name the board (--board, its title or part of it) or the test (--submission)", file=sys.stderr)
+        return 2
+    return _review_and_follow(info, body, a)
 
 
 def cmd_leaderboard(a) -> int:
@@ -641,11 +760,22 @@ def cmd_publish(a) -> int:
             return 1
         if acct.get("signed_in") and not a.server and a.visibility in ("public", "private"):
             # the person's own account: the same request the Studio's Submit makes, followed to the server
-            p = _call(info, "POST", "/api/publications", {"submission_id": a.submission, "visibility": a.visibility,
-                                                          "display_name": a.name})
-            while p["state"] == "uploading":
+            body = {"submission_id": a.submission, "visibility": a.visibility, "display_name": a.name,
+                    **({"reviewer": a.review} if a.review else {}), "attach_review": bool(a.attach_review)}
+            p = _call(info, "POST", "/api/publications", body)
+            said = None
+            while p["state"] in ("reviewing", "uploading"):
+                rv = p.get("review") or {}
+                line = rv.get("decision_words") or ((rv.get("progress") or [{}])[-1].get("text") if rv else None)
+                if p["state"] == "reviewing" and line and line != said:
+                    print(f"reviewing here first: {line}")
+                    said = line
                 time.sleep(1.0)
                 p = _call(info, "GET", f"/api/publications/{p['publication_id']}")
+            rv = p.get("review") or {}
+            if rv.get("decision_words"):
+                print(f"reviewed here by {rv.get('reviewer_title')}: {rv['decision_words']}"
+                      + (f" (.qccd/reviews/{rv['review_id']}/review.md)" if rv.get("status") == "done" and rv.get("reviewer") != "none" else ""))
             if p["state"] != "uploaded":
                 print(f"not submitted: {p.get('error') or p['state']}", file=sys.stderr)
                 return 1
@@ -892,10 +1022,16 @@ def build_parser() -> argparse.ArgumentParser:
                                 ".rules file in the workspace, or the board's own (default)")
             q.add_argument("--profile", default="reference", choices=["draft", "reference"])
             q.add_argument("--wait", action="store_true")
+            q.add_argument("--review", nargs="?", const="yes", default=None, choices=["yes", "claude", "codex", "none"],
+                           help="with --wait: review the test here right after it (default reviewer: your choice)")
         if name == "publish":
             q.add_argument("--submission")
             q.add_argument("--approval")
             q.add_argument("--server")
+            q.add_argument("--review", choices=["claude", "codex", "none"], default=None,
+                           help="who reviews it on this computer before it is sent (default: your choice in the workspace)")
+            q.add_argument("--attach-review", action="store_true",
+                           help="send that review with it, marked as yours (a review written in Docker only)")
             q.add_argument("--visibility", default="public", choices=["public", "unlisted", "private"])
             q.add_argument("--name", default=None, help="the name shown on the leaderboard (default: the design's)")
         if name == "import":
@@ -905,6 +1041,23 @@ def build_parser() -> argparse.ArgumentParser:
             q.add_argument("--design", default=None, help="the design's name (default: the main design)")
             q.add_argument("--run", default=None, help="a run instead: its id, as the chat's run card links it")
             q.add_argument("--name", default=None, help="the folder's name under exports/ (default: the design's)")
+    p = sub.add_parser("review", help="review a design on this computer before it is submitted: the decision, then "
+                                      "your own Claude Code's or Codex's review (login / status / use: its sign-in "
+                                      "and your choices)")
+    p.add_argument("action", nargs="?", default="run", choices=["run", "login", "status", "use"])
+    p.add_argument("who", nargs="?", default=None, choices=["claude", "codex", "none"])
+    p.add_argument("--root", default=None)
+    p.add_argument("--board", default=None, help="a leaderboard by its title, e.g. 'GHZ'")
+    p.add_argument("--design", default=None, help="the design's name (default: the main design)")
+    p.add_argument("--submission", default=None, help="a local test by id, instead of the newest of the design")
+    p.add_argument("--reviewer", choices=["claude", "codex", "none"], default=None)
+    p.add_argument("--isolation", choices=["sandbox", "docker"], default=None)
+    p.add_argument("--device", action="store_true", help="login: Codex's device-code sign-in (a link and a code)")
+    p.add_argument("--token", action="store_true",
+                   help="login: read a Claude subscription token (one `claude setup-token` printed) from stdin")
+    p.add_argument("--no-wait", action="store_true")
+    p.add_argument("--show", default=None, help="show a review by id")
+    p.add_argument("--json", action="store_true")
     p = sub.add_parser("grade", help="grade a submission bundle (a leaderboard entry's bundle.zip) here, "
                                      "with the official reference evaluator")
     p.add_argument("bundle", help="the bundle .zip, or a bundle folder")
@@ -999,7 +1152,7 @@ def main(argv=None) -> int:
           "validate": cmd_validate, "compile": cmd_compile, "submit": cmd_submit, "publish": cmd_publish,
           "import": cmd_import, "export": cmd_export, "releases": cmd_releases, "boards": cmd_releases, "agent": cmd_agent, "mcp": cmd_mcp,
           "leaderboard": cmd_leaderboard, "trace": cmd_trace, "ler": cmd_ler, "bench": cmd_bench,
-          "login": cmd_login, "logout": cmd_logout, "grade": cmd_grade}[a.cmd]
+          "login": cmd_login, "logout": cmd_logout, "grade": cmd_grade, "review": cmd_review}[a.cmd]
     from .core import WorkspaceError
     from .tasks import LOCK_NAME
     if a.cmd not in ("mcp", "serve"):

@@ -53,6 +53,9 @@ _TRANSITIONS = {
 _TEXT_LIMIT = 8000
 #: what the agent may do with files in the workspace folder (`settings()["agent_files"]`)
 AGENT_FILES = ("read", "write")
+#: who reviews a design on this computer before it is submitted, and where it runs (reviews.py)
+REVIEWER_CHOICES = ("claude", "codex", "none")
+REVIEW_ISOLATIONS = ("sandbox", "docker")
 _SMALL = Limits(max_bytes=512 * 1024, max_depth=24, max_items=20000, max_string=_TEXT_LIMIT)
 
 
@@ -260,22 +263,32 @@ class CollabMixin:
     def settings(self) -> dict:
         """The person's choices for this workspace.  `agent_files`: `read` (the default: the agent
         reads files, and saves them only through `qccd_export`, which writes into `exports/`) or
-        `write` (its own file tools and shell may also create and change files in this folder)."""
+        `write` (its own file tools and shell may also create and change files in this folder).
+        `reviewer`: who reviews a design on this computer before it is submitted -- `claude`,
+        `codex`, or `none` (the decision and every rule's verdict, no agent); unset until the person
+        picks one.  `review_isolation`: where that agent runs -- `sandbox` (its CLI's own) or
+        `docker` (reviews.py)."""
         v = self.store.get_meta("agent_files")
-        return {"agent_files": v if v in AGENT_FILES else "read"}
+        rv, iso = self.store.get_meta("reviewer"), self.store.get_meta("review_isolation")
+        return {"agent_files": v if v in AGENT_FILES else "read",
+                "reviewer": rv if rv in REVIEWER_CHOICES else None,
+                "review_isolation": iso if iso in REVIEW_ISOLATIONS else "sandbox"}
 
     def set_settings(self, patch: Mapping, actor: Mapping) -> dict:
         from .core import WorkspaceError
         if actor.get("kind") != "human":
             raise WorkspaceError("forbidden", "only the person changes what the agent may do", status=403)
-        if "agent_files" in patch:
-            v = patch["agent_files"]
-            if v not in AGENT_FILES:
-                raise WorkspaceError("bad_request", f"agent_files is one of {', '.join(AGENT_FILES)}", status=422)
+        for key, allowed in (("agent_files", AGENT_FILES), ("reviewer", REVIEWER_CHOICES),
+                             ("review_isolation", REVIEW_ISOLATIONS)):
+            if key not in patch:
+                continue
+            v = patch[key]
+            if v not in allowed:
+                raise WorkspaceError("bad_request", f"{key} is one of {', '.join(allowed)}", status=422)
             with self.store.tx() as db:
-                db.execute("INSERT INTO meta(key, value) VALUES('agent_files', ?) "
-                           "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (v,))
-                self._emit(db, "settings.updated", {"agent_files": v}, None)
+                db.execute("INSERT INTO meta(key, value) VALUES(?, ?) "
+                           "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, v))
+                self._emit(db, "settings.updated", {key: v}, None)
         return self.settings()
 
     # ------------------------------------------------------------------ conversations

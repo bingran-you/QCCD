@@ -55,7 +55,7 @@ __all__ = ["ResultsMixin", "JOB_KINDS", "JOB_RUNNERS"]
 #: names the kinds each Feature starts; the gate test checks every kind here is reachable), and a
 #: kind with no entry is refused -- before this table, an unknown kind fell through to `evaluate`.
 JOB_RUNNERS = {"compile": "_job_compile", "evaluate": "_job_evaluate", "run": "_job_run", "submit": "_job_submit",
-               "ler": "_job_ler"}
+               "ler": "_job_ler", "review": "_job_review"}
 JOB_KINDS = tuple(JOB_RUNNERS)
 TERMINAL = ("succeeded", "failed", "cancelled", "timeout", "internal_error")
 

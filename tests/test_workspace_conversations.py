@@ -129,7 +129,8 @@ def test_rename_delete_and_undo(ws):
 # ---------------------------------------------------------------------- files
 
 def test_the_file_setting_is_the_persons_and_the_agent_is_told(ws):
-    assert ws.settings() == {"agent_files": "read"}
+    # (who reviews a design before it is submitted is the person's choice too: none picked yet)
+    assert ws.settings() == {"agent_files": "read", "reviewer": None, "review_isolation": "sandbox"}
     files = ws.context(AGENT)["files"]
     assert files["agent_may_write"] is False and "qccd_export" in files["how"]
     assert "Let the agent save files in this folder" in files["how"]           # the switch it points the person at
@@ -137,7 +138,7 @@ def test_the_file_setting_is_the_persons_and_the_agent_is_told(ws):
         ws.set_settings({"agent_files": "write"}, AGENT)
     with pytest.raises(WorkspaceError):
         ws.set_settings({"agent_files": "everything"}, HUMAN)
-    assert ws.set_settings({"agent_files": "write"}, HUMAN) == {"agent_files": "write"}
+    assert ws.set_settings({"agent_files": "write"}, HUMAN)["agent_files"] == "write"
     files = ws.context(AGENT)["files"]
     assert files["agent_may_write"] is True and "qccd_export" in files["how"]
     assert ws.store.one("SELECT COUNT(*) AS n FROM events WHERE type='settings.updated'")["n"] == 1
@@ -297,9 +298,9 @@ def test_the_list_and_delete_over_http(svc):
 def test_settings_and_export_over_http(svc):
     ws, state, c = svc
     agent = {"Authorization": "Bearer agent-tok"}
-    assert c.get("/api/settings", headers=agent).json() == {"agent_files": "read"}
+    assert c.get("/api/settings", headers=agent).json()["agent_files"] == "read"
     assert c.post("/api/settings", json={"agent_files": "write"}, headers=agent).status_code == 403
-    assert c.post("/api/settings", json={"agent_files": "write"}, headers=OWNER).json() == {"agent_files": "write"}
+    assert c.post("/api/settings", json={"agent_files": "write"}, headers=OWNER).json()["agent_files"] == "write"
     r = c.post("/api/export", json={"what": "design"}, headers=agent)
     assert r.status_code == 200 and r.json()["folder"] == "exports/Main-design-r0"
     assert c.post("/api/export", json={"what": "design", "revision": "0"}, headers=agent).status_code == 422
