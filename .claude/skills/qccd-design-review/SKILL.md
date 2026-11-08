@@ -118,8 +118,9 @@ Here is what each machine can run. A missing tool makes its stage `unsupported`,
 an `internal_error`, and none of those is a pass:
 
 - **The compiler (`qccdc`) and the Lean checker (`qcheck`):** run `qccd toolchain install`.
-  It ships prebuilt for Linux and Windows. macOS has no prebuilt Lean checker, so a Mac grade
-  cannot establish R10 or be eligible. The official server's report can.
+  It ships prebuilt for Linux and Windows. On a Mac, `qccd toolchain build-checker` builds the
+  Lean checker from source in about a minute (it needs Lean: `brew install elan-init`); without
+  it a Mac grade cannot establish R10 or be eligible. The official server's report can.
 - **`qiskit`** is needed by the certificate binding and the semantics stage. **`stim`** and
   **`pymatching`** are needed by the LER stage. Install them with `pip install -e ".[agent]"`.
   If you can't install them, use a virtual environment, or read the official report with
